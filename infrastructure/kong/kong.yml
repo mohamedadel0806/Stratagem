@@ -1,0 +1,110 @@
+_format_version: "3.0"
+
+services:
+- name: backend-service
+  url: http://backend:3001
+  plugins:
+  - name: rate-limiting
+    config:
+      minute: 1000
+      hour: 10000
+
+- name: ai-service
+  url: http://ai-service:8000
+  plugins:
+  - name: rate-limiting
+    config:
+      minute: 50
+      hour: 500
+
+routes:
+# Highest priority: Match /api/v1 paths exactly (most specific)
+- name: backend-api-v1-route
+  service: backend-service
+  paths:
+  - /api/v1
+  strip_path: false  # Keep the full path /api/v1/...
+  methods:
+  - GET
+  - POST
+  - PUT
+  - DELETE
+  - PATCH
+  - OPTIONS
+  regex_priority: 10  # Higher priority than /api route
+
+# Medium priority: Match /api paths (strip /api prefix)
+- name: backend-route
+  service: backend-service
+  paths:
+  - /api
+  strip_path: true  # Remove /api prefix before forwarding
+  methods:
+  - GET
+  - POST
+  - PUT
+  - DELETE
+  - PATCH
+  - OPTIONS
+  regex_priority: 5  # Lower priority than /api/v1
+
+# Lowest priority: Catch-all route for root paths
+- name: backend-catchall-route
+  service: backend-service
+  paths:
+  - /
+  strip_path: false
+  methods:
+  - GET
+  - POST
+  - PUT
+  - DELETE
+  - PATCH
+  - OPTIONS
+  regex_priority: 0  # Lowest priority
+
+- name: ai-route
+  service: ai-service
+  paths:
+  - /ai
+  methods:
+  - GET
+  - POST
+  - OPTIONS
+
+plugins:
+- name: cors
+  config:
+    origins:
+    - "http://localhost:3000"
+    - "http://localhost:8000"
+    - "https://grc-staging.newmehub.com"
+    - "https://grc-staging.newmehub.com:443"
+    methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - PATCH
+    - OPTIONS
+    headers:
+    - Accept
+    - Accept-Version
+    - Content-Length
+    - Content-MD5
+    - Content-Type
+    - Date
+    - Authorization
+    - Host
+    - X-API-Version
+    - X-Requested-With
+    - Origin
+    exposed_headers:
+    - Content-Type
+    - Authorization
+    credentials: true
+    max_age: 3600
+
+- name: prometheus
+  config:
+    per_consumer: true

@@ -1,0 +1,54 @@
+EVIDENCE UPLOAD TEMPLATE
+========================
+
+This is a sample template for uploading evidence files to the Governance Module.
+
+REQUIRED INFORMATION:
+--------------------
+1. Evidence Identifier: Unique identifier (e.g., EVID-2024-001)
+2. Title: Descriptive title of the evidence
+3. Evidence Type: Type of evidence (Policy Document, Configuration Screenshot, etc.)
+4. File: The actual evidence file
+
+SUPPORTED FILE TYPES:
+--------------------
+- PDF Documents (.pdf)
+- Word Documents (.doc, .docx)
+- Excel Spreadsheets (.xls, .xlsx)
+- Images (.jpg, .jpeg, .png, .gif)
+- Text Files (.txt)
+- CSV Files (.csv)
+
+FILE SIZE LIMIT:
+---------------
+Maximum file size: 50 MB
+
+EXAMPLE EVIDENCE ITEMS:
+----------------------
+1. Policy Document: Security Policy v2.0.pdf
+2. Configuration Screenshot: MFA Settings Screenshot.png
+3. System Log: Authentication Logs 2024-12.txt
+4. Scan Report: Vulnerability Scan Report.pdf
+5. Test Result: Penetration Test Results.xlsx
+6. Certification: ISO 27001 Certificate.pdf
+7. Training Record: Security Awareness Training Completion.pdf
+8. Meeting Minutes: Security Review Meeting Minutes.docx
+
+INSTRUCTIONS:
+------------
+1. Click "Choose File" or drag and drop your file
+2. Fill in the required fields:
+   - Evidence Identifier (unique)
+   - Title (descriptive)
+   - Evidence Type (from dropdown)
+   - Description (optional but recommended)
+3. Set collection date, valid from/until dates if applicable
+4. Click "Upload" to save the evidence
+
+NOTE: All uploaded files are securely stored and linked to controls, assessments, or findings as needed.
+
+For questions or support, please contact the Governance team.
+
+
+
+

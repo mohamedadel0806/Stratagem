@@ -1,0 +1,33 @@
+import { Repository } from 'typeorm';
+import { Risk } from '../../risk/entities/risk.entity';
+import { Policy } from '../../governance/policies/entities/policy.entity';
+import { Task } from '../../common/entities/task.entity';
+import { ComplianceRequirement } from '../../common/entities/compliance-requirement.entity';
+import { PhysicalAsset } from '../../asset/entities/physical-asset.entity';
+import { InformationAsset } from '../../asset/entities/information-asset.entity';
+import { BusinessApplication } from '../../asset/entities/business-application.entity';
+import { SoftwareAsset } from '../../asset/entities/software-asset.entity';
+import { Supplier } from '../../asset/entities/supplier.entity';
+import { AssetAuditLog } from '../../asset/entities/asset-audit-log.entity';
+import { DashboardOverviewDto, AssetStatsDto } from '../dto/dashboard-overview.dto';
+export declare class DashboardService {
+    private riskRepository;
+    private policyRepository;
+    private taskRepository;
+    private requirementRepository;
+    private physicalAssetRepository;
+    private informationAssetRepository;
+    private businessApplicationRepository;
+    private softwareAssetRepository;
+    private supplierRepository;
+    private auditLogRepository;
+    constructor(riskRepository: Repository<Risk>, policyRepository: Repository<Policy>, taskRepository: Repository<Task>, requirementRepository: Repository<ComplianceRequirement>, physicalAssetRepository: Repository<PhysicalAsset>, informationAssetRepository: Repository<InformationAsset>, businessApplicationRepository: Repository<BusinessApplication>, softwareAssetRepository: Repository<SoftwareAsset>, supplierRepository: Repository<Supplier>, auditLogRepository: Repository<AssetAuditLog>);
+    getOverview(): Promise<DashboardOverviewDto>;
+    getAssetStats(): Promise<AssetStatsDto>;
+    private getAssetCountByType;
+    private getAssetCountByCriticality;
+    private getAssetsWithoutOwner;
+    private getRecentAssetChanges;
+    private getAssetsByComplianceScope;
+    private getAssetsWithOutdatedSecurityTests;
+}

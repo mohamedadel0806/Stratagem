@@ -1,0 +1,35 @@
+Requirement ID,Category,Requirement Title,Description,Compliance Deadline,Applicability
+ADGM-1,Governance,Cyber Risk Management Framework (CRMF),Establish and maintain a written board-approved CRMF to identify assess and manage cyber risks effectively. Must be reviewed annually and tailored to firm's risk profile.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-2,Governance,Board and Senior Management Accountability,Governing bodies and senior management must ensure cyber risks are identified addressed and managed by qualified individuals. Cybersecurity must be treated as a strategic business risk.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-3,Governance,Integration with Risk Frameworks,Integrate cyber risk management requirements into existing risk management frameworks.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-4,Governance,Risk-Based Approach,Apply proportionate measures reflecting the nature scale and complexity of the firm's business activities.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-5,Identification,Cyber Risk Identification,Identify and assess cyber risks considering both probability and impact of cyber incidents.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-6,Identification,Information Asset Inventory,Know what information assets exist including locations where sensitive data is stored and inherent vulnerabilities and threats.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-7,Identification,Periodic Risk Assessments,Conduct periodic cyber risk assessments to evaluate threats and vulnerabilities.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-8,Protection,ICT Asset Protection,Implement controls to protect ICT assets including access controls data encryption and network security.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-9,Protection,Access Management,Implement access management controls and multi-factor authentication.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-10,Protection,Data Encryption,Encrypt data in transit at rest and at destruction.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-11,Protection,Anti-Malware Software,Deploy anti-malware software and network security controls.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-12,Protection,Physical Access Controls,Implement physical access restrictions to data centers.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-13,Protection,Cybersecurity Training,Provide annual cybersecurity awareness training for all staff.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-14,Third-Party Risk,Due Diligence,Undertake due diligence to ensure selection of suitable third-party providers of ICT Services that comply with appropriate cyber security standards.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-15,Third-Party Risk,Contractual Requirements,Enter into appropriate contracts with third-party ICT service providers with security obligations.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-16,Third-Party Risk,Continuous Monitoring,Effectively supervise the provision of ICT Services through ongoing monitoring.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-17,Third-Party Risk,ICT Provider Inventory,Maintain an inventory of ICT providers and assess their risk exposure.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-18,Third-Party Risk,Third-Party Incident Notification,Require third-party providers to notify about all cyber incidents that have or are likely to have material impact on the firm.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-19,Third-Party Risk,Incident Remediation Cooperation,Require third-party providers to cooperate in remediating the impact of cyber incidents.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-20,Third-Party Risk,Data Return and Destruction,Set appropriate requirements for deletion or return of firm's information at end of contract.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-21,Monitoring and Testing,Ongoing Monitoring,Implement a system to conduct ongoing monitoring of systems and controls.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-22,Monitoring and Testing,Regular Testing,Conduct regular testing of systems and controls such as vulnerability assessments and scenario-based testing.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-23,Monitoring and Testing,Penetration Testing,Conduct penetration testing and vulnerability assessments regularly with internet-facing systems tested at least once a year.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-24,Monitoring and Testing,Issue Remediation,Remediate issues identified through testing and assessments.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-25,Response and Recovery,Incident Response Plan,Establish maintain and regularly test a robust cyber incident response plan to ensure timely recovery from incidents.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-26,Response and Recovery,Crisis Management Integration,Integrate incident response plan into overall crisis management and disaster recovery plans.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-27,Response and Recovery,Plan Testing,Regularly test incident response plan and update as needed.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-28,Incident Notification,24-Hour Notification to FSRA,Notify FSRA of material cyber incidents within 24 hours of detection.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-29,Incident Notification,Initial Incident Report,Submit initial incident report using Template A via email to incidents.fsra@adgm.com.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-30,Incident Notification,Progressive Reporting,Submit updated information through progressive reports using Template B.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-31,Incident Notification,Materiality Assessment,Assess materiality of cyber incidents to determine notification requirements.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-32,Documentation,Written Policies and Procedures,Document cybersecurity policies procedures and processes that define how information assets are managed and protected.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-33,Documentation,Roles and Responsibilities,Clearly define roles and responsibilities related to cybersecurity within the organization.,January 31 2026,All Authorised Persons and Recognised Bodies
+ADGM-34,Reporting,Annual Cyber Risk Return,Submit annual return providing visibility over how firms are adapting to evolving threats and maturing cyber controls.,January 31 2026,All Authorised Persons and Recognised Bodies

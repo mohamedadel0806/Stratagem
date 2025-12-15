@@ -1,0 +1,44 @@
+# GRC Platform Configuration
+grc-staging.newmehub.com {
+    # Enable automatic HTTPS
+    tls {
+        protocols tls1.2 tls1.3
+    }
+
+    # Security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        # XSS Protection
+        X-Content-Type-Options "nosniff"
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Route NextAuth routes to frontend
+    handle /api/auth/* {
+        reverse_proxy localhost:3000
+    }
+    
+    # Route proxy API requests to frontend (for authentication and session handling)
+    handle /api/proxy/* {
+        reverse_proxy localhost:3000
+    }
+    
+    # Route other API requests to Kong Gateway (which proxies to backend)
+    handle /api/* {
+        reverse_proxy localhost:8000
+    }
+    
+    # Route everything else to frontend
+    handle {
+        reverse_proxy localhost:3000
+    }
+}
+
+# HTTP to HTTPS redirect
+http://grc-staging.newmehub.com {
+    redir https://grc-staging.newmehub.com{uri} permanent
+}

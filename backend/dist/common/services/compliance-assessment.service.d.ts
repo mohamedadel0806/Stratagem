@@ -1,0 +1,52 @@
+import { Repository } from 'typeorm';
+import { AssetRequirementMapping, ComplianceStatus, AssetType } from '../entities/asset-requirement-mapping.entity';
+import { ComplianceValidationRule } from '../entities/compliance-validation-rule.entity';
+import { ComplianceAssessment } from '../entities/compliance-assessment.entity';
+import { ComplianceRequirement } from '../entities/compliance-requirement.entity';
+import { AssessmentResultDto, AssetComplianceStatusDto, ComplianceGapDto, BulkAssessmentResultDto } from '../dto/assessment-response.dto';
+import { CreateValidationRuleDto, UpdateValidationRuleDto, ValidationRuleResponseDto } from '../dto/validation-rule.dto';
+import { PhysicalAssetService } from '../../asset/services/physical-asset.service';
+import { InformationAssetService } from '../../asset/services/information-asset.service';
+import { BusinessApplicationService } from '../../asset/services/business-application.service';
+import { SoftwareAssetService } from '../../asset/services/software-asset.service';
+import { SupplierService } from '../../asset/services/supplier.service';
+export declare class ComplianceAssessmentService {
+    private mappingRepository;
+    private rulesRepository;
+    private assessmentRepository;
+    private requirementsRepository;
+    private physicalAssetService;
+    private informationAssetService;
+    private businessApplicationService;
+    private softwareAssetService;
+    private supplierService;
+    constructor(mappingRepository: Repository<AssetRequirementMapping>, rulesRepository: Repository<ComplianceValidationRule>, assessmentRepository: Repository<ComplianceAssessment>, requirementsRepository: Repository<ComplianceRequirement>, physicalAssetService: PhysicalAssetService, informationAssetService: InformationAssetService, businessApplicationService: BusinessApplicationService, softwareAssetService: SoftwareAssetService, supplierService: SupplierService);
+    private getAsset;
+    private getFieldValue;
+    private evaluateOperator;
+    private evaluateCriteria;
+    private evaluateRule;
+    private determineStatus;
+    assessAssetRequirement(assetType: AssetType, assetId: string, requirementId: string, assessedById?: string): Promise<AssessmentResultDto>;
+    assessAsset(assetType: AssetType, assetId: string, assessedById?: string): Promise<AssessmentResultDto[]>;
+    getAssetComplianceStatus(assetType: AssetType, assetId: string): Promise<AssetComplianceStatusDto>;
+    getComplianceGaps(assetType: AssetType, assetId: string): Promise<ComplianceGapDto[]>;
+    private generateRecommendations;
+    bulkAssess(assetType: AssetType, assetIds: string[], assessedById?: string): Promise<BulkAssessmentResultDto>;
+    createValidationRule(createDto: CreateValidationRuleDto, createdById: string): Promise<ValidationRuleResponseDto>;
+    findAllValidationRules(requirementId?: string, assetType?: AssetType): Promise<ValidationRuleResponseDto[]>;
+    findValidationRuleById(id: string): Promise<ValidationRuleResponseDto>;
+    updateValidationRule(id: string, updateDto: UpdateValidationRuleDto): Promise<ValidationRuleResponseDto>;
+    deleteValidationRule(id: string): Promise<void>;
+    private toValidationRuleResponseDto;
+    getAssetComplianceList(filters: {
+        assetType?: AssetType;
+        complianceStatus?: ComplianceStatus;
+        businessUnit?: string;
+        criticality?: string;
+        searchQuery?: string;
+    }, pagination: {
+        page: number;
+        pageSize: number;
+    }): Promise<any>;
+}

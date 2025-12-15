@@ -1,0 +1,80 @@
+{
+  "id": "grc-platform",
+  "realm": "grc-platform",
+  "displayName": "GRC Platform",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": true,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 30,
+  "roles": {
+    "realm": [
+      {
+        "id": "admin",
+        "name": "admin",
+        "description": "Administrator role",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "grc-platform"
+      },
+      {
+        "id": "compliance_officer",
+        "name": "compliance_officer",
+        "description": "Compliance Officer role",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "grc-platform"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "frontend",
+      "name": "Frontend Application",
+      "description": "GRC Platform Frontend",
+      "enabled": true,
+      "clientAuthenticatorType": "public",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:3000/api/auth/callback/keycloak",
+        "http://127.0.0.1:3000/*",
+        "http://127.0.0.1:3000/api/auth/callback/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "+"
+      ],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "fullScopeAllowed": false,
+      "protocolMappers": [
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

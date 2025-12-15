@@ -1,0 +1,41 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsEnum, IsString, IsInt, Min, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CriticalityLevel } from '../entities/physical-asset.entity';
+
+export class SupplierQueryDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiProperty({ required: false, description: 'Supplier type (string)' })
+  @IsOptional()
+  @IsString()
+  supplierType?: string;
+
+  @ApiProperty({ enum: CriticalityLevel, required: false })
+  @IsOptional()
+  @IsEnum(CriticalityLevel)
+  criticalityLevel?: CriticalityLevel;
+
+  @ApiProperty({ required: false, description: 'Business unit ID (UUID)' })
+  @IsOptional()
+  @IsUUID()
+  businessUnit?: string;
+
+  @ApiProperty({ required: false, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ required: false, default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+}
+

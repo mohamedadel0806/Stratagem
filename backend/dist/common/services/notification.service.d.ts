@@ -1,0 +1,31 @@
+import { Repository } from 'typeorm';
+import { Notification } from '../entities/notification.entity';
+import { CreateNotificationDto, NotificationResponseDto, NotificationQueryDto } from '../dto/notification.dto';
+export declare class NotificationService {
+    private notificationRepository;
+    constructor(notificationRepository: Repository<Notification>);
+    create(dto: CreateNotificationDto): Promise<NotificationResponseDto>;
+    createBulk(userIds: string[], dto: Omit<CreateNotificationDto, 'userId'>): Promise<void>;
+    findByUser(userId: string, query?: NotificationQueryDto): Promise<NotificationResponseDto[]>;
+    getUnreadCount(userId: string): Promise<number>;
+    markAsRead(notificationId: string, userId: string): Promise<void>;
+    markMultipleAsRead(notificationIds: string[], userId: string): Promise<void>;
+    markAllAsRead(userId: string): Promise<void>;
+    delete(notificationId: string, userId: string): Promise<void>;
+    cleanupOldNotifications(daysOld?: number): Promise<number>;
+    sendApprovalRequest(approverId: string, workflowName: string, entityType: string, entityId: string, executionId: string): Promise<void>;
+    sendWorkflowApproved(userId: string, workflowName: string, entityType: string, entityId: string, approverName: string): Promise<void>;
+    sendWorkflowRejected(userId: string, workflowName: string, entityType: string, entityId: string, approverName: string, reason?: string): Promise<void>;
+    sendTaskAssigned(userId: string, taskTitle: string, taskId: string): Promise<void>;
+    sendDeadlineApproaching(userId: string, entityType: string, entityId: string, entityName: string, daysRemaining: number): Promise<void>;
+    sendRiskEscalated(userId: string, riskTitle: string, riskId: string): Promise<void>;
+    sendPolicyPublished(userIds: string[], policyName: string, policyId: string, publishedBy: string): Promise<void>;
+    sendComplianceStatusChanged(userId: string, entityType: string, entityId: string, entityName: string, oldStatus: string, newStatus: string): Promise<void>;
+    sendControlAssessmentRequired(userId: string, controlName: string, controlId: string, dueDate: Date): Promise<void>;
+    sendEvidenceUploadRequested(userId: string, controlName: string, controlId: string, requiredBy: string): Promise<void>;
+    sendEvidenceReviewCompleted(userId: string, controlName: string, controlId: string, status: 'approved' | 'rejected', comments?: string): Promise<void>;
+    sendGapAnalysisCompleted(userId: string, frameworkName: string, frameworkId: string, gapCount: number): Promise<void>;
+    sendAuditFinding(userIds: string[], findingTitle: string, findingId: string, severity: 'low' | 'medium' | 'high' | 'critical'): Promise<void>;
+    sendComplianceMappingCompleted(userId: string, mappingType: string, mappingId: string, requirementsCount: number): Promise<void>;
+    private toResponseDto;
+}

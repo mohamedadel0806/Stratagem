@@ -1,0 +1,53 @@
+import { User } from '../../users/entities/user.entity';
+import { BusinessUnit } from '../../common/entities/business-unit.entity';
+import { CriticalityLevel } from './physical-asset.entity';
+export declare class Supplier {
+    id: string;
+    uniqueIdentifier: string;
+    supplierName: string;
+    supplierType: string;
+    businessPurpose: string;
+    ownerId: string;
+    owner: User;
+    businessUnitId: string;
+    businessUnit: BusinessUnit;
+    goodsServicesType: string[];
+    criticalityLevel: CriticalityLevel;
+    contractReference: string;
+    contractStartDate: Date;
+    contractEndDate: Date;
+    contractValue: number;
+    currency: string;
+    autoRenewal: boolean;
+    primaryContact: {
+        name: string;
+        title: string;
+        email: string;
+        phone: string;
+    };
+    secondaryContact: {
+        name: string;
+        title: string;
+        email: string;
+        phone: string;
+    };
+    taxId: string;
+    registrationNumber: string;
+    address: string;
+    country: string;
+    website: string;
+    riskAssessmentDate: Date;
+    riskLevel: string;
+    complianceCertifications: string[];
+    insuranceVerified: boolean;
+    backgroundCheckDate: Date;
+    performanceRating: number;
+    lastReviewDate: Date;
+    createdBy: string;
+    createdByUser: User;
+    createdAt: Date;
+    updatedBy: string;
+    updatedByUser: User;
+    updatedAt: Date;
+    deletedAt: Date;
+}

@@ -1,0 +1,28 @@
+import { Repository } from 'typeorm';
+import { Influencer } from '../influencers/entities/influencer.entity';
+import { Policy } from '../policies/entities/policy.entity';
+import { UnifiedControl } from '../unified-controls/entities/unified-control.entity';
+import { Assessment } from '../assessments/entities/assessment.entity';
+import { Finding } from '../findings/entities/finding.entity';
+import { Evidence } from '../evidence/entities/evidence.entity';
+import { ControlAssetMapping } from '../unified-controls/entities/control-asset-mapping.entity';
+import { GovernanceDashboardDto, GovernanceSummaryDto, AssetComplianceStatsDto } from '../dto/governance-dashboard.dto';
+export declare class GovernanceDashboardService {
+    private influencerRepository;
+    private policyRepository;
+    private unifiedControlRepository;
+    private assessmentRepository;
+    private findingRepository;
+    private evidenceRepository;
+    private controlAssetMappingRepository;
+    constructor(influencerRepository: Repository<Influencer>, policyRepository: Repository<Policy>, unifiedControlRepository: Repository<UnifiedControl>, assessmentRepository: Repository<Assessment>, findingRepository: Repository<Finding>, evidenceRepository: Repository<Evidence>, controlAssetMappingRepository: Repository<ControlAssetMapping>);
+    getDashboard(): Promise<GovernanceDashboardDto>;
+    getSummaryMetrics(): Promise<GovernanceSummaryDto>;
+    private getControlStats;
+    private getPolicyStats;
+    private getAssessmentStats;
+    private getFindingStats;
+    private getUpcomingReviews;
+    private getRecentActivity;
+    getAssetComplianceStats(): Promise<AssetComplianceStatsDto>;
+}

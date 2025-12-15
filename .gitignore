@@ -1,0 +1,52 @@
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+ENV/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+
+# Backups and exports
+backups/
+database-export/
+
+# Environment files
+.env.*
+.envrc
+
+# Docker
+*.pid
+deploy/images/
+docker-compose.override.yml
+
+# Test results
+coverage/
+test-results/
+
+# Misc
+*.swp
+*.swo
+*.bak
+
+# Ignore uploads (if not needed in repo)
+backend/uploads/
+
+# Ignore frontend build (if applicable)
+frontend/dist/
+frontend/build/
+
+# Ignore AI service virtual environments
+ai-service/.venv/

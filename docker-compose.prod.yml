@@ -1,0 +1,287 @@
+services:
+  frontend:
+    image: stratagem-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXTAUTH_URL=${FRONTEND_URL}
+        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=${FRONTEND_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER:-http://localhost:8081/realms/grc-platform}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-frontend}
+      - API_URL=http://kong:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - BACKEND_URL=http://backend:3001
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    networks:
+      - grc-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - keycloak
+
+  backend:
+    image: stratagem-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL}
+      - MONGODB_URL=${MONGODB_URL}
+      - NEO4J_URL=${NEO4J_URL}
+      - NEO4J_USERNAME=${NEO4J_USERNAME}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      - REDIS_URL=${REDIS_URL}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - KEYCLOAK_URL=http://keycloak:8080
+    volumes: []
+    ports: []
+    networks:
+      - grc-network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - mongodb
+      - neo4j
+      - redis
+      - elasticsearch
+      - keycloak
+
+  ai-service:
+    image: stratagem-ai-service:latest
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+    ports: []  # No external ports - accessed via Kong only
+    networks:
+      - grc-network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - elasticsearch
+
+  # API Gateway - Kong
+  kong:
+    image: kong:3.4
+    ports:
+      - "8000:8000"  # Kong proxy
+      - "8001:8001"  # Kong admin API
+    environment:
+      - KONG_DATABASE=off  # Run in DB-less mode
+      - KONG_DECLARATIVE_CONFIG=/usr/local/kong/declarative/kong.yml
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+      - KONG_PROXY_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_LISTEN=0.0.0.0:8001
+    volumes:
+      - ./infrastructure/kong/kong.yml:/usr/local/kong/declarative/kong.yml
+    networks:
+      - grc-network
+    restart: unless-stopped
+
+  # Authentication - Keycloak
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    ports: []
+    environment:
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloak_password
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+      - KC_HOSTNAME=${FRONTEND_URL}
+      - KC_HOSTNAME_PORT=443
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+    command:
+      - start
+      - --import-realm
+    volumes:
+      - ./infrastructure/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    depends_on:
+      - postgres
+    networks:
+      - grc-network
+    restart: unless-stopped
+
+  # Primary Database - PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=grc_platform
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_MULTIPLE_DATABASES=kong,keycloak
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infrastructure/postgres/create-multiple-postgresql-databases.sh:/docker-entrypoint-initdb.d/create-multiple-postgresql-databases.sh
+    networks:
+      - grc-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Document Database - MongoDB
+  mongodb:
+    image: mongo:7
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=grc_documents
+    volumes:
+      - mongodb_data_prod:/data/db
+      - ./infrastructure/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
+    networks:
+      - grc-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Graph Database - Neo4j
+  neo4j:
+    image: neo4j:5.14-community
+    ports: []  # No external ports - accessed internally only
+    environment:
+      - NEO4J_AUTH=${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
+      - NEO4J_dbms_memory_heap_initial__size=1g
+      - NEO4J_dbms_memory_heap_max__size=4g
+      - NEO4J_dbms_security_allow__csv__import__from__file__urls=true
+    volumes:
+      - neo4j_data_prod:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    networks:
+      - grc-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "${NEO4J_USERNAME}", "-p", "${NEO4J_PASSWORD}", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache & Message Queue - Redis
+  redis:
+    image: redis:7-alpine
+    command: >
+      sh -c "
+      if [ -n \"$${REDIS_PASSWORD}\" ]; then
+        redis-server --requirepass $${REDIS_PASSWORD} /usr/local/etc/redis/redis.conf
+      else
+        redis-server /usr/local/etc/redis/redis.conf
+      fi
+      "
+    volumes:
+      - redis_data_prod:/data
+      - ./infrastructure/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - grc-network
+    restart: unless-stopped
+    healthcheck:
+      test: >
+        sh -c "
+        if [ -n \"$${REDIS_PASSWORD}\" ]; then
+          redis-cli --no-auth-warning -a $${REDIS_PASSWORD} ping
+        else
+          redis-cli ping
+        fi
+        "
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Search Engine - Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=grc-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.security.enrollment.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data_prod:/usr/share/elasticsearch/data
+      - ./infrastructure/elasticsearch/init-elastic.sh:/usr/local/bin/init-elastic.sh
+    networks:
+      - grc-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:10.0.0
+    ports: []
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - grc-network
+    restart: unless-stopped
+
+networks:
+  grc-network:
+    external: true
+    name: grc-network
+
+volumes:
+  postgres_data_prod:
+  mongodb_data_prod:
+  neo4j_data_prod:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
+  redis_data_prod:
+  elasticsearch_data_prod:
+  grafana_data:
