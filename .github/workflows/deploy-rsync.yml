@@ -59,8 +59,8 @@ jobs:
             export GH_REPO_OWNER=${{ github.repository_owner }}
             export GH_REPO_NAME=${{ github.event.repository.name }}
 
-            # Stop and remove existing containers
-            docker compose -f docker-compose.prod.yml down
+            # Stop and remove existing containers including orphans
+            docker compose -f docker-compose.prod.yml down --remove-orphans
 
             # Rebuild services from source
             echo "Building services..."
