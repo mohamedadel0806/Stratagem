@@ -10,6 +10,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    environment: Ubuntu-server
     permissions:
       contents: read
       packages: write
@@ -89,7 +90,7 @@ jobs:
 
       - name: Transfer Config Files
         run: |
-          scp -o StrictHostKeyChecking=no docker-compose.prod.yml infrastructure/caddy/Caddyfile scripts/* ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
+          scp -o StrictHostKeyChecking=no -r docker-compose.prod.yml infrastructure/caddy/Caddyfile scripts ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
 
       - name: Deploy on Server
         uses: appleboy/ssh-action@master

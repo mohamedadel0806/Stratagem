@@ -33,12 +33,8 @@ jobs:
             --exclude '.env' \
             ./backend/ ./frontend/ ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
 
-          rsync -avz --progress \
-            -e "ssh -o StrictHostKeyChecking=no" \
-            docker-compose.prod.yml \
-            infrastructure/caddy/Caddyfile \
-            scripts/ \
-            ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
+          # Transfer config and scripts
+          scp -o StrictHostKeyChecking=no -r docker-compose.prod.yml infrastructure/caddy/Caddyfile scripts ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
 
       - name: Rebuild and Restart on Server
         uses: appleboy/ssh-action@master
