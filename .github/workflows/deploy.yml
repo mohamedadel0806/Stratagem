@@ -20,6 +20,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Log Commit Hash
+        run: git rev-parse HEAD
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
