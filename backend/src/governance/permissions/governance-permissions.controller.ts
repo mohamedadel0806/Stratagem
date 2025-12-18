@@ -19,11 +19,11 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '../../users/entities/user.entity';
 
 @ApiTags('Governance - Permissions')
-@Controller('api/v1/governance/permissions')
+@Controller('governance/permissions')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class GovernancePermissionsController {
-  constructor(private readonly permissionsService: GovernancePermissionsService) {}
+  constructor(private readonly permissionsService: GovernancePermissionsService) { }
 
   @Post()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)

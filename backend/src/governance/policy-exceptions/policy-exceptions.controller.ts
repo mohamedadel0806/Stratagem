@@ -21,11 +21,11 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '../../users/entities/user.entity';
 
 @ApiTags('Governance - Policy Exceptions')
-@Controller('api/v1/governance/policy-exceptions')
+@Controller('governance/policy-exceptions')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class PolicyExceptionsController {
-  constructor(private readonly exceptionsService: PolicyExceptionsService) {}
+  constructor(private readonly exceptionsService: PolicyExceptionsService) { }
 
   @Post()
   @ApiOperation({ summary: 'Create a policy exception request' })

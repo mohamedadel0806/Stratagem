@@ -154,7 +154,7 @@ __decorate([
 ], GovernancePermissionsController.prototype, "checkPermission", null);
 exports.GovernancePermissionsController = GovernancePermissionsController = __decorate([
     (0, swagger_1.ApiTags)('Governance - Permissions'),
-    (0, common_1.Controller)('api/v1/governance/permissions'),
+    (0, common_1.Controller)('governance/permissions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [governance_permissions_service_1.GovernancePermissionsService])

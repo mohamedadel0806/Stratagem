@@ -126,7 +126,7 @@ __decorate([
 ], PolicyExceptionsController.prototype, "reject", null);
 exports.PolicyExceptionsController = PolicyExceptionsController = __decorate([
     (0, swagger_1.ApiTags)('Governance - Policy Exceptions'),
-    (0, common_1.Controller)('api/v1/governance/policy-exceptions'),
+    (0, common_1.Controller)('governance/policy-exceptions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [policy_exceptions_service_1.PolicyExceptionsService])

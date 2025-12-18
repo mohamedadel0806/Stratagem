@@ -79,7 +79,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ControlObjectivesController.prototype, "remove", null);
 exports.ControlObjectivesController = ControlObjectivesController = __decorate([
-    (0, common_1.Controller)('api/v1/governance/control-objectives'),
+    (0, common_1.Controller)('governance/control-objectives'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [control_objectives_service_1.ControlObjectivesService])
 ], ControlObjectivesController);

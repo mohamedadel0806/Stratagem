@@ -103,7 +103,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AssessmentsController.prototype, "getResults", null);
 exports.AssessmentsController = AssessmentsController = __decorate([
-    (0, common_1.Controller)('api/v1/governance/assessments'),
+    (0, common_1.Controller)('governance/assessments'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [assessments_service_1.AssessmentsService])
 ], AssessmentsController);

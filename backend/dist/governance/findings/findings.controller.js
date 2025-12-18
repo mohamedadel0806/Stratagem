@@ -97,7 +97,7 @@ __decorate([
 ], FindingsController.prototype, "getRisks", null);
 exports.FindingsController = FindingsController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
-    (0, common_1.Controller)('api/v1/governance/findings'),
+    (0, common_1.Controller)('governance/findings'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [findings_service_1.FindingsService,

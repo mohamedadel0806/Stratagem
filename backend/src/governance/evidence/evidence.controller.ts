@@ -26,10 +26,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
-@Controller('api/v1/governance/evidence')
+@Controller('governance/evidence')
 @UseGuards(JwtAuthGuard)
 export class EvidenceController {
-  constructor(private readonly evidenceService: EvidenceService) {}
+  constructor(private readonly evidenceService: EvidenceService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

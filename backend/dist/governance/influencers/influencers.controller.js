@@ -159,7 +159,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], InfluencersController.prototype, "downloadDocument", null);
 exports.InfluencersController = InfluencersController = __decorate([
-    (0, common_1.Controller)('api/v1/governance/influencers'),
+    (0, common_1.Controller)('governance/influencers'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [influencers_service_1.InfluencersService])
 ], InfluencersController);

@@ -8,14 +8,14 @@ import { GapAnalysisQueryDto, GapAnalysisDto } from '../dto/gap-analysis.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiTags('governance')
-@Controller('api/v1/governance/reports')
+@Controller('governance/reports')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class GovernanceReportingController {
   constructor(
     private readonly reportingService: GovernanceReportingService,
     private readonly gapAnalysisService: GapAnalysisService,
-  ) {}
+  ) { }
 
   @Get('export')
   @ApiOperation({ summary: 'Export governance report' })

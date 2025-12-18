@@ -261,7 +261,7 @@ __decorate([
 ], GovernanceReportingController.prototype, "getGapAnalysis", null);
 exports.GovernanceReportingController = GovernanceReportingController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
-    (0, common_1.Controller)('api/v1/governance/reports'),
+    (0, common_1.Controller)('governance/reports'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [governance_reporting_service_1.GovernanceReportingService,

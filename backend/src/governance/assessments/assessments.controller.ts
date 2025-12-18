@@ -17,10 +17,10 @@ import { CreateAssessmentDto } from './dto/create-assessment.dto';
 import { CreateAssessmentResultDto } from './dto/create-assessment-result.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
-@Controller('api/v1/governance/assessments')
+@Controller('governance/assessments')
 @UseGuards(JwtAuthGuard)
 export class AssessmentsController {
-  constructor(private readonly assessmentsService: AssessmentsService) {}
+  constructor(private readonly assessmentsService: AssessmentsService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

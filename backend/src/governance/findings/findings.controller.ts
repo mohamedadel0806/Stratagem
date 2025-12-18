@@ -20,14 +20,14 @@ import { RiskFindingLinkService } from '../../risk/services/risk-finding-link.se
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 
 @ApiTags('governance')
-@Controller('api/v1/governance/findings')
+@Controller('governance/findings')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class FindingsController {
   constructor(
     private readonly findingsService: FindingsService,
     private readonly riskFindingLinkService: RiskFindingLinkService,
-  ) {}
+  ) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

@@ -39,7 +39,7 @@ __decorate([
 ], ComplianceScorecardController.prototype, "getScorecard", null);
 exports.ComplianceScorecardController = ComplianceScorecardController = __decorate([
     (0, swagger_1.ApiTags)('Governance - Compliance Scorecard'),
-    (0, common_1.Controller)('api/v1/governance/scorecard'),
+    (0, common_1.Controller)('governance/scorecard'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [compliance_scorecard_service_1.ComplianceScorecardService])

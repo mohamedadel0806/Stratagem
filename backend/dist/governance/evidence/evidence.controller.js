@@ -183,7 +183,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], EvidenceController.prototype, "downloadFile", null);
 exports.EvidenceController = EvidenceController = __decorate([
-    (0, common_1.Controller)('api/v1/governance/evidence'),
+    (0, common_1.Controller)('governance/evidence'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [evidence_service_1.EvidenceService])
 ], EvidenceController);

@@ -20,10 +20,10 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Governance - SOPs')
-@Controller('api/v1/governance/sops')
+@Controller('governance/sops')
 @UseGuards(JwtAuthGuard)
 export class SOPsController {
-  constructor(private readonly sopsService: SOPsService) {}
+  constructor(private readonly sopsService: SOPsService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

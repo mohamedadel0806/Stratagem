@@ -16,10 +16,10 @@ import { ControlObjectivesService } from './control-objectives.service';
 import { CreateControlObjectiveDto } from './dto/create-control-objective.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
-@Controller('api/v1/governance/control-objectives')
+@Controller('governance/control-objectives')
 @UseGuards(JwtAuthGuard)
 export class ControlObjectivesController {
-  constructor(private readonly controlObjectivesService: ControlObjectivesService) {}
+  constructor(private readonly controlObjectivesService: ControlObjectivesService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

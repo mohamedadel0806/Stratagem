@@ -135,7 +135,7 @@ __decorate([
 ], SOPsController.prototype, "getPublicationStatistics", null);
 exports.SOPsController = SOPsController = __decorate([
     (0, swagger_1.ApiTags)('Governance - SOPs'),
-    (0, common_1.Controller)('api/v1/governance/sops'),
+    (0, common_1.Controller)('governance/sops'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [sops_service_1.SOPsService])
 ], SOPsController);

@@ -330,7 +330,7 @@ __decorate([
 ], UnifiedControlsController.prototype, "deleteFrameworkMapping", null);
 exports.UnifiedControlsController = UnifiedControlsController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
-    (0, common_1.Controller)('api/v1/governance/unified-controls'),
+    (0, common_1.Controller)('governance/unified-controls'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [unified_controls_service_1.UnifiedControlsService,

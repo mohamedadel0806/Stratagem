@@ -27,10 +27,10 @@ import { UpdateInfluencerDto } from './dto/update-influencer.dto';
 import { InfluencerQueryDto } from './dto/influencer-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
-@Controller('api/v1/governance/influencers')
+@Controller('governance/influencers')
 @UseGuards(JwtAuthGuard)
 export class InfluencersController {
-  constructor(private readonly influencersService: InfluencersService) {}
+  constructor(private readonly influencersService: InfluencersService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

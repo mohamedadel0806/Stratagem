@@ -26,7 +26,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RiskControlLinkService } from '../../risk/services/risk-control-link.service';
 
 @ApiTags('governance')
-@Controller('api/v1/governance/unified-controls')
+@Controller('governance/unified-controls')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UnifiedControlsController {
@@ -35,7 +35,7 @@ export class UnifiedControlsController {
     private readonly controlAssetMappingService: ControlAssetMappingService,
     private readonly frameworkControlMappingService: FrameworkControlMappingService,
     private readonly riskControlLinkService: RiskControlLinkService,
-  ) {}
+  ) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

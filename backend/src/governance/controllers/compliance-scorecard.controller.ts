@@ -4,11 +4,11 @@ import { ComplianceScorecardService, ComplianceScorecardResponse } from '../serv
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiTags('Governance - Compliance Scorecard')
-@Controller('api/v1/governance/scorecard')
+@Controller('governance/scorecard')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ComplianceScorecardController {
-  constructor(private readonly scorecardService: ComplianceScorecardService) {}
+  constructor(private readonly scorecardService: ComplianceScorecardService) { }
 
   @Get()
   @ApiOperation({ summary: 'Generate framework compliance scorecard' })

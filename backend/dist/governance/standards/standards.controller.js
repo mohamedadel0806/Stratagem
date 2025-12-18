@@ -96,7 +96,7 @@ __decorate([
 ], StandardsController.prototype, "remove", null);
 exports.StandardsController = StandardsController = __decorate([
     (0, swagger_1.ApiTags)('Governance - Standards'),
-    (0, common_1.Controller)('api/v1/governance/standards'),
+    (0, common_1.Controller)('governance/standards'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [standards_service_1.StandardsService])
 ], StandardsController);
