@@ -36,10 +36,12 @@ jobs:
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/stratagem-backend
+          images: ghcr.io/mohamedadel0806/stratagem-backend
           tags: |
             type=raw,value=latest
             type=ref,event=branch
+          labels: |
+            org.opencontainers.image.source=https://github.com/mohamedadel0806/Stratagem
 
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
@@ -56,10 +58,12 @@ jobs:
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/stratagem-frontend
+          images: ghcr.io/mohamedadel0806/stratagem-frontend
           tags: |
             type=raw,value=latest
             type=ref,event=branch
+          labels: |
+            org.opencontainers.image.source=https://github.com/mohamedadel0806/Stratagem
 
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
