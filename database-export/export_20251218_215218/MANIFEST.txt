@@ -1,0 +1,11 @@
+Database Export
+Generated: Thu Dec 18 21:52:18 +04 2025
+Source: Local Development Environment
+
+Contents:
+- postgres_grc_platform.sql - Main PostgreSQL database
+- postgres_kong.sql - Kong database (if exists)
+
+To import on server:
+1. Transfer this directory to server
+2. Run: ./scripts/import-database.sh ./database-export/export_20251218_215218

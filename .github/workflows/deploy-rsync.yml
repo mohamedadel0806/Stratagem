@@ -1,0 +1,71 @@
+name: Deploy to Production (Legacy Rsync)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-rsync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'placeholder'
+          if_key_exists: fail
+
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Transfer Files via Rsync
+        run: |
+          rsync -avz --progress \
+            -e "ssh -i ${{ secrets.SSH_PRIVATE_KEY }}" \
+            --exclude 'node_modules' \
+            --exclude '.next' \
+            --exclude 'dist' \
+            --exclude '.git' \
+            --exclude '*.log' \
+            --exclude '.env' \
+            ./backend/ ./frontend/ ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
+
+          rsync -avz --progress \
+            docker-compose.prod.yml \
+            infrastructure/caddy/Caddyfile \
+            scripts/ \
+            ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
+
+      - name: Rebuild and Restart on Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ vars.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/stratagem
+            
+            # Load environment variables
+            if [ -f .env ]; then
+                export $(cat .env | grep -v '^#' | xargs)
+            fi
+            
+            # Export repo info for docker-compose
+            export GH_REPO_OWNER=${{ github.repository_owner }}
+            export GH_REPO_NAME=${{ github.event.repository.name }}
+
+            # Stop and remove existing containers
+            docker compose -f docker-compose.prod.yml down
+
+            # Rebuild services from source
+            echo "Building services..."
+            docker compose -f docker-compose.prod.yml build
+            
+            # Restart services
+            echo "Restarting services..."
+            docker compose -f docker-compose.prod.yml up -d
+            
+            # Final check
+            docker compose -f docker-compose.prod.yml ps
