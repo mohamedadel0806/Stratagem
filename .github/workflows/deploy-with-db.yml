@@ -90,18 +90,32 @@ jobs:
             # Stop and remove existing containers including orphans
             docker compose -f docker-compose.prod.yml down --remove-orphans
 
+            # Start postgres first
+            docker compose -f docker-compose.prod.yml up -d postgres
+            
+            # Wait for postgres to be healthy
+            echo "Waiting for postgres to be ready..."
+            for i in {1..30}; do
+              if docker compose -f docker-compose.prod.yml exec -T postgres pg_isready -U postgres > /dev/null 2>&1; then
+                echo "Postgres is ready!"
+                break
+              fi
+              echo "Waiting... ($i/30)"
+              sleep 2
+            done
+
             # Restore PostgreSQL grc_platform
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'grc_platform' AND pid <> pg_backend_pid();"
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS grc_platform;"
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d postgres -c "CREATE DATABASE grc_platform;"
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d grc_platform < "$EXPORT_DIR/postgres_grc_platform.sql"
 
-            # Login and Pull
+            # Login and Pull images for other services
             docker logout ghcr.io || true
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose -f docker-compose.prod.yml pull
 
-            # Start
+            # Start all services
             docker compose -f docker-compose.prod.yml up -d
             
             # Final check
