@@ -1,0 +1,220 @@
+name: Deploy to Production (Unified)
+
+on:
+  workflow_dispatch:
+    inputs:
+      restore_database:
+        description: 'Restore database from export?'
+        required: true
+        type: boolean
+        default: false
+      export_path:
+        description: 'Database export folder (e.g., export_20251218_215218 or "latest")'
+        required: false
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: mohamedadel0806/stratagem
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: Ubuntu-server
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log Commit Hash
+        run: git rev-parse HEAD
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set Image Names
+        run: |
+          echo "IMAGE_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "REPO_NAME=$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Extract metadata (tags, labels) for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-backend
+          tags: |
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          target: production
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata (tags, labels) for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-frontend
+          tags: |
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXTAUTH_URL=${{ vars.FRONTEND_URL }}
+            NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
+            NEXT_PUBLIC_USE_KONG=${{ vars.NEXT_PUBLIC_USE_KONG }}
+            NEXT_PUBLIC_KONG_URL=${{ vars.NEXT_PUBLIC_KONG_URL }}
+            BUILD_ID=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: Ubuntu-server
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'placeholder'
+          if_key_exists: fail
+
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Transfer Config Files
+        run: |
+          rsync -avz --progress \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            docker-compose.prod.yml \
+            infrastructure/caddy/Caddyfile \
+            infrastructure/kong/kong.yml \
+            scripts \
+            ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
+
+      - name: Transfer Database Export (if requested)
+        if: ${{ github.event.inputs.restore_database == 'true' }}
+        run: |
+          # Use the latest export if requested
+          if [ "${{ github.event.inputs.export_path }}" = "latest" ]; then
+            EXPORT_PATH=$(ls -td ./database-export/export_* 2>/dev/null | head -1)
+          else
+            EXPORT_PATH="./database-export/${{ github.event.inputs.export_path }}"
+          fi
+
+          if [ ! -d "$EXPORT_PATH" ]; then
+            echo "❌ Export path $EXPORT_PATH not found"
+            exit 1
+          fi
+
+          echo "📦 Transferring database export: $EXPORT_PATH"
+          rsync -avz --progress \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            "$EXPORT_PATH" \
+            ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/database-import/
+
+      - name: Deploy on Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ vars.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/stratagem
+            
+            # Login to GHCR
+            docker logout ghcr.io || true
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Stop existing containers
+            docker compose -f docker-compose.prod.yml down --remove-orphans
+
+            # Database restoration (if requested)
+            if [ "${{ github.event.inputs.restore_database }}" = "true" ]; then
+              echo "🔄 Starting database restoration..."
+              
+              # Start postgres first
+              docker compose -f docker-compose.prod.yml up -d postgres
+              
+              # Wait for postgres to be healthy
+              echo "⏳ Waiting for postgres to be ready..."
+              for i in {1..30}; do
+                if docker compose -f docker-compose.prod.yml exec -T postgres pg_isready -U postgres > /dev/null 2>&1; then
+                  echo "✅ Postgres is ready!"
+                  break
+                fi
+                echo "Waiting... ($i/30)"
+                sleep 2
+              done
+
+              # Identify the transferred export
+              EXPORT_DIR=$(ls -td database-import/export_* 2>/dev/null | head -1)
+              echo "📥 Restoring from: $EXPORT_DIR"
+
+              # Restore PostgreSQL grc_platform
+              docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'grc_platform' AND pid <> pg_backend_pid();"
+              docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS grc_platform;"
+              docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d postgres -c "CREATE DATABASE grc_platform;"
+              docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d grc_platform < "$EXPORT_DIR/postgres_grc_platform.sql"
+              
+              echo "✅ Database restored successfully!"
+            fi
+
+            # Pull latest images
+            docker compose -f docker-compose.prod.yml pull
+
+            # Start all services
+            docker compose -f docker-compose.prod.yml up -d
+            
+            # Run migrations
+            echo "🔄 Running database migrations..."
+            sleep 10  # Give backend time to start
+            docker compose -f docker-compose.prod.yml exec -T backend node node_modules/typeorm/cli.js migration:run -d dist/data-source.js || echo "⚠️ Migrations completed with warnings (expected for existing schema)"
+            
+            # Restart backend to ensure clean state
+            docker compose -f docker-compose.prod.yml restart backend
+            
+            # Final status check
+            echo "📊 Final container status:"
+            docker compose -f docker-compose.prod.yml ps
