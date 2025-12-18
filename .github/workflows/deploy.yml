@@ -14,6 +14,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -32,16 +33,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set Image Names
+        run: |
+          echo "IMAGE_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "REPO_NAME=$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Extract metadata (tags, labels) for Backend
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/mohamedadel0806/stratagem-backend
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-backend
           tags: |
             type=raw,value=latest
-            type=ref,event=branch
           labels: |
-            org.opencontainers.image.source=https://github.com/mohamedadel0806/Stratagem
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
@@ -58,12 +63,11 @@ jobs:
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/mohamedadel0806/stratagem-frontend
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-frontend
           tags: |
             type=raw,value=latest
-            type=ref,event=branch
           labels: |
-            org.opencontainers.image.source=https://github.com/mohamedadel0806/Stratagem
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
@@ -122,13 +126,14 @@ jobs:
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e
             cd /opt/stratagem
             
             # Login to GHCR on the server
             docker logout ghcr.io || true
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # Stop and remove existing containers including orphans from old configs
+            # Stop and remove existing containers including orphans
             docker compose -f docker-compose.prod.yml down --remove-orphans
 
             # Pull latest images

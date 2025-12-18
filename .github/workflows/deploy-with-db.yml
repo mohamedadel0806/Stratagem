@@ -77,6 +77,7 @@ jobs:
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e
             cd /opt/stratagem
             
             # Identify the transfered export
