@@ -59,6 +59,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify Backend Image
+        run: |
+          echo "Verifying backend image: ${{ steps.meta-backend.outputs.tags }}"
+          docker manifest inspect ${{ steps.meta-backend.outputs.tags }} || echo "⚠️ Backend image not found in registry!"
+
       - name: Extract metadata (tags, labels) for Frontend
         id: meta-frontend
         uses: docker/metadata-action@v5
@@ -84,10 +89,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify Frontend Image
+        run: |
+          echo "Verifying frontend image: ${{ steps.meta-frontend.outputs.tags }}"
+          docker manifest inspect ${{ steps.meta-frontend.outputs.tags }} || echo "⚠️ Frontend image not found in registry!"
+
       - name: Log Image URLs
         run: |
-          echo "✅ Backend image pushed to: ghcr.io/${{ github.repository_owner }}/stratagem-backend:latest"
-          echo "✅ Frontend image pushed to: ghcr.io/${{ github.repository_owner }}/stratagem-frontend:latest"
+          echo "📦 Images that should be available:"
+          echo "  Backend:  ${{ steps.meta-backend.outputs.tags }}"
+          echo "  Frontend: ${{ steps.meta-frontend.outputs.tags }}"
+          echo ""
+          echo "Expected pull commands:"
+          echo "  docker pull ${{ steps.meta-backend.outputs.tags }}"
+          echo "  docker pull ${{ steps.meta-frontend.outputs.tags }}"
 
   deploy:
     needs: build-and-push
