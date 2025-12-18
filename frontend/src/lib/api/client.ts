@@ -15,7 +15,7 @@ let API_BASE_URL = USE_KONG
 if (USE_KONG && API_BASE_URL) {
   // Remove trailing slash if present
   API_BASE_URL = API_BASE_URL.replace(/\/$/, '');
-  
+
   // Normalize to always end with /api/v1
   // Production examples:
   //   https://grc-staging.newmehub.com/api -> https://grc-staging.newmehub.com/api/v1
@@ -23,7 +23,7 @@ if (USE_KONG && API_BASE_URL) {
   // Local examples:
   //   http://localhost:8000 -> http://localhost:8000/api/v1
   //   http://localhost:8000/api -> http://localhost:8000/api/v1
-  
+
   if (!API_BASE_URL.endsWith('/api/v1')) {
     if (API_BASE_URL.endsWith('/api')) {
       // Ends with /api, add /v1
@@ -69,7 +69,7 @@ const createSafeAxiosInstance = (baseURL: string) => {
     // Ensure no double slashes except after protocol
     absoluteBaseURL = absoluteBaseURL.replace(/([^:]\/)\/+/g, '$1');
   }
-  
+
   const instance = axios.create({
     baseURL: absoluteBaseURL,
     headers: {
@@ -119,34 +119,33 @@ class ApiClient {
     this.client.interceptors.request.use(
       async (config) => {
         try {
-            // Fix URL issues - remove locale prefix and ensure correct path
-            if (config.url) {
-              let url = config.url.toString();
-              
-              // Remove locale prefix if present (e.g., /en/ or /ar/)
-              url = url.replace(/^\/(en|ar)\//, '/');
-              
-              // Ensure URL starts with / if it's a path (not a full URL)
-              if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
-                url = '/' + url;
-              }
-              
-              // Fix double path issue: if baseURL already includes the path prefix, remove it from url
-              if (config.baseURL) {
-                const baseURL = config.baseURL.toString();
-                
-                // If baseURL ends with /api/v1 and url starts with /api/v1, remove /api/v1 from url
-                if (baseURL.endsWith('/api/v1') && url.startsWith('/api/v1')) {
-                  url = url.replace(/^\/api\/v1/, '');
-                }
-                // If baseURL ends with /api and url starts with /api, remove /api from url (legacy handling)
-                else if (baseURL.endsWith('/api') && url.startsWith('/api') && !baseURL.endsWith('/api/v1')) {
-                  url = url.replace(/^\/api/, '');
-                }
-              }
-              
-              config.url = url;
+          // Fix URL issues - ensure URL is relative to the baseURL path
+          if (config.url) {
+            let url = config.url.toString();
+
+            // Remove locale prefix if present (e.g., /en/ or /ar/)
+            url = url.replace(/^\/(en|ar)\//, '/');
+
+            // CRITICAL: For axios with a baseURL that includes a path (like /api/v1),
+            // the request URL must NOT start with a slash, otherwise axios will
+            // treat it as relative to the domain root and strip the /api/v1 prefix.
+            if (url.startsWith('/')) {
+              url = url.substring(1);
             }
+
+            // Remove redundant prefix if already present in url
+            if (config.baseURL) {
+              const baseURL = config.baseURL.toString();
+              if (baseURL.endsWith('/api/v1') && url.startsWith('api/v1')) {
+                url = url.replace(/^api\/v1\/?/, '');
+              }
+              else if (baseURL.endsWith('/api') && url.startsWith('api') && !baseURL.endsWith('/api/v1')) {
+                url = url.replace(/^api\/?/, '');
+              }
+            }
+
+            config.url = url;
+          }
 
           // Only try to get session in browser environment
           if (typeof window !== 'undefined') {
