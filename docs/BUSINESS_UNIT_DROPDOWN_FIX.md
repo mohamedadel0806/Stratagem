@@ -67,3 +67,4 @@ GET /business-units
 - The seed script checks if business units already exist and skips creation if they do
 - Business units are created with codes (e.g., 'IT-OPERATIONS') and descriptions
 - The admin user is set as the manager for all business units (if admin user exists)
+

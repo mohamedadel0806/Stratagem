@@ -16,6 +16,32 @@ export declare class PoliciesController {
             totalPages: number;
         };
     }>;
+    getPublicationStatistics(): Promise<{
+        totalPublished: number;
+        publishedThisMonth: number;
+        publishedThisYear: number;
+        assignmentsCount: number;
+        acknowledgedCount: number;
+        acknowledgmentRate: number;
+    }>;
+    getPoliciesDueForReview(days?: number): Promise<{
+        data: import("./entities/policy.entity").Policy[];
+    }>;
+    getReviewStatistics(): Promise<{
+        data: {
+            pending: number;
+            overdue: number;
+            dueIn30Days: number;
+            dueIn60Days: number;
+            dueIn90Days: number;
+        };
+    }>;
+    getPendingReviews(daysAhead?: number): Promise<{
+        data: import("./entities/policy.entity").Policy[];
+    }>;
+    getMyAssignedPolicies(req: any): Promise<{
+        data: import("./entities/policy.entity").Policy[];
+    }>;
     findOne(id: string): Promise<import("./entities/policy.entity").Policy>;
     getVersions(id: string): Promise<{
         data: import("./entities/policy.entity").Policy[];
@@ -32,4 +58,55 @@ export declare class PoliciesController {
         };
     }>;
     downloadAttachment(filename: string, res: Response): Promise<void>;
+    getWorkflowExecutions(id: string): Promise<{
+        data: {
+            id: string;
+            workflowId: string;
+            workflowName: string;
+            workflowType: import("../../workflow/entities/workflow.entity").WorkflowType;
+            status: import("../../workflow/entities/workflow-execution.entity").WorkflowExecutionStatus;
+            inputData: Record<string, any>;
+            outputData: Record<string, any>;
+            errorMessage: string;
+            assignedTo: {
+                id: string;
+                name: string;
+            };
+            startedAt: string;
+            completedAt: string;
+            createdAt: string;
+            approvals: any[];
+        }[];
+    }>;
+    getPendingApprovals(id: string, req: any): Promise<{
+        data: any[];
+    }>;
+    publish(id: string, body: {
+        assign_to_user_ids?: string[];
+        assign_to_role_ids?: string[];
+        assign_to_business_unit_ids?: string[];
+        notification_message?: string;
+    }, req: any): Promise<{
+        data: import("./entities/policy.entity").Policy;
+    }>;
+    initiateReview(id: string, body: {
+        review_date: string;
+    }, req: any): Promise<{
+        data: import("./entities/policy-review.entity").PolicyReview;
+    }>;
+    getReviewHistory(id: string): Promise<{
+        data: import("./entities/policy-review.entity").PolicyReview[];
+    }>;
+    getActiveReview(id: string): Promise<{
+        data: import("./entities/policy-review.entity").PolicyReview;
+    }>;
+    completeReview(reviewId: string, body: {
+        outcome: string;
+        notes?: string;
+        review_summary?: string;
+        recommended_changes?: string;
+        next_review_date?: string;
+    }, req: any): Promise<{
+        data: import("./entities/policy-review.entity").PolicyReview;
+    }>;
 }

@@ -24,10 +24,12 @@ const information_asset_import_handler_1 = require("./import-handlers/informatio
 const software_asset_import_handler_1 = require("./import-handlers/software-asset-import-handler");
 const business_application_import_handler_1 = require("./import-handlers/business-application-import-handler");
 const supplier_import_handler_1 = require("./import-handlers/supplier-import-handler");
+const validation_rule_service_1 = require("./validation-rule.service");
+const validation_rule_entity_1 = require("../entities/validation-rule.entity");
 const { parse } = require('csv-parse/sync');
 const XLSX = require('xlsx');
 let ImportService = class ImportService {
-    constructor(importLogRepository, assetRepository, physicalAssetService, physicalAssetImportHandler, informationAssetImportHandler, softwareAssetImportHandler, businessApplicationImportHandler, supplierImportHandler) {
+    constructor(importLogRepository, assetRepository, physicalAssetService, physicalAssetImportHandler, informationAssetImportHandler, softwareAssetImportHandler, businessApplicationImportHandler, supplierImportHandler, validationRuleService) {
         this.importLogRepository = importLogRepository;
         this.assetRepository = assetRepository;
         this.physicalAssetService = physicalAssetService;
@@ -36,6 +38,7 @@ let ImportService = class ImportService {
         this.softwareAssetImportHandler = softwareAssetImportHandler;
         this.businessApplicationImportHandler = businessApplicationImportHandler;
         this.supplierImportHandler = supplierImportHandler;
+        this.validationRuleService = validationRuleService;
         this.handlers = new Map();
         this.handlers.set('physical', this.physicalAssetImportHandler);
         this.handlers.set('information', this.informationAssetImportHandler);
@@ -86,6 +89,8 @@ let ImportService = class ImportService {
                 headers,
                 rows: previewRows,
                 totalRows: records.length,
+                sheets: ['Sheet1'],
+                selectedSheet: 'Sheet1',
             };
         }
         catch (error) {
@@ -96,7 +101,7 @@ let ImportService = class ImportService {
             throw new common_1.BadRequestException(`Failed to parse CSV: ${errorMessage}`);
         }
     }
-    async previewExcel(fileBuffer, limit = 10) {
+    async previewExcel(fileBuffer, limit = 10, sheetName) {
         try {
             if (!fileBuffer) {
                 throw new common_1.BadRequestException('File buffer is required');
@@ -114,10 +119,11 @@ let ImportService = class ImportService {
             if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
                 throw new common_1.BadRequestException('Excel file has no sheets');
             }
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
+            const sheets = workbook.SheetNames;
+            const selectedSheet = sheetName && sheets.includes(sheetName) ? sheetName : sheets[0];
+            const worksheet = workbook.Sheets[selectedSheet];
             if (!worksheet) {
-                throw new common_1.BadRequestException(`Sheet "${firstSheetName}" not found in Excel file`);
+                throw new common_1.BadRequestException(`Sheet "${selectedSheet}" not found in Excel file`);
             }
             let data;
             try {
@@ -131,6 +137,8 @@ let ImportService = class ImportService {
                     headers: [],
                     rows: [],
                     totalRows: 0,
+                    sheets,
+                    selectedSheet,
                 };
             }
             const headers = Object.keys(data[0]);
@@ -142,6 +150,8 @@ let ImportService = class ImportService {
                 headers,
                 rows: previewRows,
                 totalRows: data.length,
+                sheets,
+                selectedSheet,
             };
         }
         catch (error) {
@@ -188,11 +198,37 @@ let ImportService = class ImportService {
                 const rowNumber = i + 2;
                 try {
                     const assetData = handler.mapFields(row, fieldMapping);
-                    const validationErrors = handler.validate(assetData);
-                    if (validationErrors.length > 0) {
-                        errors.push({ row: rowNumber, errors: validationErrors });
+                    const handlerValidationErrors = handler.validate(assetData);
+                    if (handlerValidationErrors.length > 0) {
+                        errors.push({ row: rowNumber, errors: handlerValidationErrors });
                         failedImports++;
                         continue;
+                    }
+                    if (this.validationRuleService) {
+                        const assetTypeMap = {
+                            physical: validation_rule_entity_1.AssetType.PHYSICAL,
+                            information: validation_rule_entity_1.AssetType.INFORMATION,
+                            application: validation_rule_entity_1.AssetType.APPLICATION,
+                            software: validation_rule_entity_1.AssetType.SOFTWARE,
+                            supplier: validation_rule_entity_1.AssetType.SUPPLIER,
+                        };
+                        const validationAssetType = assetTypeMap[assetType];
+                        if (validationAssetType) {
+                            try {
+                                const validationResult = await this.validationRuleService.validateAsset(assetData, validationAssetType);
+                                if (!validationResult.isValid) {
+                                    const validationErrors = validationResult.errors.map(e => e.message);
+                                    errors.push({ row: rowNumber, errors: validationErrors });
+                                    failedImports++;
+                                    continue;
+                                }
+                                if (validationResult.warnings.length > 0) {
+                                }
+                            }
+                            catch (validationError) {
+                                console.error('Validation rule error:', validationError);
+                            }
+                        }
                     }
                     await handler.createAsset(assetData, userId);
                     successfulImports++;
@@ -270,6 +306,7 @@ exports.ImportService = ImportService = __decorate([
         information_asset_import_handler_1.InformationAssetImportHandler,
         software_asset_import_handler_1.SoftwareAssetImportHandler,
         business_application_import_handler_1.BusinessApplicationImportHandler,
-        supplier_import_handler_1.SupplierImportHandler])
+        supplier_import_handler_1.SupplierImportHandler,
+        validation_rule_service_1.ValidationRuleService])
 ], ImportService);
 //# sourceMappingURL=import.service.js.map

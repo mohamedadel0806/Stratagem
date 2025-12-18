@@ -217,3 +217,4 @@ test('Capture form errors and verify dropdowns', async ({ authenticatedPage }) =
   // Wait to see results
   await authenticatedPage.waitForTimeout(5000);
 });
+

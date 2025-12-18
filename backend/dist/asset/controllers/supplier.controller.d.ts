@@ -41,4 +41,13 @@ export declare class SupplierController {
             count: number;
         }[];
     }>;
+    getExpiringContracts(days?: string): Promise<{
+        data: SupplierResponseDto[];
+        total: number;
+        days: number;
+    }>;
+    getCriticalSuppliersReport(): Promise<{
+        data: SupplierResponseDto[];
+        total: number;
+    }>;
 }

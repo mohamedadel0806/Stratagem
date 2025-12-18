@@ -39,3 +39,4 @@ export class UpdateRiskFindingLinkDto {
   @IsString()
   notes?: string;
 }
+

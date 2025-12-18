@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ComplianceStatus } from "@/components/dashboard/widgets/compliance-status"
 import { TaskList } from "@/components/dashboard/widgets/task-list"
@@ -7,16 +8,117 @@ import { RiskHeatmap } from "@/components/dashboard/widgets/risk-heatmap"
 import { StatsCard } from "@/components/dashboard/widgets/stats-card"
 import { AssetTypeChart } from "@/components/dashboard/widgets/asset-type-chart"
 import { AssetCriticalityChart } from "@/components/dashboard/widgets/asset-criticality-chart"
+import { SupplierCriticalityChart } from "@/components/dashboard/widgets/supplier-criticality-chart"
 import { AssetsWithoutOwner } from "@/components/dashboard/widgets/assets-without-owner"
 import { RecentAssetChanges } from "@/components/dashboard/widgets/recent-asset-changes"
 import { PendingApprovalsWidget } from "@/components/dashboard/widgets/pending-approvals-widget"
+import { AssetsByComplianceScope } from "@/components/dashboard/widgets/assets-by-compliance-scope"
+import { AssetsWithOutdatedSecurityTests } from "@/components/dashboard/widgets/assets-with-outdated-security-tests"
+import { AssetsConnectivityChart } from "@/components/dashboard/widgets/assets-connectivity-chart"
+import { Button } from "@/components/ui/button"
 import { dashboardApi } from "@/lib/api/dashboard"
 import { AlertTriangle, FileText, Shield, Package } from "lucide-react"
 
 // Force dynamic rendering to avoid build-time API calls
 export const dynamic = 'force-dynamic';
 
+type DashboardWidgetKey =
+  | "assetType"
+  | "criticality"
+  | "withoutOwner"
+  | "complianceScope"
+  | "outdatedTests"
+  | "connectivity"
+  | "riskHeatmap"
+  | "supplierCriticality";
+
+const DEFAULT_WIDGETS: DashboardWidgetKey[] = [
+  "assetType",
+  "criticality",
+  "withoutOwner",
+  "complianceScope",
+  "outdatedTests",
+  "connectivity",
+  "riskHeatmap",
+  "supplierCriticality",
+];
+
+function useDashboardWidgetPreferences(): [DashboardWidgetKey[], (widgets: DashboardWidgetKey[]) => void] {
+  const [widgets, setWidgets] = React.useState<DashboardWidgetKey[]>(DEFAULT_WIDGETS);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem("dashboard-widgets");
+      if (stored) {
+        const parsed = JSON.parse(stored) as DashboardWidgetKey[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setWidgets(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const update = React.useCallback((next: DashboardWidgetKey[]) => {
+    setWidgets(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("dashboard-widgets", JSON.stringify(next));
+    }
+  }, []);
+
+  return [widgets, update];
+}
+
+async function exportDashboardToPdf(overview: any) {
+  const { default: jsPDF } = await import("jspdf");
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text("Asset Dashboard Summary", 14, 18);
+
+  doc.setFontSize(11);
+  let y = 30;
+
+  doc.text(`Total Assets: ${overview?.assetStats?.countByType.total || 0}`, 14, y);
+  y += 6;
+  doc.text(`Total Risks: ${overview?.summary.totalRisks || 0}`, 14, y);
+  y += 6;
+  doc.text(`Active Policies: ${overview?.summary.activePolicies || 0}`, 14, y);
+  y += 6;
+  doc.text(`Compliance Score: ${overview?.summary.complianceScore || 0}%`, 14, y);
+  y += 10;
+
+  doc.text("Assets by Type:", 14, y);
+  y += 6;
+  const byType = overview?.assetStats?.countByType;
+  if (byType) {
+    doc.setFontSize(10);
+    doc.text(`Physical: ${byType.physical || 0}`, 16, y); y += 5;
+    doc.text(`Information: ${byType.information || 0}`, 16, y); y += 5;
+    doc.text(`Applications: ${byType.application || 0}`, 16, y); y += 5;
+    doc.text(`Software: ${byType.software || 0}`, 16, y); y += 5;
+    doc.text(`Suppliers: ${byType.supplier || 0}`, 16, y); y += 8;
+  }
+
+  doc.setFontSize(11);
+  doc.text("Assets by Criticality:", 14, y);
+  y += 6;
+  const byCrit = overview?.assetStats?.countByCriticality;
+  if (byCrit) {
+    doc.setFontSize(10);
+    doc.text(`Critical: ${byCrit.critical || 0}`, 16, y); y += 5;
+    doc.text(`High: ${byCrit.high || 0}`, 16, y); y += 5;
+    doc.text(`Medium: ${byCrit.medium || 0}`, 16, y); y += 5;
+    doc.text(`Low: ${byCrit.low || 0}`, 16, y); y += 8;
+  }
+
+  doc.save("asset-dashboard.pdf");
+}
+
 export default function DashboardPage() {
+  const [enabledWidgets, setEnabledWidgets] = useDashboardWidgetPreferences();
   // Only run query on client side to avoid build-time API calls
   const { data: overview, isLoading } = useQuery({
     queryKey: ['dashboard-overview'],
@@ -37,6 +139,49 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+        <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Widgets:</span>
+            {(
+              [
+                "assetType",
+                "criticality",
+                "withoutOwner",
+                "complianceScope",
+                "outdatedTests",
+                "connectivity",
+                "riskHeatmap",
+              ] as DashboardWidgetKey[]
+            ).map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={`px-2 py-1 rounded border text-[10px] ${
+                  enabledWidgets.includes(key)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-muted"
+                }`}
+                onClick={() => {
+                  setEnabledWidgets(
+                    enabledWidgets.includes(key)
+                      ? enabledWidgets.filter((k) => k !== key)
+                      : [...enabledWidgets, key]
+                  );
+                }}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => overview && exportDashboardToPdf(overview)}
+          >
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       {/* Top Stats Row */}
@@ -61,25 +206,57 @@ export default function DashboardPage() {
 
       {/* Asset Analytics Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <AssetTypeChart 
-          data={overview?.assetStats?.countByType} 
-          isLoading={isLoading} 
-        />
-        <AssetCriticalityChart 
-          data={overview?.assetStats?.countByCriticality} 
-          isLoading={isLoading} 
-        />
-        <AssetsWithoutOwner 
-          data={overview?.assetStats?.assetsWithoutOwner} 
-          isLoading={isLoading} 
-        />
+        {enabledWidgets.includes("assetType") && (
+          <AssetTypeChart 
+            data={overview?.assetStats?.countByType} 
+            isLoading={isLoading} 
+          />
+        )}
+        {enabledWidgets.includes("criticality") && (
+          <AssetCriticalityChart 
+            data={overview?.assetStats?.countByCriticality} 
+            isLoading={isLoading} 
+          />
+        )}
+        {enabledWidgets.includes("withoutOwner") && (
+          <AssetsWithoutOwner 
+            data={overview?.assetStats?.assetsWithoutOwner} 
+            isLoading={isLoading} 
+          />
+        )}
+        {enabledWidgets.includes("complianceScope") && (
+          <AssetsByComplianceScope
+            data={overview?.assetStats?.assetsByComplianceScope}
+            isLoading={isLoading}
+          />
+        )}
+        {enabledWidgets.includes("outdatedTests") && (
+          <AssetsWithOutdatedSecurityTests
+            data={overview?.assetStats?.assetsWithOutdatedSecurityTests}
+            isLoading={isLoading}
+          />
+        )}
+        {enabledWidgets.includes("connectivity") && (
+          <AssetsConnectivityChart
+            data={overview?.assetStats?.countByConnectivityStatus}
+            isLoading={isLoading}
+          />
+        )}
+        {enabledWidgets.includes("supplierCriticality") && (
+          <SupplierCriticalityChart
+            data={overview?.supplierCriticality}
+            isLoading={isLoading}
+          />
+        )}
       </div>
 
       {/* Risk & Compliance Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <div className="col-span-4">
-          <RiskHeatmap organizationId="org-123" />
-        </div>
+        {enabledWidgets.includes("riskHeatmap") && (
+          <div className="col-span-4">
+            <RiskHeatmap organizationId="org-123" />
+          </div>
+        )}
         <div className="col-span-3 rounded-xl border bg-card text-card-foreground shadow p-6">
           <h3 className="font-semibold leading-none tracking-tight mb-4">Compliance Score</h3>
           {isLoading ? (

@@ -10,6 +10,7 @@ exports.AssetModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const platform_express_1 = require("@nestjs/platform-express");
+const schedule_1 = require("@nestjs/schedule");
 const physical_asset_entity_1 = require("./entities/physical-asset.entity");
 const information_asset_entity_1 = require("./entities/information-asset.entity");
 const business_application_entity_1 = require("./entities/business-application.entity");
@@ -20,6 +21,7 @@ const asset_dependency_entity_1 = require("./entities/asset-dependency.entity");
 const asset_audit_log_entity_1 = require("./entities/asset-audit-log.entity");
 const asset_type_entity_1 = require("./entities/asset-type.entity");
 const business_unit_entity_1 = require("../common/entities/business-unit.entity");
+const users_module_1 = require("../users/users.module");
 const physical_asset_service_1 = require("./services/physical-asset.service");
 const information_asset_service_1 = require("./services/information-asset.service");
 const business_application_service_1 = require("./services/business-application.service");
@@ -40,6 +42,11 @@ const asset_audit_service_1 = require("./services/asset-audit.service");
 const integration_config_entity_1 = require("./entities/integration-config.entity");
 const integration_sync_log_entity_1 = require("./entities/integration-sync-log.entity");
 const asset_field_config_entity_1 = require("./entities/asset-field-config.entity");
+const security_test_result_entity_1 = require("./entities/security-test-result.entity");
+const report_template_entity_1 = require("./entities/report-template.entity");
+const report_template_version_entity_1 = require("./entities/report-template-version.entity");
+const email_distribution_list_entity_1 = require("./entities/email-distribution-list.entity");
+const validation_rule_entity_1 = require("./entities/validation-rule.entity");
 const integration_controller_1 = require("./controllers/integration.controller");
 const integration_service_1 = require("./services/integration.service");
 const asset_field_config_controller_1 = require("./controllers/asset-field-config.controller");
@@ -48,18 +55,34 @@ const bulk_operations_controller_1 = require("./controllers/bulk-operations.cont
 const bulk_operations_service_1 = require("./services/bulk-operations.service");
 const asset_type_controller_1 = require("./controllers/asset-type.controller");
 const asset_type_service_1 = require("./services/asset-type.service");
+const asset_connectivity_scheduler_1 = require("./schedulers/asset-connectivity.scheduler");
+const security_test_alert_scheduler_1 = require("./schedulers/security-test-alert.scheduler");
+const information_asset_compliance_alert_scheduler_1 = require("./schedulers/information-asset-compliance-alert.scheduler");
+const supplier_contract_alert_scheduler_1 = require("./schedulers/supplier-contract-alert.scheduler");
+const supplier_assessment_alert_scheduler_1 = require("./schedulers/supplier-assessment-alert.scheduler");
+const scheduled_report_scheduler_1 = require("./schedulers/scheduled-report.scheduler");
 const risk_module_1 = require("../risk/risk.module");
+const common_module_1 = require("../common/common.module");
 const physical_asset_import_handler_1 = require("./services/import-handlers/physical-asset-import-handler");
 const information_asset_import_handler_1 = require("./services/import-handlers/information-asset-import-handler");
 const software_asset_import_handler_1 = require("./services/import-handlers/software-asset-import-handler");
 const business_application_import_handler_1 = require("./services/import-handlers/business-application-import-handler");
 const supplier_import_handler_1 = require("./services/import-handlers/supplier-import-handler");
+const security_test_result_service_1 = require("./services/security-test-result.service");
+const security_test_result_controller_1 = require("./controllers/security-test-result.controller");
+const report_template_service_1 = require("./services/report-template.service");
+const report_template_controller_1 = require("./controllers/report-template.controller");
+const email_distribution_list_service_1 = require("./services/email-distribution-list.service");
+const email_distribution_list_controller_1 = require("./controllers/email-distribution-list.controller");
+const validation_rule_service_1 = require("./services/validation-rule.service");
+const validation_rule_controller_1 = require("./controllers/validation-rule.controller");
 let AssetModule = class AssetModule {
 };
 exports.AssetModule = AssetModule;
 exports.AssetModule = AssetModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            schedule_1.ScheduleModule.forRoot(),
             typeorm_1.TypeOrmModule.forFeature([
                 physical_asset_entity_1.PhysicalAsset,
                 information_asset_entity_1.InformationAsset,
@@ -74,11 +97,18 @@ exports.AssetModule = AssetModule = __decorate([
                 integration_config_entity_1.IntegrationConfig,
                 integration_sync_log_entity_1.IntegrationSyncLog,
                 asset_field_config_entity_1.AssetFieldConfig,
+                security_test_result_entity_1.SecurityTestResult,
+                report_template_entity_1.ReportTemplate,
+                report_template_version_entity_1.ReportTemplateVersion,
+                email_distribution_list_entity_1.EmailDistributionList,
+                validation_rule_entity_1.ValidationRule,
             ]),
             platform_express_1.MulterModule.register({
                 dest: './uploads/imports',
             }),
             (0, common_1.forwardRef)(() => risk_module_1.RiskModule),
+            (0, common_1.forwardRef)(() => common_module_1.CommonModule),
+            users_module_1.UsersModule,
         ],
         controllers: [
             physical_asset_controller_1.PhysicalAssetController,
@@ -93,6 +123,10 @@ exports.AssetModule = AssetModule = __decorate([
             asset_field_config_controller_1.AssetFieldConfigController,
             bulk_operations_controller_1.BulkOperationsController,
             asset_type_controller_1.AssetTypeController,
+            security_test_result_controller_1.SecurityTestResultController,
+            report_template_controller_1.ReportTemplateController,
+            email_distribution_list_controller_1.EmailDistributionListController,
+            validation_rule_controller_1.ValidationRuleController,
         ],
         providers: [
             physical_asset_service_1.PhysicalAssetService,
@@ -113,6 +147,16 @@ exports.AssetModule = AssetModule = __decorate([
             software_asset_import_handler_1.SoftwareAssetImportHandler,
             business_application_import_handler_1.BusinessApplicationImportHandler,
             supplier_import_handler_1.SupplierImportHandler,
+            asset_connectivity_scheduler_1.AssetConnectivityScheduler,
+            security_test_result_service_1.SecurityTestResultService,
+            security_test_alert_scheduler_1.SecurityTestAlertScheduler,
+            information_asset_compliance_alert_scheduler_1.InformationAssetComplianceAlertScheduler,
+            supplier_contract_alert_scheduler_1.SupplierContractAlertScheduler,
+            supplier_assessment_alert_scheduler_1.SupplierAssessmentAlertScheduler,
+            scheduled_report_scheduler_1.ScheduledReportScheduler,
+            report_template_service_1.ReportTemplateService,
+            email_distribution_list_service_1.EmailDistributionListService,
+            validation_rule_service_1.ValidationRuleService,
         ],
         exports: [
             physical_asset_service_1.PhysicalAssetService,
@@ -127,6 +171,9 @@ exports.AssetModule = AssetModule = __decorate([
             integration_service_1.IntegrationService,
             asset_field_config_service_1.AssetFieldConfigService,
             asset_type_service_1.AssetTypeService,
+            report_template_service_1.ReportTemplateService,
+            email_distribution_list_service_1.EmailDistributionListService,
+            validation_rule_service_1.ValidationRuleService,
         ],
     })
 ], AssetModule);

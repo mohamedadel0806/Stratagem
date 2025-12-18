@@ -7,6 +7,7 @@ import { InformationAssetImportHandler } from './import-handlers/information-ass
 import { SoftwareAssetImportHandler } from './import-handlers/software-asset-import-handler';
 import { BusinessApplicationImportHandler } from './import-handlers/business-application-import-handler';
 import { SupplierImportHandler } from './import-handlers/supplier-import-handler';
+import { ValidationRuleService } from './validation-rule.service';
 export interface ImportPreviewRow {
     rowNumber: number;
     data: Record<string, any>;
@@ -16,6 +17,8 @@ export interface ImportPreview {
     headers: string[];
     rows: ImportPreviewRow[];
     totalRows: number;
+    sheets?: string[];
+    selectedSheet?: string;
 }
 export interface ImportResult {
     importLogId: string;
@@ -36,11 +39,12 @@ export declare class ImportService {
     private softwareAssetImportHandler;
     private businessApplicationImportHandler;
     private supplierImportHandler;
+    private validationRuleService?;
     private handlers;
-    constructor(importLogRepository: Repository<ImportLog>, assetRepository: Repository<PhysicalAsset>, physicalAssetService: PhysicalAssetService, physicalAssetImportHandler: PhysicalAssetImportHandler, informationAssetImportHandler: InformationAssetImportHandler, softwareAssetImportHandler: SoftwareAssetImportHandler, businessApplicationImportHandler: BusinessApplicationImportHandler, supplierImportHandler: SupplierImportHandler);
+    constructor(importLogRepository: Repository<ImportLog>, assetRepository: Repository<PhysicalAsset>, physicalAssetService: PhysicalAssetService, physicalAssetImportHandler: PhysicalAssetImportHandler, informationAssetImportHandler: InformationAssetImportHandler, softwareAssetImportHandler: SoftwareAssetImportHandler, businessApplicationImportHandler: BusinessApplicationImportHandler, supplierImportHandler: SupplierImportHandler, validationRuleService?: ValidationRuleService);
     private getHandler;
     previewCSV(fileBuffer: Buffer, limit?: number): Promise<ImportPreview>;
-    previewExcel(fileBuffer: Buffer, limit?: number): Promise<ImportPreview>;
+    previewExcel(fileBuffer: Buffer, limit?: number, sheetName?: string): Promise<ImportPreview>;
     importAssets(fileBuffer: Buffer, fileType: ImportFileType, assetType: string, fieldMapping: Record<string, string>, userId: string, fileName: string): Promise<ImportResult>;
     importPhysicalAssets(fileBuffer: Buffer, fileType: ImportFileType, fieldMapping: Record<string, string>, userId: string, fileName: string): Promise<ImportResult>;
     getImportHistory(assetType?: string, limit?: number): Promise<ImportLog[]>;

@@ -58,3 +58,4 @@ export class PhysicalAssetFormErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
+

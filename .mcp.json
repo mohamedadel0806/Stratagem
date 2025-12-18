@@ -1,16 +1,11 @@
 {
   "mcpServers": {
-    "next-devtools": {
+    "playwright-test": {
       "command": "npx",
-      "args": ["-y", "next-devtools-mcp@latest"]
+      "args": [
+        "playwright",
+        "run-test-mcp-server"
+      ]
     }
   }
 }
-
-
-
-
-
-
-
-

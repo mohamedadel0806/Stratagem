@@ -53,3 +53,4 @@ test.describe('Risk Categories Page', () => {
     await authenticatedPage.waitForTimeout(waitTimes.medium);
   });
 });
+

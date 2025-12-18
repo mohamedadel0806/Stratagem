@@ -84,6 +84,10 @@ __decorate([
     __metadata("design:type", Boolean)
 ], SupplierResponseDto.prototype, "autoRenewal", void 0);
 __decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: ['active', 'expired', 'pending_renewal', 'no_contract'], description: 'Computed contract status' }),
+    __metadata("design:type", String)
+], SupplierResponseDto.prototype, "contractStatus", void 0);
+__decorate([
     (0, swagger_1.ApiPropertyOptional)({ type: Object }),
     __metadata("design:type", Object)
 ], SupplierResponseDto.prototype, "primaryContact", void 0);

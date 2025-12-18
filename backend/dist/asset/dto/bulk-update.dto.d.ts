@@ -6,6 +6,9 @@ export declare class BulkUpdateDto {
     complianceTags?: string[];
     businessUnit?: string;
     department?: string;
+    versionNumber?: string;
+    patchLevel?: string;
+    rollbackOnError?: boolean;
 }
 export declare class BulkUpdateResponseDto {
     successful: number;
@@ -14,4 +17,5 @@ export declare class BulkUpdateResponseDto {
         assetId: string;
         error: string;
     }>;
+    rolledBack?: boolean;
 }

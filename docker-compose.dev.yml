@@ -17,14 +17,6 @@ services:
       - /app/node_modules
     command: npm run start:dev
 
-  ai-service:
-    environment:
-      - PYTHONPATH=/app
-      - PYTHONDONTWRITEBYTECODE=1
-    volumes:
-      - ./ai-service:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
   postgres:
     ports:
       - "5432:5432"
@@ -32,28 +24,3 @@ services:
       - POSTGRES_DB=grc_platform_dev
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-
-  mongodb:
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=grc_documents_dev
-
-  redis:
-    ports:
-      - "6379:6379"
-
-  elasticsearch:
-    ports:
-      - "9200:9200"
-    environment:
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-
-  neo4j:
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    environment:
-      - NEO4J_AUTH=neo4j/password
-      - NEO4J_dbms_memory_heap_initial__size=256m
-      - NEO4J_dbms_memory_heap_max__size=512m

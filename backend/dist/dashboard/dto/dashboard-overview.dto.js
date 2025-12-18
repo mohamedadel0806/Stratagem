@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DashboardOverviewDto = exports.AssetStatsDto = exports.AssetWithOutdatedSecurityTestDto = exports.AssetByComplianceScopeDto = exports.RecentAssetChangeDto = exports.AssetWithoutOwnerDto = exports.AssetCountByCriticalityDto = exports.AssetCountByTypeDto = exports.DashboardSummaryDto = void 0;
+exports.DashboardOverviewDto = exports.AssetStatsDto = exports.AssetWithOutdatedSecurityTestDto = exports.AssetByComplianceScopeDto = exports.RecentAssetChangeDto = exports.AssetWithoutOwnerDto = exports.SupplierCriticalityDto = exports.AssetCountByCriticalityDto = exports.AssetCountByTypeDto = exports.DashboardSummaryDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 class DashboardSummaryDto {
 }
@@ -84,6 +84,25 @@ __decorate([
     (0, swagger_1.ApiProperty)(),
     __metadata("design:type", Number)
 ], AssetCountByCriticalityDto.prototype, "low", void 0);
+class SupplierCriticalityDto {
+}
+exports.SupplierCriticalityDto = SupplierCriticalityDto;
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], SupplierCriticalityDto.prototype, "critical", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], SupplierCriticalityDto.prototype, "high", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], SupplierCriticalityDto.prototype, "medium", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], SupplierCriticalityDto.prototype, "low", void 0);
 class AssetWithoutOwnerDto {
 }
 exports.AssetWithoutOwnerDto = AssetWithoutOwnerDto;
@@ -207,6 +226,14 @@ __decorate([
     (0, swagger_1.ApiProperty)({ type: [AssetWithOutdatedSecurityTestDto], required: false }),
     __metadata("design:type", Array)
 ], AssetStatsDto.prototype, "assetsWithOutdatedSecurityTests", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Counts of assets by connectivity status', required: false }),
+    __metadata("design:type", Object)
+], AssetStatsDto.prototype, "countByConnectivityStatus", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: SupplierCriticalityDto, required: false }),
+    __metadata("design:type", SupplierCriticalityDto)
+], AssetStatsDto.prototype, "supplierCriticality", void 0);
 class DashboardOverviewDto {
 }
 exports.DashboardOverviewDto = DashboardOverviewDto;
@@ -218,4 +245,8 @@ __decorate([
     (0, swagger_1.ApiProperty)({ type: AssetStatsDto, required: false }),
     __metadata("design:type", AssetStatsDto)
 ], DashboardOverviewDto.prototype, "assetStats", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: SupplierCriticalityDto, required: false }),
+    __metadata("design:type", SupplierCriticalityDto)
+], DashboardOverviewDto.prototype, "supplierCriticality", void 0);
 //# sourceMappingURL=dashboard-overview.dto.js.map

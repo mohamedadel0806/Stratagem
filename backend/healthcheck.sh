@@ -7,7 +7,7 @@ const http = require('http');
 const options = {
   hostname: 'localhost',
   port: 3001,
-  path: '/health/ready',
+  path: '/api/v1/health/ready',
   method: 'GET',
   timeout: 2000
 };
@@ -31,6 +31,7 @@ req.on('timeout', () => {
 
 req.end();
 "
+
 
 
 

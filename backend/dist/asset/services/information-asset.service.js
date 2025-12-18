@@ -21,11 +21,14 @@ const asset_audit_service_1 = require("./asset-audit.service");
 const asset_audit_log_entity_1 = require("../entities/asset-audit-log.entity");
 const risk_asset_link_service_1 = require("../../risk/services/risk-asset-link.service");
 const risk_asset_link_entity_1 = require("../../risk/entities/risk-asset-link.entity");
+const notification_service_1 = require("../../common/services/notification.service");
+const notification_entity_1 = require("../../common/entities/notification.entity");
 let InformationAssetService = class InformationAssetService {
-    constructor(assetRepository, auditService, riskAssetLinkService) {
+    constructor(assetRepository, auditService, riskAssetLinkService, notificationService) {
         this.assetRepository = assetRepository;
         this.auditService = auditService;
         this.riskAssetLinkService = riskAssetLinkService;
+        this.notificationService = notificationService;
     }
     async findAll(query) {
         const page = (query === null || query === void 0 ? void 0 : query.page) || 1;
@@ -51,7 +54,12 @@ let InformationAssetService = class InformationAssetService {
             });
         }
         if (query === null || query === void 0 ? void 0 : query.ownerId) {
-            queryBuilder.andWhere('asset.informationOwnerId = :informationOwnerId', { informationOwnerId: query.ownerId });
+            queryBuilder.andWhere('asset.informationOwnerId = :informationOwnerId', {
+                informationOwnerId: query.ownerId,
+            });
+        }
+        if (query === null || query === void 0 ? void 0 : query.complianceRequirement) {
+            queryBuilder.andWhere("asset.complianceRequirements::jsonb @> :complianceRequirement", { complianceRequirement: JSON.stringify([query.complianceRequirement]) });
         }
         const total = await queryBuilder.getCount();
         const assets = await queryBuilder
@@ -68,6 +76,69 @@ let InformationAssetService = class InformationAssetService {
             limit,
         };
     }
+    async getAssetsMissingCompliance() {
+        const assets = await this.assetRepository
+            .createQueryBuilder('asset')
+            .leftJoin('asset.informationOwner', 'informationOwner')
+            .leftJoin('asset.businessUnit', 'businessUnit')
+            .select([
+            'asset.id',
+            'asset.name',
+            'asset.informationType',
+            'asset.complianceRequirements',
+            'asset.informationOwnerId',
+            'asset.businessUnitId',
+            'asset.createdAt',
+            'asset.updatedAt',
+            'informationOwner.id',
+            'informationOwner.email',
+            'informationOwner.firstName',
+            'informationOwner.lastName',
+            'businessUnit.id',
+            'businessUnit.name',
+        ])
+            .where('asset.deletedAt IS NULL')
+            .andWhere('(asset.complianceRequirements IS NULL OR asset.complianceRequirements::jsonb = \'[]\'::jsonb OR jsonb_array_length(asset.complianceRequirements::jsonb) = 0)')
+            .orderBy('asset.createdAt', 'DESC')
+            .getMany();
+        const assetIds = assets.map(a => a.id);
+        const riskCounts = await this.getRiskCountsForAssets(assetIds);
+        return assets.map((asset) => this.toResponseDto(asset, riskCounts[asset.id]));
+    }
+    async getComplianceReport(complianceRequirement) {
+        const queryBuilder = this.assetRepository
+            .createQueryBuilder('asset')
+            .leftJoin('asset.informationOwner', 'informationOwner')
+            .leftJoin('asset.businessUnit', 'businessUnit')
+            .select([
+            'asset.id',
+            'asset.name',
+            'asset.informationType',
+            'asset.classificationLevel',
+            'asset.complianceRequirements',
+            'asset.informationOwnerId',
+            'asset.businessUnitId',
+            'asset.createdAt',
+            'asset.updatedAt',
+            'informationOwner.id',
+            'informationOwner.email',
+            'informationOwner.firstName',
+            'informationOwner.lastName',
+            'businessUnit.id',
+            'businessUnit.name',
+        ])
+            .where('asset.deletedAt IS NULL');
+        if (complianceRequirement) {
+            queryBuilder.andWhere("asset.complianceRequirements::jsonb @> :complianceRequirement", { complianceRequirement: JSON.stringify([complianceRequirement]) });
+        }
+        else {
+            queryBuilder.andWhere("(asset.complianceRequirements IS NOT NULL AND asset.complianceRequirements::jsonb != '[]'::jsonb AND jsonb_array_length(asset.complianceRequirements::jsonb) > 0)");
+        }
+        const assets = await queryBuilder.orderBy('asset.createdAt', 'DESC').getMany();
+        const assetIds = assets.map(a => a.id);
+        const riskCounts = await this.getRiskCountsForAssets(assetIds);
+        return assets.map((asset) => this.toResponseDto(asset, riskCounts[asset.id]));
+    }
     async findOne(id) {
         const asset = await this.assetRepository.findOne({
             where: { id, deletedAt: (0, typeorm_2.IsNull)() },
@@ -78,6 +149,27 @@ let InformationAssetService = class InformationAssetService {
         }
         const riskCount = await this.getRiskCountForAsset(id);
         return this.toResponseDto(asset, riskCount);
+    }
+    async getAssetsDueForReclassification(days = 60) {
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endDate = new Date(startOfToday);
+        endDate.setDate(endDate.getDate() + days);
+        const assets = await this.assetRepository
+            .createQueryBuilder('asset')
+            .leftJoinAndSelect('asset.informationOwner', 'informationOwner')
+            .leftJoinAndSelect('asset.businessUnit', 'businessUnit')
+            .where('asset.deletedAt IS NULL')
+            .andWhere('asset.reclassificationDate IS NOT NULL')
+            .andWhere('asset.reclassificationDate BETWEEN :start AND :end', {
+            start: startOfToday,
+            end: endDate,
+        })
+            .orderBy('asset.reclassificationDate', 'ASC')
+            .getMany();
+        const assetIds = assets.map((a) => a.id);
+        const riskCounts = await this.getRiskCountsForAssets(assetIds);
+        return assets.map((asset) => this.toResponseDto(asset, riskCounts[asset.id]));
     }
     async create(createDto, userId) {
         let uniqueIdentifier = createDto.uniqueIdentifier;
@@ -113,7 +205,19 @@ let InformationAssetService = class InformationAssetService {
         }
         if (updateDto.reclassificationDate) {
             updateData.reclassificationDate = new Date(updateDto.reclassificationDate);
+            updateData.reclassificationReminderSent = false;
         }
+        const effectiveClassificationDate = updateData.classificationDate || asset.classificationDate || null;
+        const effectiveReclassificationDate = updateData.reclassificationDate || asset.reclassificationDate || null;
+        if (effectiveClassificationDate &&
+            effectiveReclassificationDate &&
+            effectiveReclassificationDate < effectiveClassificationDate) {
+            throw new common_1.BadRequestException('Reclassification date cannot be earlier than classification date');
+        }
+        const oldClassificationLevel = asset.classificationLevel;
+        const newClassificationLevel = updateDto.classificationLevel;
+        const requiresApproval = newClassificationLevel &&
+            this.isMoreRestrictive(newClassificationLevel, oldClassificationLevel);
         Object.keys(updateData).forEach((key) => {
             if (key !== 'updatedBy' && asset[key] !== updateData[key]) {
                 changes[key] = {
@@ -122,6 +226,29 @@ let InformationAssetService = class InformationAssetService {
                 };
             }
         });
+        if (requiresApproval && asset.informationOwnerId) {
+            try {
+                await this.notificationService.create({
+                    userId: asset.informationOwnerId,
+                    type: notification_entity_1.NotificationType.DEADLINE_APPROACHING,
+                    priority: notification_entity_1.NotificationPriority.HIGH,
+                    title: 'Classification Change Approval Required',
+                    message: `Information asset "${asset.name}" classification is being changed from ${oldClassificationLevel} to ${newClassificationLevel}. Please review and approve this change.`,
+                    metadata: {
+                        assetType: 'information',
+                        assetId: asset.id,
+                        assetName: asset.name,
+                        oldClassificationLevel,
+                        newClassificationLevel,
+                        changeType: 'classification_level',
+                        requiresApproval: true,
+                    },
+                });
+            }
+            catch (error) {
+                console.error('Failed to create classification approval notification:', error);
+            }
+        }
         Object.assign(asset, updateData);
         const savedAsset = await this.assetRepository.save(asset);
         const reloaded = await this.assetRepository.findOne({
@@ -205,6 +332,16 @@ let InformationAssetService = class InformationAssetService {
             riskCount: riskCount,
         };
     }
+    isMoreRestrictive(newLevel, oldLevel) {
+        const levels = {
+            [information_asset_entity_1.ClassificationLevel.PUBLIC]: 1,
+            [information_asset_entity_1.ClassificationLevel.INTERNAL]: 2,
+            [information_asset_entity_1.ClassificationLevel.CONFIDENTIAL]: 3,
+            [information_asset_entity_1.ClassificationLevel.RESTRICTED]: 4,
+            [information_asset_entity_1.ClassificationLevel.SECRET]: 5,
+        };
+        return levels[newLevel] > levels[oldLevel];
+    }
     async generateUniqueIdentifier() {
         const prefix = 'INFO';
         const timestamp = Date.now().toString(36).toUpperCase();
@@ -218,6 +355,7 @@ exports.InformationAssetService = InformationAssetService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(information_asset_entity_1.InformationAsset)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         asset_audit_service_1.AssetAuditService,
-        risk_asset_link_service_1.RiskAssetLinkService])
+        risk_asset_link_service_1.RiskAssetLinkService,
+        notification_service_1.NotificationService])
 ], InformationAssetService);
 //# sourceMappingURL=information-asset.service.js.map

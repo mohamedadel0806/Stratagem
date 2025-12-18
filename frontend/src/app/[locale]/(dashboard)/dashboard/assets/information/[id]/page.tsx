@@ -15,6 +15,7 @@ import { InformationAssetForm } from '@/components/forms/information-asset-form'
 import { AssetDependencies } from '@/components/assets/asset-dependencies';
 import { AssetAuditTrail } from '@/components/assets/asset-audit-trail';
 import { DependencyGraph } from '@/components/assets/dependency-graph';
+import { DependencyWarningDialog } from '@/components/assets/dependency-warning-dialog';
 import { AssetComplianceTab } from '@/components/assets/asset-compliance-tab';
 import { LinkedControlsList } from '@/components/governance/linked-controls-list';
 import { AssetLinkedRisks } from '@/components/risks/asset-linked-risks';
@@ -25,6 +26,7 @@ export default function InformationAssetDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const assetId = params.id as string;
 
   const { data: asset, isLoading } = useQuery({
@@ -92,11 +94,7 @@ export default function InformationAssetDetailPage() {
           </Button>
           <Button
             variant="destructive"
-            onClick={() => {
-              if (confirm('Are you sure you want to delete this asset?')) {
-                deleteMutation.mutate(asset.id);
-              }
-            }}
+            onClick={() => setIsDeleteDialogOpen(true)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
@@ -294,6 +292,10 @@ export default function InformationAssetDetailPage() {
         </TabsContent>
 
         <TabsContent value="risks" className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Linked risks provide context for how this information asset is used in risk assessments. Click a risk
+            to open full details in the risk module.
+          </p>
           <AssetLinkedRisks assetType="information" assetId={assetId} />
         </TabsContent>
 
@@ -318,6 +320,20 @@ export default function InformationAssetDetailPage() {
           />
         </DialogContent>
       </Dialog>
+
+      <DependencyWarningDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        assetType="information"
+        assetId={assetId}
+        assetName={asset.assetName}
+        action="delete"
+        onConfirm={() => {
+          deleteMutation.mutate(asset.id);
+          setIsDeleteDialogOpen(false);
+        }}
+        isConfirming={deleteMutation.isPending}
+      />
     </div>
   );
 }

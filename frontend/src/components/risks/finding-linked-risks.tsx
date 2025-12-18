@@ -446,3 +446,4 @@ export function FindingLinkedRisks({ findingId }: FindingLinkedRisksProps) {
     </div>
   )
 }
+

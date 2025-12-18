@@ -299,3 +299,4 @@ test('should fill complete information asset form and submit successfully', asyn
 
   console.log('✅ Test completed successfully!');
 });
+

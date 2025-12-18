@@ -293,3 +293,4 @@ export class TreatmentsPage {
     console.log('✅ Treatment form submitted successfully');
   }
 }
+

@@ -84,3 +84,4 @@ export class RiskAnalysisPage {
     await this.page.waitForTimeout(this.WAIT_MEDIUM);
   }
 }
+

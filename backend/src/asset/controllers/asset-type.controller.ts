@@ -39,3 +39,4 @@ export class AssetTypeController {
     return this.assetTypeService.findOne(id);
   }
 }
+

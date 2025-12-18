@@ -11,6 +11,8 @@ import { InformationAssetImportHandler } from './import-handlers/information-ass
 import { SoftwareAssetImportHandler } from './import-handlers/software-asset-import-handler';
 import { BusinessApplicationImportHandler } from './import-handlers/business-application-import-handler';
 import { SupplierImportHandler } from './import-handlers/supplier-import-handler';
+import { ValidationRuleService } from './validation-rule.service';
+import { AssetType as ValidationAssetType } from '../entities/validation-rule.entity';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { parse } = require('csv-parse/sync');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -26,6 +28,14 @@ export interface ImportPreview {
   headers: string[];
   rows: ImportPreviewRow[];
   totalRows: number;
+  /**
+   * Optional list of available sheet names (for Excel files with multiple worksheets)
+   */
+  sheets?: string[];
+  /**
+   * Optional name of the sheet that was used to generate this preview
+   */
+  selectedSheet?: string;
 }
 
 export interface ImportResult {
@@ -51,6 +61,7 @@ export class ImportService {
     private softwareAssetImportHandler: SoftwareAssetImportHandler,
     private businessApplicationImportHandler: BusinessApplicationImportHandler,
     private supplierImportHandler: SupplierImportHandler,
+    private validationRuleService?: ValidationRuleService,
   ) {
     // Register handlers for each asset type
     this.handlers.set('physical', this.physicalAssetImportHandler);
@@ -72,7 +83,7 @@ export class ImportService {
   }
 
   /**
-   * Parse CSV file and return preview (first 10 rows)
+   * Parse CSV file and return preview (first N rows)
    */
   async previewCSV(fileBuffer: Buffer, limit: number = 10): Promise<ImportPreview> {
     try {
@@ -116,6 +127,9 @@ export class ImportService {
         headers,
         rows: previewRows,
         totalRows: records.length,
+        // For CSV we only have a single logical sheet
+        sheets: ['Sheet1'],
+        selectedSheet: 'Sheet1',
       };
     } catch (error: any) {
       if (error instanceof BadRequestException) {
@@ -127,9 +141,14 @@ export class ImportService {
   }
 
   /**
-   * Parse Excel file and return preview (first 10 rows)
+   * Parse Excel file and return preview (first N rows).
+   * Supports multiple worksheets by allowing an optional sheetName to be specified.
    */
-  async previewExcel(fileBuffer: Buffer, limit: number = 10): Promise<ImportPreview> {
+  async previewExcel(
+    fileBuffer: Buffer,
+    limit: number = 10,
+    sheetName?: string,
+  ): Promise<ImportPreview> {
     try {
       if (!fileBuffer) {
         throw new BadRequestException('File buffer is required');
@@ -150,11 +169,12 @@ export class ImportService {
         throw new BadRequestException('Excel file has no sheets');
       }
 
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
+      const sheets = workbook.SheetNames;
+      const selectedSheet = sheetName && sheets.includes(sheetName) ? sheetName : sheets[0];
+      const worksheet = workbook.Sheets[selectedSheet];
       
       if (!worksheet) {
-        throw new BadRequestException(`Sheet "${firstSheetName}" not found in Excel file`);
+        throw new BadRequestException(`Sheet "${selectedSheet}" not found in Excel file`);
       }
 
       let data: any[];
@@ -169,6 +189,8 @@ export class ImportService {
           headers: [],
           rows: [],
           totalRows: 0,
+          sheets,
+          selectedSheet,
         };
       }
 
@@ -182,6 +204,8 @@ export class ImportService {
         headers,
         rows: previewRows,
         totalRows: data.length,
+        sheets,
+        selectedSheet,
       };
     } catch (error: any) {
       if (error instanceof BadRequestException) {
@@ -254,11 +278,47 @@ export class ImportService {
           const assetData = handler.mapFields(row, fieldMapping);
 
           // Validate required fields using handler
-          const validationErrors = handler.validate(assetData);
-          if (validationErrors.length > 0) {
-            errors.push({ row: rowNumber, errors: validationErrors });
+          const handlerValidationErrors = handler.validate(assetData);
+          if (handlerValidationErrors.length > 0) {
+            errors.push({ row: rowNumber, errors: handlerValidationErrors });
             failedImports++;
             continue;
+          }
+
+          // Apply validation rules if enabled and service is available
+          if (this.validationRuleService) {
+            const assetTypeMap: Record<string, ValidationAssetType> = {
+              physical: ValidationAssetType.PHYSICAL,
+              information: ValidationAssetType.INFORMATION,
+              application: ValidationAssetType.APPLICATION,
+              software: ValidationAssetType.SOFTWARE,
+              supplier: ValidationAssetType.SUPPLIER,
+            };
+
+            const validationAssetType = assetTypeMap[assetType];
+            if (validationAssetType) {
+              try {
+                const validationResult = await this.validationRuleService.validateAsset(
+                  assetData,
+                  validationAssetType,
+                );
+
+                if (!validationResult.isValid) {
+                  const validationErrors = validationResult.errors.map(e => e.message);
+                  errors.push({ row: rowNumber, errors: validationErrors });
+                  failedImports++;
+                  continue;
+                }
+
+                // Log warnings but don't fail import
+                if (validationResult.warnings.length > 0) {
+                  // Could log warnings to import log for review
+                }
+              } catch (validationError: any) {
+                // If validation service fails, log but don't block import
+                console.error('Validation rule error:', validationError);
+              }
+            }
           }
 
           // Create asset using handler

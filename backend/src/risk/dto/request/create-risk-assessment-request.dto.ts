@@ -39,3 +39,4 @@ export class CreateRiskAssessmentRequestDto {
   @MaxLength(5000)
   notes?: string;
 }
+

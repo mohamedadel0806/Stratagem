@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { governanceDashboardApi, remediationTrackingApi } from '@/lib/api/governance';
+import { governanceDashboardApi, remediationTrackingApi, governanceApi } from '@/lib/api/governance';
 import { StatsCard } from '@/components/dashboard/widgets/stats-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,9 +19,15 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Download,
+  Filter,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { GovernanceMetricWidget } from '@/components/governance/governance-metric-widget';
 import { GovernanceComplianceStatus } from '@/components/governance/governance-compliance-status';
 import { GovernanceTimelineWidget } from '@/components/governance/governance-timeline-widget';
@@ -32,15 +38,69 @@ import { GovernanceTrendChart } from '@/components/governance/governance-trend-c
 import { RemediationDashboardMetrics } from '@/components/governance/remediation-dashboard-metrics';
 import { RemediationGanttChart } from '@/components/governance/remediation-gantt-chart';
 import { AssetComplianceWidget } from '@/components/governance/asset-compliance-widget';
+import { GovernanceDashboardCustomizer, useDashboardWidgets, WidgetConfig } from '@/components/governance/governance-dashboard-customizer';
 
 export default function GovernanceDashboardPage() {
   const params = useParams();
   const locale = (params.locale as string) || 'en';
+  const { toast } = useToast();
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [widgets, setWidgets] = useDashboardWidgets();
 
   const { data: dashboard, isLoading } = useQuery({
-    queryKey: ['governance-dashboard'],
-    queryFn: () => governanceDashboardApi.getDashboard(),
+    queryKey: ['governance-dashboard', dateRange],
+    queryFn: () => governanceDashboardApi.getDashboard(
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ),
   });
+
+  const { data: sopStats } = useQuery({
+    queryKey: ['sop-publication-stats'],
+    queryFn: () => governanceApi.getSOPPublicationStatistics(),
+  });
+
+  const { data: policyStats } = useQuery({
+    queryKey: ['policy-publication-stats'],
+    queryFn: () => governanceApi.getPolicyPublicationStatistics(),
+  });
+
+  const { data: reviewStats } = useQuery({
+    queryKey: ['policy-review-stats'],
+    queryFn: () => governanceApi.getPolicyReviewStatistics(),
+  });
+
+  const { data: pendingReviews } = useQuery({
+    queryKey: ['pending-policy-reviews'],
+    queryFn: () => governanceApi.getPoliciesDueForReview(30),
+  });
+
+  const handleExport = async () => {
+    try {
+      const blob = await governanceDashboardApi.exportDashboard(
+        dateRange.from?.toISOString(),
+        dateRange.to?.toISOString(),
+      );
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `governance-dashboard-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast({
+        title: 'Success',
+        description: 'Dashboard exported successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to export dashboard',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const { data: trendData, isLoading: trendLoading } = useQuery({
     queryKey: ['governance-dashboard-trends'],
@@ -90,31 +150,60 @@ export default function GovernanceDashboardPage() {
           <h2 className="text-3xl font-bold tracking-tight">Governance Dashboard</h2>
           <p className="text-muted-foreground">Overview of governance, compliance, and controls</p>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="start-date" className="text-sm">From:</Label>
+            <Input
+              id="start-date"
+              type="date"
+              value={dateRange.from ? dateRange.from.toISOString().split('T')[0] : ''}
+              onChange={(e) => setDateRange({ ...dateRange, from: e.target.value ? new Date(e.target.value) : undefined })}
+              className="w-40"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="end-date" className="text-sm">To:</Label>
+            <Input
+              id="end-date"
+              type="date"
+              value={dateRange.to ? dateRange.to.toISOString().split('T')[0] : ''}
+              onChange={(e) => setDateRange({ ...dateRange, to: e.target.value ? new Date(e.target.value) : undefined })}
+              className="w-40"
+            />
+          </div>
+          <GovernanceDashboardCustomizer widgets={widgets} onWidgetsChange={setWidgets} />
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       {/* Summary Stats Row */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total Policies"
-          value={isLoading ? '...' : dashboard?.summary.totalPolicies || 0}
-          icon={<FileText className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatsCard
-          title="Unified Controls"
-          value={isLoading ? '...' : dashboard?.summary.totalControls || 0}
-          icon={<Shield className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatsCard
-          title="Active Assessments"
-          value={isLoading ? '...' : dashboard?.summary.inProgressAssessments || 0}
-          icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatsCard
-          title="Open Findings"
-          value={isLoading ? '...' : dashboard?.summary.openFindings || 0}
-          icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
-        />
-      </div>
+      {widgets.find((w) => w.key === 'summary-cards')?.visible && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatsCard
+            title="Total Policies"
+            value={isLoading ? '...' : dashboard?.summary.totalPolicies || 0}
+            icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+          />
+          <StatsCard
+            title="Unified Controls"
+            value={isLoading ? '...' : dashboard?.summary.totalControls || 0}
+            icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+          />
+          <StatsCard
+            title="Active Assessments"
+            value={isLoading ? '...' : dashboard?.summary.inProgressAssessments || 0}
+            icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
+          />
+          <StatsCard
+            title="Open Findings"
+            value={isLoading ? '...' : dashboard?.summary.openFindings || 0}
+            icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
+          />
+        </div>
+      )}
 
       {/* Secondary Stats Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -140,14 +229,152 @@ export default function GovernanceDashboardPage() {
         />
       </div>
 
+      {/* Policy Publication Statistics */}
+      {policyStats && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Policy Publication Statistics</CardTitle>
+            <CardDescription>Overview of policy publication and distribution metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total Published</p>
+                <p className="text-2xl font-bold">{policyStats.totalPublished}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Published This Month</p>
+                <p className="text-2xl font-bold">{policyStats.publishedThisMonth}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Published This Year</p>
+                <p className="text-2xl font-bold">{policyStats.publishedThisYear}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total Assignments</p>
+                <p className="text-2xl font-bold">{policyStats.assignmentsCount}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Acknowledged</p>
+                <p className="text-2xl font-bold">{policyStats.acknowledgedCount}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Acknowledgment Rate</p>
+                <p className="text-2xl font-bold">{policyStats.acknowledgmentRate}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* SOP Publication Statistics */}
+      {sopStats && (
+        <Card>
+          <CardHeader>
+            <CardTitle>SOP Publication Statistics</CardTitle>
+            <CardDescription>Overview of SOP publication and distribution metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total Published</p>
+                <p className="text-2xl font-bold">{sopStats.totalPublished}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Published This Month</p>
+                <p className="text-2xl font-bold">{sopStats.publishedThisMonth}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Published This Year</p>
+                <p className="text-2xl font-bold">{sopStats.publishedThisYear}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total Assignments</p>
+                <p className="text-2xl font-bold">{sopStats.assignmentsCount}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Acknowledged</p>
+                <p className="text-2xl font-bold">{sopStats.acknowledgedCount}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Acknowledgment Rate</p>
+                <p className="text-2xl font-bold">{sopStats.acknowledgmentRate}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Policy Review Statistics */}
+      {reviewStats && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Policy Review Statistics</CardTitle>
+            <CardDescription>Overview of policy review status and upcoming reviews</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Pending Reviews</p>
+                <p className="text-2xl font-bold">{reviewStats.pending}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Overdue</p>
+                <p className="text-2xl font-bold text-destructive">{reviewStats.overdue}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Due in 30 Days</p>
+                <p className="text-2xl font-bold">{reviewStats.dueIn30Days}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Due in 60 Days</p>
+                <p className="text-2xl font-bold">{reviewStats.dueIn60Days}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Due in 90 Days</p>
+                <p className="text-2xl font-bold">{reviewStats.dueIn90Days}</p>
+              </div>
+            </div>
+            {pendingReviews && pendingReviews.data && pendingReviews.data.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm font-medium mb-2">Policies Due for Review (Next 30 Days)</p>
+                <div className="space-y-2">
+                  {pendingReviews.data.slice(0, 5).map((policy: any) => (
+                    <div key={policy.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                      <div>
+                        <p className="text-sm font-medium">{policy.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Due: {new Date(policy.next_review_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Link href={`/${locale}/dashboard/governance/policies/${policy.id}`}>
+                        <Button variant="ghost" size="sm">
+                          Review
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+                  {pendingReviews.data.length > 5 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      +{pendingReviews.data.length - 5} more policies
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Trend + Forecast Section */}
-      <div className="grid gap-4 lg:grid-cols-[2fr,1fr]">
-        <GovernanceTrendChart
-          history={trendData?.history}
-          forecast={trendData?.forecast}
-          isLoading={trendLoading}
-          lastUpdatedAt={trendData?.lastUpdatedAt}
-        />
+      {widgets.find((w) => w.key === 'trend-chart')?.visible && (
+        <div className="grid gap-4 lg:grid-cols-[2fr,1fr]">
+          <GovernanceTrendChart
+            history={trendData?.history}
+            forecast={trendData?.forecast}
+            isLoading={trendLoading}
+            lastUpdatedAt={trendData?.lastUpdatedAt}
+          />
 
         <Card>
           <CardHeader>
@@ -194,33 +421,43 @@ export default function GovernanceDashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Remediation Tracking Section */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold tracking-tight">Remediation Tracking</h3>
-          <p className="text-sm text-muted-foreground">Monitor finding remediation progress and SLA compliance</p>
+      {(widgets.find((w) => w.key === 'remediation-metrics')?.visible ||
+        widgets.find((w) => w.key === 'remediation-gantt')?.visible) && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold tracking-tight">Remediation Tracking</h3>
+            <p className="text-sm text-muted-foreground">Monitor finding remediation progress and SLA compliance</p>
+          </div>
+
+          {/* Remediation Metrics Row */}
+          {widgets.find((w) => w.key === 'remediation-metrics')?.visible && (
+            <RemediationDashboardMetrics
+              data={remediationData}
+              isLoading={remediationLoading}
+            />
+          )}
+
+          {/* Remediation Gantt Timeline */}
+          {widgets.find((w) => w.key === 'remediation-gantt')?.visible && (
+            <RemediationGanttChart
+              trackers={remediationData?.critical_findings || []}
+              isLoading={remediationLoading}
+            />
+          )}
         </div>
-
-        {/* Remediation Metrics Row */}
-        <RemediationDashboardMetrics
-          data={remediationData}
-          isLoading={remediationLoading}
-        />
-
-        {/* Remediation Gantt Timeline */}
-        <RemediationGanttChart
-          trackers={remediationData?.critical_findings || []}
-          isLoading={remediationLoading}
-        />
-      </div>
+      )}
 
       {/* Enhanced Widgets Section */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Compliance Status by Framework */}
-        {!isLoading && dashboard?.summary && (
-          <GovernanceComplianceStatus
+        {widgets.find((w) => w.key === 'compliance-status')?.visible &&
+          !isLoading &&
+          dashboard?.summary && (
+            <GovernanceComplianceStatus
             frameworks={[
               {
                 framework: 'ISO 27001',
@@ -242,11 +479,13 @@ export default function GovernanceDashboardPage() {
               },
             ]}
           />
-        )}
+          )}
 
         {/* Findings Severity Distribution */}
-        {!isLoading && dashboard?.findingStats && (
-          <GovernanceFindingsSeverity
+        {widgets.find((w) => w.key === 'findings-severity')?.visible &&
+          !isLoading &&
+          dashboard?.findingStats && (
+            <GovernanceFindingsSeverity
             data={{
               critical: dashboard.findingStats.bySeverity.critical || 0,
               high: dashboard.findingStats.bySeverity.high || 0,
@@ -255,11 +494,13 @@ export default function GovernanceDashboardPage() {
               resolved: dashboard.summary.resolvedFindings || 0,
             }}
           />
-        )}
+          )}
 
         {/* Control Implementation Matrix */}
-        {!isLoading && dashboard?.controlStats && (
-          <GovernanceControlMatrix
+        {widgets.find((w) => w.key === 'control-matrix')?.visible &&
+          !isLoading &&
+          dashboard?.controlStats && (
+            <GovernanceControlMatrix
             data={{
               implemented: dashboard.controlStats.byImplementation.implemented || 0,
               partial: dashboard.controlStats.byImplementation.inProgress || 0,
@@ -268,13 +509,13 @@ export default function GovernanceDashboardPage() {
               deprecated: 0,
             }}
           />
-        )}
+          )}
       </div>
 
       {/* Risk and Metrics Section */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Risk Heat Map */}
-        {!isLoading && (
+        {widgets.find((w) => w.key === 'risk-heatmap')?.visible && !isLoading && (
           <GovernanceRiskHeatmap
             risks={[
               { likelihood: 'critical', impact: 'critical', count: dashboard?.summary.criticalFindings || 0 },
@@ -286,16 +527,19 @@ export default function GovernanceDashboardPage() {
         )}
 
         {/* Asset Compliance Widget */}
-        <AssetComplianceWidget
-          data={dashboard?.assetComplianceStats}
-          isLoading={isLoading}
-        />
+        {widgets.find((w) => w.key === 'asset-compliance')?.visible && (
+          <AssetComplianceWidget
+            data={dashboard?.assetComplianceStats}
+            isLoading={isLoading}
+          />
+        )}
       </div>
 
       {/* Timeline Widget */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {!isLoading && dashboard?.upcomingReviews && (
-          <GovernanceTimelineWidget
+      {widgets.find((w) => w.key === 'timeline-widget')?.visible && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {!isLoading && dashboard?.upcomingReviews && (
+            <GovernanceTimelineWidget
             reviews={dashboard.upcomingReviews.slice(0, 5).map((review) => ({
               id: review.id,
               entityName: review.name,
@@ -304,8 +548,9 @@ export default function GovernanceDashboardPage() {
               priority: review.daysUntil < 0 ? 'critical' : review.daysUntil <= 7 ? 'high' : 'medium',
             }))}
           />
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Charts and Stats Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -711,6 +956,7 @@ export default function GovernanceDashboardPage() {
     </div>
   );
 }
+
 
 
 

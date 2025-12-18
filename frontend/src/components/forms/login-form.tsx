@@ -82,15 +82,11 @@ export function LoginForm() {
       
       if (emailEl && emailEl.value && emailEl.value !== form.getValues("email")) {
         const domValue = emailEl.value
-        const formValue = form.getValues("email")
-        fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login-form.tsx:80',message:'Autofill detected - email',data:{domValue,formValue,syncing:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
         form.setValue("email", domValue, { shouldValidate: false, shouldDirty: true })
       }
       
       if (passwordEl && passwordEl.value && passwordEl.value !== form.getValues("password")) {
         const domValue = passwordEl.value
-        const formValue = form.getValues("password")
-        fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login-form.tsx:88',message:'Autofill detected - password',data:{domValueLength:domValue.length,formValueLength:formValue?.length||0,syncing:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
         form.setValue("password", domValue, { shouldValidate: false, shouldDirty: true })
       }
     }
@@ -109,7 +105,6 @@ export function LoginForm() {
       // Listen for animationstart (webkit-autofill triggers this)
       const handleEmailAnimationStart = (e: AnimationEvent) => {
         if (e.animationName === 'onAutoFillStart' || e.animationName.includes('autofill')) {
-          fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login-form.tsx:107',message:'Autofill animation detected - email',data:{animationName:e.animationName},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
           setTimeout(syncAutofillValues, 50)
         }
       }
@@ -130,7 +125,6 @@ export function LoginForm() {
     if (passwordEl) {
       const handlePasswordAnimationStart = (e: AnimationEvent) => {
         if (e.animationName === 'onAutoFillStart' || e.animationName.includes('autofill')) {
-          fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login-form.tsx:123',message:'Autofill animation detected - password',data:{animationName:e.animationName},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
           setTimeout(syncAutofillValues, 50)
         }
       }

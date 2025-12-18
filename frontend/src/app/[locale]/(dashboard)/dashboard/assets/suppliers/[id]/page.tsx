@@ -15,6 +15,7 @@ import { SupplierForm } from '@/components/forms/supplier-form';
 import { AssetDependencies } from '@/components/assets/asset-dependencies';
 import { AssetAuditTrail } from '@/components/assets/asset-audit-trail';
 import { DependencyGraph } from '@/components/assets/dependency-graph';
+import { DependencyWarningDialog } from '@/components/assets/dependency-warning-dialog';
 import { AssetComplianceTab } from '@/components/assets/asset-compliance-tab';
 import { LinkedControlsList } from '@/components/governance/linked-controls-list';
 import { AssetLinkedRisks } from '@/components/risks/asset-linked-risks';
@@ -25,12 +26,14 @@ export default function SupplierDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const supplierId = params.id as string;
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const locale = (params.locale as string) || 'en';
+  const assetId = params.id as string;
 
-  const { data: supplier, isLoading } = useQuery({
-    queryKey: ['supplier', supplierId],
-    queryFn: () => assetsApi.getSupplier(supplierId),
-    enabled: !!supplierId,
+  const { data: supplier, isLoading, error } = useQuery<any, any>({
+    queryKey: ['supplier', assetId],
+    queryFn: () => assetsApi.getSupplier(assetId),
+    enabled: !!assetId,
   });
 
   const deleteMutation = useMutation({
@@ -41,12 +44,12 @@ export default function SupplierDetailPage() {
         title: 'Success',
         description: 'Supplier deleted successfully',
       });
-      router.push('/en/dashboard/assets/suppliers');
+      router.push(`/${locale}/dashboard/assets/suppliers`);
     },
-    onError: (error: any) => {
+    onError: (err: any) => {
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to delete supplier',
+        description: err?.response?.data?.message || 'Failed to delete supplier',
         variant: 'destructive',
       });
     },
@@ -56,13 +59,16 @@ export default function SupplierDetailPage() {
     return <div className="p-6">Loading...</div>;
   }
 
-  if (!supplier) {
+  if (error) {
     return (
       <div className="p-6">
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">Supplier not found</p>
-            <Button onClick={() => router.push('/en/dashboard/assets/suppliers')}>
+            <p className="text-muted-foreground mb-2">Error loading supplier</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              {error?.response?.data?.message || error?.message || 'Unknown error'}
+            </p>
+            <Button onClick={() => router.push(`/${locale}/dashboard/assets/suppliers`)}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Suppliers
             </Button>
@@ -72,11 +78,39 @@ export default function SupplierDetailPage() {
     );
   }
 
+  if (!supplier) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-4">Supplier not found</p>
+            <p className="text-sm text-muted-foreground mb-4">Supplier ID: {assetId}</p>
+            <Button onClick={() => router.push(`/${locale}/dashboard/assets/suppliers`)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Suppliers
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const getCriticalityBadge = (level: string | undefined) => {
+    const colors: Record<string, string> = {
+      critical: 'bg-red-100 text-red-800',
+      high: 'bg-orange-100 text-orange-800',
+      medium: 'bg-yellow-100 text-yellow-800',
+      low: 'bg-green-100 text-green-800',
+    };
+    const cls = level ? colors[level] || 'bg-gray-100 text-gray-800' : 'bg-gray-100 text-gray-800';
+    return <Badge className={cls}>{level || 'Unknown'}</Badge>;
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/en/dashboard/assets/suppliers')}>
+          <Button variant="outline" onClick={() => router.push(`/${locale}/dashboard/assets/suppliers`)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
@@ -92,11 +126,7 @@ export default function SupplierDetailPage() {
           </Button>
           <Button
             variant="destructive"
-            onClick={() => {
-              if (confirm('Are you sure you want to delete this supplier?')) {
-                deleteMutation.mutate(supplier.id);
-              }
-            }}
+            onClick={() => setIsDeleteDialogOpen(true)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
@@ -131,24 +161,16 @@ export default function SupplierDetailPage() {
                   <p className="text-sm font-medium text-muted-foreground">Identifier</p>
                   <p>{supplier.supplierIdentifier}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Type</p>
-                  {supplier.supplierType ? (
-                    <Badge>{supplier.supplierType.replace('_', ' ')}</Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Criticality</p>
-                  <Badge variant="secondary">{supplier.criticalityLevel}</Badge>
-                </div>
-                {supplier.description && (
-                  <div className="col-span-2">
-                    <p className="text-sm font-medium text-muted-foreground">Description</p>
-                    <p>{supplier.description}</p>
+                {supplier.supplierType && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Type</p>
+                    <Badge>{String(supplier.supplierType).replace('_', ' ')}</Badge>
                   </div>
                 )}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Criticality</p>
+                  {getCriticalityBadge(supplier.criticalityLevel)}
+                </div>
                 {supplier.businessUnit && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Business Unit</p>
@@ -159,6 +181,12 @@ export default function SupplierDetailPage() {
                   <div className="col-span-2">
                     <p className="text-sm font-medium text-muted-foreground">Goods/Services Provided</p>
                     <p>{supplier.goodsOrServicesProvided}</p>
+                  </div>
+                )}
+                {supplier.description && (
+                  <div className="col-span-2">
+                    <p className="text-sm font-medium text-muted-foreground">Description</p>
+                    <p>{supplier.description}</p>
                   </div>
                 )}
               </div>
@@ -238,38 +266,47 @@ export default function SupplierDetailPage() {
               </div>
             </CardContent>
           </Card>
-
-          {supplier.additionalContacts && supplier.additionalContacts.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Additional Contacts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {supplier.additionalContacts.map((contact: any, index: number) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4">
-                      <p className="font-medium">{contact.name}</p>
-                      {contact.role && <p className="text-sm text-muted-foreground">{contact.role}</p>}
-                      {contact.email && (
-                        <a href={`mailto:${contact.email}`} className="text-sm text-blue-600 hover:underline">
-                          {contact.email}
-                        </a>
-                      )}
-                      {contact.phone && <p className="text-sm">{contact.phone}</p>}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         <TabsContent value="contract" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Contract Information</CardTitle>
+              <CardTitle>Contract Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {supplier.contractStatus && (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Contract Status</p>
+                  <Badge
+                    variant={
+                      supplier.contractStatus === 'expired'
+                        ? 'destructive'
+                        : supplier.contractStatus === 'pending_renewal'
+                        ? 'default'
+                        : supplier.contractStatus === 'active'
+                        ? 'default'
+                        : 'secondary'
+                    }
+                    className={
+                      supplier.contractStatus === 'expired'
+                        ? 'bg-red-100 text-red-800'
+                        : supplier.contractStatus === 'pending_renewal'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : supplier.contractStatus === 'active'
+                        ? 'bg-green-100 text-green-800'
+                        : ''
+                    }
+                  >
+                    {supplier.contractStatus === 'expired'
+                      ? 'Expired'
+                      : supplier.contractStatus === 'pending_renewal'
+                      ? 'Pending Renewal'
+                      : supplier.contractStatus === 'active'
+                      ? 'Active'
+                      : 'No Contract'}
+                  </Badge>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 {supplier.contractReference && (
                   <div>
@@ -279,14 +316,33 @@ export default function SupplierDetailPage() {
                 )}
                 {supplier.contractStartDate && (
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Start Date</p>
-                    <p>{supplier.contractStartDate}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Contract Start Date</p>
+                    <p>{new Date(supplier.contractStartDate).toLocaleDateString()}</p>
                   </div>
                 )}
                 {supplier.contractEndDate && (
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">End Date</p>
-                    <p>{supplier.contractEndDate}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Contract End Date</p>
+                    <p>{new Date(supplier.contractEndDate).toLocaleDateString()}</p>
+                    {supplier.contractEndDate && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {Math.ceil((new Date(supplier.contractEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
+                      </p>
+                    )}
+                  </div>
+                )}
+                {supplier.autoRenewal !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Auto Renewal</p>
+                    <p>{supplier.autoRenewal ? 'Yes' : 'No'}</p>
+                  </div>
+                )}
+                {supplier.contractValue && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Contract Value</p>
+                    <p>
+                      {supplier.currency || 'USD'} {supplier.contractValue.toLocaleString()}
+                    </p>
                   </div>
                 )}
               </div>
@@ -295,57 +351,23 @@ export default function SupplierDetailPage() {
         </TabsContent>
 
         <TabsContent value="compliance" className="space-y-4">
-          {/* Security Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Has Data Access</p>
-                  <Badge variant={supplier.hasDataAccess ? 'destructive' : 'secondary'}>
-                    {supplier.hasDataAccess ? 'Yes' : 'No'}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Requires NDA</p>
-                  <Badge variant={supplier.requiresNDA ? 'destructive' : 'secondary'}>
-                    {supplier.requiresNDA ? 'Yes' : 'No'}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Security Assessment</p>
-                  <Badge variant={supplier.hasSecurityAssessment ? 'default' : 'secondary'}>
-                    {supplier.hasSecurityAssessment ? 'Completed' : 'Not Completed'}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Compliance Assessment */}
-          <AssetComplianceTab assetType="supplier" assetId={supplierId} />
-        </TabsContent>
-
-        <TabsContent value="dependencies" className="space-y-4">
-          <AssetDependencies assetType="supplier" assetId={supplierId} />
-        </TabsContent>
-
-        <TabsContent value="graph" className="space-y-4">
-          <DependencyGraph 
-            assetType="supplier" 
-            assetId={supplierId} 
-            assetName={supplier.supplierName}
-          />
+          <AssetComplianceTab assetType="supplier" assetId={assetId} />
         </TabsContent>
 
         <TabsContent value="risks" className="space-y-4">
-          <AssetLinkedRisks assetType="supplier" assetId={supplierId} />
+          <AssetLinkedRisks assetType="supplier" assetId={assetId} />
+        </TabsContent>
+
+        <TabsContent value="dependencies" className="space-y-4">
+          <AssetDependencies assetType="supplier" assetId={assetId} />
+        </TabsContent>
+
+        <TabsContent value="graph" className="space-y-4">
+          <DependencyGraph assetType="supplier" assetId={assetId} assetName={supplier.supplierName} />
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-4">
-          <AssetAuditTrail assetType="supplier" assetId={supplierId} />
+          <AssetAuditTrail assetType="supplier" assetId={assetId} />
         </TabsContent>
       </Tabs>
 
@@ -356,16 +378,30 @@ export default function SupplierDetailPage() {
             <DialogDescription>Update the supplier details</DialogDescription>
           </DialogHeader>
           <SupplierForm
-            supplier={supplier}
+            asset={supplier}
             onSuccess={() => {
               setIsEditOpen(false);
-              queryClient.invalidateQueries({ queryKey: ['supplier', supplierId] });
+              queryClient.invalidateQueries({ queryKey: ['supplier', assetId] });
+              queryClient.invalidateQueries({ queryKey: ['suppliers'] });
             }}
             onCancel={() => setIsEditOpen(false)}
           />
         </DialogContent>
       </Dialog>
+
+      <DependencyWarningDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        assetType="supplier"
+        assetId={assetId}
+        assetName={supplier.supplierName}
+        action="delete"
+        onConfirm={() => {
+          deleteMutation.mutate(supplier.id);
+          setIsDeleteDialogOpen(false);
+        }}
+        isConfirming={deleteMutation.isPending}
+      />
     </div>
   );
 }
-

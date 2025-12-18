@@ -101,6 +101,10 @@ __decorate([
     (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
     __metadata("design:type", Date)
 ], User.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true, name: 'business_unit_id' }),
+    __metadata("design:type", String)
+], User.prototype, "businessUnitId", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);

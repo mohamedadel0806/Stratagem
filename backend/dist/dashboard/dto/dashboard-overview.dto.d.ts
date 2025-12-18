@@ -20,6 +20,12 @@ export declare class AssetCountByCriticalityDto {
     medium: number;
     low: number;
 }
+export declare class SupplierCriticalityDto {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+}
 export declare class AssetWithoutOwnerDto {
     id: string;
     name: string;
@@ -56,8 +62,15 @@ export declare class AssetStatsDto {
     recentChanges: RecentAssetChangeDto[];
     assetsByComplianceScope?: AssetByComplianceScopeDto[];
     assetsWithOutdatedSecurityTests?: AssetWithOutdatedSecurityTestDto[];
+    countByConnectivityStatus?: {
+        connected: number;
+        disconnected: number;
+        unknown: number;
+    };
+    supplierCriticality?: SupplierCriticalityDto;
 }
 export declare class DashboardOverviewDto {
     summary: DashboardSummaryDto;
     assetStats?: AssetStatsDto;
+    supplierCriticality?: SupplierCriticalityDto;
 }

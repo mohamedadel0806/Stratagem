@@ -570,7 +570,23 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
                   <FormItem>
                     <FormLabel>Owner</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Auto-populate business unit from owner profile if available
+                        const selectedUser = users.find((user) => user.id === value);
+                        const ownerBusinessUnitId = selectedUser?.businessUnitId;
+                        const currentBusinessUnit = form.getValues('businessUnit') as any;
+                        const currentBusinessUnitId =
+                          typeof currentBusinessUnit === 'string'
+                            ? currentBusinessUnit
+                            : (currentBusinessUnit?.id as string | undefined);
+                        if (ownerBusinessUnitId && !currentBusinessUnitId) {
+                          form.setValue('businessUnit', ownerBusinessUnitId, {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          });
+                        }
+                      }}
                       value={stringValue || undefined}
                       disabled={isLoadingUsers}
                     >

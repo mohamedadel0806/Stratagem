@@ -48,6 +48,24 @@ __decorate([
     __metadata("design:type", String)
 ], BusinessApplicationQueryDto.prototype, "ownerId", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ required: false, description: 'Filter applications missing version number' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Boolean),
+    __metadata("design:type", Boolean)
+], BusinessApplicationQueryDto.prototype, "missingVersion", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false, description: 'Filter applications missing patch level' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Boolean),
+    __metadata("design:type", Boolean)
+], BusinessApplicationQueryDto.prototype, "missingPatch", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false, description: 'Filter by security test status: no-test, overdue, failed, passed' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], BusinessApplicationQueryDto.prototype, "securityTestStatus", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ required: false, default: 1 }),
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Type)(() => Number),

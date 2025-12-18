@@ -37,13 +37,38 @@ let UsersService = class UsersService {
     }
     async findAll() {
         return this.usersRepository.find({
-            select: ['id', 'email', 'firstName', 'lastName', 'phone', 'role', 'status', 'createdAt', 'updatedAt'],
+            select: [
+                'id',
+                'email',
+                'firstName',
+                'lastName',
+                'phone',
+                'role',
+                'status',
+                'businessUnitId',
+                'createdAt',
+                'updatedAt',
+            ],
         });
     }
     async findOne(id) {
         const user = await this.usersRepository.findOne({
             where: { id },
-            select: ['id', 'email', 'firstName', 'lastName', 'phone', 'avatarUrl', 'role', 'status', 'emailVerified', 'phoneVerified', 'createdAt', 'updatedAt'],
+            select: [
+                'id',
+                'email',
+                'firstName',
+                'lastName',
+                'phone',
+                'avatarUrl',
+                'role',
+                'status',
+                'businessUnitId',
+                'emailVerified',
+                'phoneVerified',
+                'createdAt',
+                'updatedAt',
+            ],
         });
         if (!user) {
             throw new common_1.NotFoundException(`User with ID ${id} not found`);
@@ -53,7 +78,22 @@ let UsersService = class UsersService {
     async findByEmail(email) {
         return this.usersRepository.findOne({
             where: { email },
-            select: ['id', 'email', 'firstName', 'lastName', 'phone', 'avatarUrl', 'role', 'status', 'password', 'emailVerified', 'phoneVerified', 'createdAt', 'updatedAt'],
+            select: [
+                'id',
+                'email',
+                'firstName',
+                'lastName',
+                'phone',
+                'avatarUrl',
+                'role',
+                'status',
+                'businessUnitId',
+                'password',
+                'emailVerified',
+                'phoneVerified',
+                'createdAt',
+                'updatedAt',
+            ],
         });
     }
     async findProfile(userId) {

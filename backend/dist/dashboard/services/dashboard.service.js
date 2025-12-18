@@ -64,7 +64,8 @@ let DashboardService = class DashboardService {
                 compliantRequirements,
             };
             const assetStats = await this.getAssetStats();
-            return { summary, assetStats };
+            const supplierCriticality = await this.getSupplierCriticality();
+            return { summary, assetStats, supplierCriticality };
         }
         catch (error) {
             console.error('Error in getOverview:', error);
@@ -79,6 +80,8 @@ let DashboardService = class DashboardService {
             const recentChanges = await this.getRecentAssetChanges();
             const assetsByComplianceScope = await this.getAssetsByComplianceScope();
             const assetsWithOutdatedSecurityTests = await this.getAssetsWithOutdatedSecurityTests();
+            const countByConnectivityStatus = await this.getAssetCountByConnectivityStatus();
+            const supplierCriticality = await this.getSupplierCriticality();
             return {
                 countByType,
                 countByCriticality,
@@ -86,6 +89,8 @@ let DashboardService = class DashboardService {
                 recentChanges,
                 assetsByComplianceScope,
                 assetsWithOutdatedSecurityTests,
+                countByConnectivityStatus,
+                supplierCriticality,
             };
         }
         catch (error) {
@@ -109,6 +114,17 @@ let DashboardService = class DashboardService {
                 recentChanges: [],
                 assetsByComplianceScope: [],
                 assetsWithOutdatedSecurityTests: [],
+                countByConnectivityStatus: {
+                    connected: 0,
+                    disconnected: 0,
+                    unknown: 0,
+                },
+                supplierCriticality: {
+                    critical: 0,
+                    high: 0,
+                    medium: 0,
+                    low: 0,
+                },
             };
         }
     }
@@ -140,6 +156,28 @@ let DashboardService = class DashboardService {
                 supplier: 0,
                 total: 0,
             };
+        }
+    }
+    async getSupplierCriticality() {
+        try {
+            const criticalityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+            const supplierCounts = await this.supplierRepository
+                .createQueryBuilder('supplier')
+                .select('supplier.criticalityLevel', 'level')
+                .addSelect('COUNT(*)', 'count')
+                .where('supplier.deletedAt IS NULL')
+                .groupBy('supplier.criticalityLevel')
+                .getRawMany();
+            supplierCounts.forEach((row) => {
+                if (row.level && row.level in criticalityCounts) {
+                    criticalityCounts[row.level] += parseInt(row.count, 10) || 0;
+                }
+            });
+            return criticalityCounts;
+        }
+        catch (error) {
+            console.error('Error in getSupplierCriticality:', error);
+            return { critical: 0, high: 0, medium: 0, low: 0 };
         }
     }
     async getAssetCountByCriticality() {
@@ -273,11 +311,23 @@ let DashboardService = class DashboardService {
     }
     async getRecentAssetChanges() {
         try {
-            const recentLogs = await this.auditLogRepository.find({
-                take: 15,
-                order: { createdAt: 'DESC' },
-                relations: ['changedBy'],
-            });
+            const recentLogs = await this.auditLogRepository
+                .createQueryBuilder('log')
+                .select([
+                'log.id',
+                'log.assetType',
+                'log.assetId',
+                'log.action',
+                'log.fieldName',
+                'log.oldValue',
+                'log.newValue',
+                'log.changedById',
+                'log.changeReason',
+                'log.createdAt',
+            ])
+                .orderBy('log.createdAt', 'DESC')
+                .take(15)
+                .getMany();
             const results = [];
             for (const log of recentLogs) {
                 let assetName = 'Unknown Asset';
@@ -326,9 +376,7 @@ let DashboardService = class DashboardService {
                     assetName,
                     action: log.action,
                     fieldName: log.fieldName,
-                    changedByName: log.changedBy
-                        ? `${log.changedBy.firstName || ''} ${log.changedBy.lastName || ''}`.trim() || 'Unknown User'
-                        : 'System',
+                    changedByName: 'System',
                     createdAt: log.createdAt,
                 });
             }
@@ -410,13 +458,26 @@ let DashboardService = class DashboardService {
                     });
                 }
                 else {
-                    const daysSince = Math.floor((now.getTime() - app.lastSecurityTestDate.getTime()) / (1000 * 60 * 60 * 24));
+                    const lastTest = app.lastSecurityTestDate instanceof Date
+                        ? app.lastSecurityTestDate
+                        : new Date(app.lastSecurityTestDate);
+                    if (isNaN(lastTest.getTime())) {
+                        results.push({
+                            id: app.id,
+                            name: app.applicationName,
+                            type: 'application',
+                            lastSecurityTestDate: undefined,
+                            daysSinceLastTest: undefined,
+                        });
+                        return;
+                    }
+                    const daysSince = Math.floor((now.getTime() - lastTest.getTime()) / (1000 * 60 * 60 * 24));
                     if (daysSince > daysThreshold) {
                         results.push({
                             id: app.id,
                             name: app.applicationName,
                             type: 'application',
-                            lastSecurityTestDate: app.lastSecurityTestDate,
+                            lastSecurityTestDate: lastTest,
                             daysSinceLastTest: daysSince,
                         });
                     }
@@ -437,13 +498,26 @@ let DashboardService = class DashboardService {
                     });
                 }
                 else {
-                    const daysSince = Math.floor((now.getTime() - asset.lastSecurityTestDate.getTime()) / (1000 * 60 * 60 * 24));
+                    const lastTest = asset.lastSecurityTestDate instanceof Date
+                        ? asset.lastSecurityTestDate
+                        : new Date(asset.lastSecurityTestDate);
+                    if (isNaN(lastTest.getTime())) {
+                        results.push({
+                            id: asset.id,
+                            name: asset.softwareName,
+                            type: 'software',
+                            lastSecurityTestDate: undefined,
+                            daysSinceLastTest: undefined,
+                        });
+                        return;
+                    }
+                    const daysSince = Math.floor((now.getTime() - lastTest.getTime()) / (1000 * 60 * 60 * 24));
                     if (daysSince > daysThreshold) {
                         results.push({
                             id: asset.id,
                             name: asset.softwareName,
                             type: 'software',
-                            lastSecurityTestDate: asset.lastSecurityTestDate,
+                            lastSecurityTestDate: lastTest,
                             daysSinceLastTest: daysSince,
                         });
                     }
@@ -462,6 +536,42 @@ let DashboardService = class DashboardService {
         catch (error) {
             console.error('Error in getAssetsWithOutdatedSecurityTests:', error);
             return [];
+        }
+    }
+    async getAssetCountByConnectivityStatus() {
+        try {
+            const counts = {
+                connected: 0,
+                disconnected: 0,
+                unknown: 0,
+            };
+            const rows = await this.physicalAssetRepository
+                .createQueryBuilder('asset')
+                .select('asset.connectivityStatus', 'status')
+                .addSelect('COUNT(*)', 'count')
+                .where('asset.deletedAt IS NULL')
+                .groupBy('asset.connectivityStatus')
+                .getRawMany();
+            rows.forEach((row) => {
+                const status = row.status;
+                const count = parseInt(row.count, 10) || 0;
+                if (status && counts.hasOwnProperty(status)) {
+                    counts[status] += count;
+                }
+            });
+            return {
+                connected: counts.connected || 0,
+                disconnected: counts.disconnected || 0,
+                unknown: counts.unknown || 0,
+            };
+        }
+        catch (error) {
+            console.error('Error in getAssetCountByConnectivityStatus:', error);
+            return {
+                connected: 0,
+                disconnected: 0,
+                unknown: 0,
+            };
         }
     }
 };

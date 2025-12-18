@@ -6,23 +6,29 @@ import { InformationAssetResponseDto } from '../dto/information-asset-response.d
 import { InformationAssetQueryDto } from '../dto/information-asset-query.dto';
 import { AssetAuditService } from './asset-audit.service';
 import { RiskAssetLinkService } from '../../risk/services/risk-asset-link.service';
+import { NotificationService } from '../../common/services/notification.service';
 export declare class InformationAssetService {
     private assetRepository;
     private auditService;
     private riskAssetLinkService;
-    constructor(assetRepository: Repository<InformationAsset>, auditService: AssetAuditService, riskAssetLinkService: RiskAssetLinkService);
+    private notificationService;
+    constructor(assetRepository: Repository<InformationAsset>, auditService: AssetAuditService, riskAssetLinkService: RiskAssetLinkService, notificationService: NotificationService);
     findAll(query?: InformationAssetQueryDto): Promise<{
         data: InformationAssetResponseDto[];
         total: number;
         page: number;
         limit: number;
     }>;
+    getAssetsMissingCompliance(): Promise<InformationAssetResponseDto[]>;
+    getComplianceReport(complianceRequirement?: string): Promise<InformationAssetResponseDto[]>;
     findOne(id: string): Promise<InformationAssetResponseDto>;
+    getAssetsDueForReclassification(days?: number): Promise<InformationAssetResponseDto[]>;
     create(createDto: CreateInformationAssetDto, userId: string): Promise<InformationAssetResponseDto>;
     update(id: string, updateDto: UpdateInformationAssetDto, userId: string): Promise<InformationAssetResponseDto>;
     remove(id: string, userId: string): Promise<void>;
     private getRiskCountForAsset;
     private getRiskCountsForAssets;
     private toResponseDto;
+    private isMoreRestrictive;
     private generateUniqueIdentifier;
 }

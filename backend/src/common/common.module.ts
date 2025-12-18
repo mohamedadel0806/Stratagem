@@ -23,6 +23,7 @@ import { AuditLogService } from './services/audit-log.service';
 import { FileService } from './services/file.service';
 import { ComplianceAssessmentService } from './services/compliance-assessment.service';
 import { ComplianceAssessmentScheduler } from './schedulers/compliance-assessment.scheduler';
+import { InformationAssetClassificationScheduler } from './schedulers/information-asset-classification.scheduler';
 import { TasksController } from './controllers/tasks.controller';
 import { ComplianceController } from './controllers/compliance.controller';
 import { NotificationController } from './controllers/notification.controller';
@@ -74,6 +75,7 @@ import { AssetModule } from '../asset/asset.module';
     FileService,
     ComplianceAssessmentService,
     ComplianceAssessmentScheduler,
+    InformationAssetClassificationScheduler,
     BusinessUnitService,
   ],
   exports: [TasksService, ComplianceService, NotificationService, AuditLogService, FileService, ComplianceAssessmentService, BusinessUnitService],

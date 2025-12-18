@@ -60,6 +60,57 @@ export class InformationAssetController {
     return this.assetService.findAll(query);
   }
 
+  @Get('reclassification/upcoming')
+  @ApiOperation({ summary: 'Get information assets approaching reclassification' })
+  @ApiResponse({ status: 200, description: 'List of assets due for reclassification' })
+  async getReclassificationUpcoming(
+    @Query('days') days?: string,
+  ): Promise<{
+    data: InformationAssetResponseDto[];
+    total: number;
+    days: number;
+  }> {
+    const daysNumber = days ? parseInt(days, 10) || 60 : 60;
+    const assets = await this.assetService.getAssetsDueForReclassification(daysNumber);
+    return {
+      data: assets,
+      total: assets.length,
+      days: daysNumber,
+    };
+  }
+
+  @Get('compliance/missing')
+  @ApiOperation({ summary: 'Get information assets missing compliance information' })
+  @ApiResponse({ status: 200, description: 'List of assets without compliance requirements' })
+  async getAssetsMissingCompliance(): Promise<{
+    data: InformationAssetResponseDto[];
+    total: number;
+  }> {
+    const assets = await this.assetService.getAssetsMissingCompliance();
+    return {
+      data: assets,
+      total: assets.length,
+    };
+  }
+
+  @Get('compliance/report')
+  @ApiOperation({ summary: 'Get compliance report for information assets' })
+  @ApiResponse({ status: 200, description: 'Compliance report data' })
+  async getComplianceReport(
+    @Query('complianceRequirement') complianceRequirement?: string,
+  ): Promise<{
+    data: InformationAssetResponseDto[];
+    total: number;
+    complianceRequirement?: string;
+  }> {
+    const assets = await this.assetService.getComplianceReport(complianceRequirement);
+    return {
+      data: assets,
+      total: assets.length,
+      complianceRequirement,
+    };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get information asset by ID' })
   @ApiParam({ name: 'id', description: 'Asset ID' })
@@ -112,11 +163,13 @@ export class InformationAssetController {
       }
 
       const fileType = body?.fileType;
-      const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
+      const sheetName = body?.sheetName as string | undefined;
+      const detectedFileType =
+        fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
 
       try {
         if (detectedFileType === 'excel') {
-          return await this.importService.previewExcel(file.buffer);
+          return await this.importService.previewExcel(file.buffer, 10, sheetName);
         } else {
           return await this.importService.previewCSV(file.buffer);
         }

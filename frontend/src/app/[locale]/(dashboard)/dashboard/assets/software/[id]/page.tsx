@@ -15,6 +15,7 @@ import { SoftwareAssetForm } from '@/components/forms/software-asset-form';
 import { AssetDependencies } from '@/components/assets/asset-dependencies';
 import { AssetAuditTrail } from '@/components/assets/asset-audit-trail';
 import { DependencyGraph } from '@/components/assets/dependency-graph';
+import { DependencyWarningDialog } from '@/components/assets/dependency-warning-dialog';
 import { AssetComplianceTab } from '@/components/assets/asset-compliance-tab';
 import { LinkedControlsList } from '@/components/governance/linked-controls-list';
 import { AssetLinkedRisks } from '@/components/risks/asset-linked-risks';
@@ -25,12 +26,14 @@ export default function SoftwareAssetDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const softwareId = params.id as string;
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const locale = (params.locale as string) || 'en';
+  const assetId = params.id as string;
 
-  const { data: software, isLoading } = useQuery({
-    queryKey: ['software-asset', softwareId],
-    queryFn: () => assetsApi.getSoftwareAsset(softwareId),
-    enabled: !!softwareId,
+  const { data: software, isLoading, error } = useQuery<any, any>({
+    queryKey: ['software-asset', assetId],
+    queryFn: () => assetsApi.getSoftwareAsset(assetId),
+    enabled: !!assetId,
   });
 
   const deleteMutation = useMutation({
@@ -41,12 +44,12 @@ export default function SoftwareAssetDetailPage() {
         title: 'Success',
         description: 'Software asset deleted successfully',
       });
-      router.push('/en/dashboard/assets/software');
+      router.push(`/${locale}/dashboard/assets/software`);
     },
-    onError: (error: any) => {
+    onError: (err: any) => {
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to delete software asset',
+        description: err?.response?.data?.message || 'Failed to delete software asset',
         variant: 'destructive',
       });
     },
@@ -56,13 +59,16 @@ export default function SoftwareAssetDetailPage() {
     return <div className="p-6">Loading...</div>;
   }
 
-  if (!software) {
+  if (error) {
     return (
       <div className="p-6">
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">Software asset not found</p>
-            <Button onClick={() => router.push('/en/dashboard/assets/software')}>
+            <p className="text-muted-foreground mb-2">Error loading software asset</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              {error?.response?.data?.message || error?.message || 'Unknown error'}
+            </p>
+            <Button onClick={() => router.push(`/${locale}/dashboard/assets/software`)}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Software Assets
             </Button>
@@ -72,11 +78,39 @@ export default function SoftwareAssetDetailPage() {
     );
   }
 
+  if (!software) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-4">Software asset not found</p>
+            <p className="text-sm text-muted-foreground mb-4">Asset ID: {assetId}</p>
+            <Button onClick={() => router.push(`/${locale}/dashboard/assets/software`)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Software Assets
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const getCriticalityBadge = (level: string | undefined) => {
+    const colors: Record<string, string> = {
+      critical: 'bg-red-100 text-red-800',
+      high: 'bg-orange-100 text-orange-800',
+      medium: 'bg-yellow-100 text-yellow-800',
+      low: 'bg-green-100 text-green-800',
+    };
+    const cls = level ? colors[level] || 'bg-gray-100 text-gray-800' : 'bg-gray-100 text-gray-800';
+    return <Badge className={cls}>{level || 'Unknown'}</Badge>;
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push('/en/dashboard/assets/software')}>
+          <Button variant="outline" onClick={() => router.push(`/${locale}/dashboard/assets/software`)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
@@ -92,11 +126,7 @@ export default function SoftwareAssetDetailPage() {
           </Button>
           <Button
             variant="destructive"
-            onClick={() => {
-              if (confirm('Are you sure you want to delete this software asset?')) {
-                deleteMutation.mutate(software.id);
-              }
-            }}
+            onClick={() => setIsDeleteDialogOpen(true)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
@@ -108,7 +138,7 @@ export default function SoftwareAssetDetailPage() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="licensing">Licensing</TabsTrigger>
-          <TabsTrigger value="vendor">Vendor Information</TabsTrigger>
+          <TabsTrigger value="vendor">Vendor</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
           <TabsTrigger value="risks">Risks</TabsTrigger>
           <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
@@ -131,17 +161,15 @@ export default function SoftwareAssetDetailPage() {
                   <p className="text-sm font-medium text-muted-foreground">Identifier</p>
                   <p>{software.softwareIdentifier}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Type</p>
-                  {software.softwareType ? (
-                    <Badge>{software.softwareType.replace('_', ' ')}</Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </div>
+                {software.softwareType && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Type</p>
+                    <Badge>{String(software.softwareType).replace('_', ' ')}</Badge>
+                  </div>
+                )}
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Criticality</p>
-                  <Badge variant="secondary">{software.criticalityLevel}</Badge>
+                  {getCriticalityBadge(software.criticalityLevel)}
                 </div>
                 {software.version && (
                   <div>
@@ -164,46 +192,13 @@ export default function SoftwareAssetDetailPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Ownership</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {software.ownerName && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Owner</p>
-                    <p>{software.ownerName}</p>
-                  </div>
-                )}
-                {software.businessUnit && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Business Unit</p>
-                    <p>{software.businessUnit}</p>
-                  </div>
-                )}
-                {software.purchaseDate && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Purchase Date</p>
-                    <p>{software.purchaseDate}</p>
-                  </div>
-                )}
-                {software.installationDate && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Installation Date</p>
-                    <p>{software.installationDate}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="licensing" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>License Information</CardTitle>
+              <CardDescription>Licensing and usage details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -216,7 +211,7 @@ export default function SoftwareAssetDetailPage() {
                 {software.licenseKey && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">License Key</p>
-                    <p className="font-mono text-xs">{software.licenseKey}</p>
+                    <p className="font-mono text-xs break-all">{software.licenseKey}</p>
                   </div>
                 )}
                 {software.numberOfLicenses !== undefined && (
@@ -238,39 +233,8 @@ export default function SoftwareAssetDetailPage() {
                   </div>
                 )}
               </div>
-              {software.numberOfLicenses && software.licensesInUse !== undefined && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium text-muted-foreground mb-2">License Usage</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full"
-                      style={{
-                        width: `${(software.licensesInUse / software.numberOfLicenses) * 100}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {software.licensesInUse} of {software.numberOfLicenses} licenses in use
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
-
-          {software.installedOnAssets && software.installedOnAssets.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Installed On Assets</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {software.installedOnAssets.map((assetId: string) => (
-                    <Badge key={assetId} variant="outline">{assetId}</Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         <TabsContent value="vendor" className="space-y-4">
@@ -287,23 +251,15 @@ export default function SoftwareAssetDetailPage() {
                   </div>
                 )}
                 {software.vendorContact && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Contact</p>
-                    <p>{software.vendorContact}</p>
-                  </div>
-                )}
-                {software.vendorEmail && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Email</p>
-                    <a href={`mailto:${software.vendorEmail}`} className="text-blue-600 hover:underline">
-                      {software.vendorEmail}
-                    </a>
-                  </div>
-                )}
-                {software.vendorPhone && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                    <p>{software.vendorPhone}</p>
+                  <div className="col-span-2 space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Vendor Contact</p>
+                    <p>{software.vendorContact.name}</p>
+                    {software.vendorContact.email && (
+                      <p className="text-sm text-muted-foreground">{software.vendorContact.email}</p>
+                    )}
+                    {software.vendorContact.phone && (
+                      <p className="text-sm text-muted-foreground">{software.vendorContact.phone}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -312,28 +268,27 @@ export default function SoftwareAssetDetailPage() {
         </TabsContent>
 
         <TabsContent value="compliance" className="space-y-4">
-          {/* Compliance Assessment */}
-          <AssetComplianceTab assetType="software" assetId={softwareId} />
-        </TabsContent>
-
-        <TabsContent value="dependencies" className="space-y-4">
-          <AssetDependencies assetType="software" assetId={softwareId} />
-        </TabsContent>
-
-        <TabsContent value="graph" className="space-y-4">
-          <DependencyGraph 
-            assetType="software" 
-            assetId={softwareId} 
-            assetName={software.softwareName}
-          />
+          <AssetComplianceTab assetType="software" assetId={assetId} />
         </TabsContent>
 
         <TabsContent value="risks" className="space-y-4">
-          <AssetLinkedRisks assetType="software" assetId={softwareId} />
+          <p className="text-xs text-muted-foreground">
+            Linked risks show how this software asset is involved in wider risk scenarios. Click a risk entry to
+            review full details and assessments.
+          </p>
+          <AssetLinkedRisks assetType="software" assetId={assetId} />
+        </TabsContent>
+
+        <TabsContent value="dependencies" className="space-y-4">
+          <AssetDependencies assetType="software" assetId={assetId} />
+        </TabsContent>
+
+        <TabsContent value="graph" className="space-y-4">
+          <DependencyGraph assetType="software" assetId={assetId} assetName={software.softwareName} />
         </TabsContent>
 
         <TabsContent value="audit" className="space-y-4">
-          <AssetAuditTrail assetType="software" assetId={softwareId} />
+          <AssetAuditTrail assetType="software" assetId={assetId} />
         </TabsContent>
       </Tabs>
 
@@ -344,16 +299,30 @@ export default function SoftwareAssetDetailPage() {
             <DialogDescription>Update the software asset details</DialogDescription>
           </DialogHeader>
           <SoftwareAssetForm
-            software={software}
+            asset={software}
             onSuccess={() => {
               setIsEditOpen(false);
-              queryClient.invalidateQueries({ queryKey: ['software-asset', softwareId] });
+              queryClient.invalidateQueries({ queryKey: ['software-asset', assetId] });
+              queryClient.invalidateQueries({ queryKey: ['software-assets'] });
             }}
             onCancel={() => setIsEditOpen(false)}
           />
         </DialogContent>
       </Dialog>
+
+      <DependencyWarningDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        assetType="software"
+        assetId={assetId}
+        assetName={software.softwareName}
+        action="delete"
+        onConfirm={() => {
+          deleteMutation.mutate(software.id);
+          setIsDeleteDialogOpen(false);
+        }}
+        isConfirming={deleteMutation.isPending}
+      />
     </div>
   );
 }
-

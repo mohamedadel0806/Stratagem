@@ -413,3 +413,4 @@ export class SuppliersPage {
       .toContainText(name, { timeout: 10000 });
   }
 }
+

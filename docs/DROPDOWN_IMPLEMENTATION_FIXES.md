@@ -88,3 +88,4 @@ From diagnostic test:
 - ✅ Error handling added
 - ✅ Loading states handled
 - ✅ Empty states handled (using div instead of SelectItem)
+

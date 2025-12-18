@@ -213,6 +213,81 @@ let AssetDependencyService = class AssetDependencyService {
             incoming: incomingDtos,
         };
     }
+    async getDependencyChain(assetType, assetId, maxDepth = 3, direction = 'outgoing') {
+        await this.getAssetNameAndIdentifier(assetType, assetId);
+        const visited = new Set();
+        const chain = [];
+        const queue = [
+            [assetType, assetId, 0, []],
+        ];
+        let maxDepthReached = 0;
+        while (queue.length > 0) {
+            const [currentType, currentId, depth, path] = queue.shift();
+            const nodeKey = `${currentType}:${currentId}`;
+            if (visited.has(nodeKey) || depth > maxDepth) {
+                continue;
+            }
+            visited.add(nodeKey);
+            maxDepthReached = Math.max(maxDepthReached, depth);
+            if (depth > 0) {
+                const assetInfo = await this.getAssetNameAndIdentifier(currentType, currentId);
+                chain.push({
+                    assetType: currentType,
+                    assetId: currentId,
+                    assetName: assetInfo.name,
+                    assetIdentifier: assetInfo.identifier,
+                    depth,
+                    path: [...path],
+                });
+            }
+            if (depth >= maxDepth) {
+                continue;
+            }
+            if (direction === 'outgoing' || direction === 'both') {
+                const outgoingDeps = await this.dependencyRepository.find({
+                    where: {
+                        sourceAssetType: currentType,
+                        sourceAssetId: currentId,
+                    },
+                });
+                for (const dep of outgoingDeps) {
+                    const nextKey = `${dep.targetAssetType}:${dep.targetAssetId}`;
+                    if (!visited.has(nextKey)) {
+                        queue.push([
+                            dep.targetAssetType,
+                            dep.targetAssetId,
+                            depth + 1,
+                            [...path, { assetType: currentType, assetId: currentId }],
+                        ]);
+                    }
+                }
+            }
+            if (direction === 'incoming' || direction === 'both') {
+                const incomingDeps = await this.dependencyRepository.find({
+                    where: {
+                        targetAssetType: currentType,
+                        targetAssetId: currentId,
+                    },
+                });
+                for (const dep of incomingDeps) {
+                    const nextKey = `${dep.sourceAssetType}:${dep.sourceAssetId}`;
+                    if (!visited.has(nextKey)) {
+                        queue.push([
+                            dep.sourceAssetType,
+                            dep.sourceAssetId,
+                            depth + 1,
+                            [...path, { assetType: currentType, assetId: currentId }],
+                        ]);
+                    }
+                }
+            }
+        }
+        return {
+            chain,
+            totalCount: chain.length,
+            maxDepthReached,
+        };
+    }
     toResponseDto(dependency, sourceInfo, targetInfo) {
         return {
             id: dependency.id,

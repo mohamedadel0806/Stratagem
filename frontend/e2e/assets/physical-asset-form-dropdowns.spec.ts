@@ -383,3 +383,4 @@ test.describe('Physical Asset Form - Dropdown Fields', () => {
     await authenticatedPage.keyboard.press('Escape');
   });
 });
+

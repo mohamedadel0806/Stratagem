@@ -25,9 +25,16 @@ export declare class DashboardService {
     getOverview(): Promise<DashboardOverviewDto>;
     getAssetStats(): Promise<AssetStatsDto>;
     private getAssetCountByType;
+    getSupplierCriticality(): Promise<{
+        critical: number;
+        high: number;
+        medium: number;
+        low: number;
+    }>;
     private getAssetCountByCriticality;
     private getAssetsWithoutOwner;
     private getRecentAssetChanges;
     private getAssetsByComplianceScope;
     private getAssetsWithOutdatedSecurityTests;
+    private getAssetCountByConnectivityStatus;
 }

@@ -18,6 +18,62 @@ export interface SecurityTestResults {
   severity: string;
 }
 
+export interface SecurityTestResult {
+  id: string;
+  assetType: 'application' | 'software';
+  assetId: string;
+  testType: string;
+  testDate: string;
+  status: string;
+  testerName?: string;
+  testerCompany?: string;
+  findingsCritical: number;
+  findingsHigh: number;
+  findingsMedium: number;
+  findingsLow: number;
+  findingsInfo: number;
+  severity?: string;
+  overallScore?: number;
+  passed: boolean;
+  summary?: string;
+  findings?: string;
+  recommendations?: string;
+  reportFileId?: string;
+  reportUrl?: string;
+  remediationDueDate?: string;
+  remediationCompleted: boolean;
+  retestRequired: boolean;
+  retestDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSecurityTestResultDto {
+  assetType: 'application' | 'software';
+  assetId: string;
+  testType: string;
+  testDate: string;
+  status?: string;
+  testerName?: string;
+  testerCompany?: string;
+  findingsCritical?: number;
+  findingsHigh?: number;
+  findingsMedium?: number;
+  findingsLow?: number;
+  findingsInfo?: number;
+  severity?: string;
+  overallScore?: number;
+  passed?: boolean;
+  summary?: string;
+  findings?: string;
+  recommendations?: string;
+  reportFileId?: string;
+  reportUrl?: string;
+  remediationDueDate?: string;
+  retestRequired?: boolean;
+  retestDate?: string;
+}
+
 export interface AssetType {
   id: string;
   category: 'physical' | 'information' | 'application' | 'software' | 'supplier';
@@ -112,6 +168,9 @@ export interface ImportPreview {
     errors?: string[];
   }>;
   totalRows: number;
+  // Optional list of sheet names and selected sheet for Excel previews
+  sheets?: string[];
+  selectedSheet?: string;
 }
 
 export interface ImportResult {
@@ -353,10 +412,14 @@ export const assetsApi = {
     assetType: 'physical' | 'information' | 'software' | 'application' | 'supplier',
     file: File,
     fileType: 'csv' | 'excel',
+    sheetName?: string,
   ): Promise<ImportPreview> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('fileType', fileType);
+    if (sheetName) {
+      formData.append('sheetName', sheetName);
+    }
 
     const endpointMap = {
       physical: '/assets/physical/import/preview',
@@ -428,9 +491,9 @@ export const assetsApi = {
   getInformationAssets: async (params?: {
     search?: string;
     dataClassification?: string;
-    criticalityLevel?: string;
     businessUnit?: string;
     ownerId?: string;
+    complianceRequirement?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -459,6 +522,17 @@ export const assetsApi = {
 
   getInformationAsset: async (id: string): Promise<any> => {
     const response = await apiClient.get(`/assets/information/${id}`);
+    return response.data;
+  },
+
+  getAssetsMissingCompliance: async (): Promise<{ data: any[]; total: number }> => {
+    const response = await apiClient.get('/assets/information/compliance/missing');
+    return response.data;
+  },
+
+  getComplianceReport: async (complianceRequirement?: string): Promise<{ data: any[]; total: number; complianceRequirement?: string }> => {
+    const params = complianceRequirement ? { complianceRequirement } : undefined;
+    const response = await apiClient.get('/assets/information/compliance/report', { params });
     return response.data;
   },
 
@@ -513,8 +587,6 @@ export const assetsApi = {
     if (data.complianceRequirements && Array.isArray(data.complianceRequirements)) {
       backendData.complianceRequirements = data.complianceRequirements;
     }
-
-    console.log('[assetsApi] Creating information asset with data:', JSON.stringify(backendData, null, 2));
 
     const response = await apiClient.post('/assets/information', backendData);
     return response.data;
@@ -580,6 +652,9 @@ export const assetsApi = {
     criticalityLevel?: string;
     businessUnit?: string;
     ownerId?: string;
+    missingVersion?: boolean;
+    missingPatch?: boolean;
+    securityTestStatus?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -679,8 +754,6 @@ export const assetsApi = {
       backendData.complianceRequirements = data.complianceRequirements;
     }
     if (data.criticalityLevel) backendData.criticalityLevel = data.criticalityLevel;
-
-    console.log('[assetsApi] Creating business application with data:', JSON.stringify(backendData, null, 2));
 
     const response = await apiClient.post('/assets/applications', backendData);
     return response.data;
@@ -797,6 +870,12 @@ export const assetsApi = {
     return response.data;
   },
 
+  getSoftwareInventoryReport: async (groupBy?: 'type' | 'vendor' | 'none'): Promise<any> => {
+    const params = groupBy ? { groupBy } : undefined;
+    const response = await apiClient.get('/assets/software/inventory/report', { params });
+    return response.data;
+  },
+
   createSoftwareAsset: async (data: any): Promise<any> => {
     // Helper function to check if a string is a valid UUID
     const isValidUUID = (str: string): boolean => {
@@ -855,8 +934,6 @@ export const assetsApi = {
     if (data.complianceRequirements && Array.isArray(data.complianceRequirements)) {
       backendData.complianceRequirements = data.complianceRequirements;
     }
-
-    console.log('[assetsApi] Creating software asset with data:', JSON.stringify(backendData, null, 2));
 
     const response = await apiClient.post('/assets/software', backendData);
     return response.data;
@@ -971,6 +1048,17 @@ export const assetsApi = {
     return response.data;
   },
 
+  getExpiringContracts: async (days?: number): Promise<{ data: any[]; total: number; days: number }> => {
+    const params = days ? { days: days.toString() } : undefined;
+    const response = await apiClient.get('/assets/suppliers/contracts/expiring', { params });
+    return response.data;
+  },
+
+  getCriticalSuppliersReport: async (): Promise<{ data: any[]; total: number }> => {
+    const response = await apiClient.get('/assets/suppliers/critical/report');
+    return response.data;
+  },
+
   createSupplier: async (data: any): Promise<any> => {
     // Helper function to check if a string is a valid UUID
     const isValidUUID = (str: string): boolean => {
@@ -1056,8 +1144,6 @@ export const assetsApi = {
     if (data.backgroundCheckDate) backendData.backgroundCheckDate = data.backgroundCheckDate;
     if (data.performanceRating !== undefined) backendData.performanceRating = data.performanceRating;
     if (data.lastReviewDate) backendData.lastReviewDate = data.lastReviewDate;
-
-    console.log('[assetsApi] Creating supplier with data:', JSON.stringify(backendData, null, 2));
 
     const response = await apiClient.post('/assets/suppliers', backendData);
     return response.data;
@@ -1338,6 +1424,25 @@ export const assetsApi = {
     return response.data;
   },
 
+  getDependencyChain: async (
+    assetType: 'physical' | 'information' | 'application' | 'software' | 'supplier',
+    assetId: string,
+  ): Promise<{
+    chain: Array<{
+      assetType: string;
+      assetId: string;
+      assetName: string;
+      assetIdentifier: string;
+      depth: number;
+      path: Array<{ assetType: string; assetId: string }>;
+    }>;
+    totalCount: number;
+    maxDepthReached: number;
+  }> => {
+    const response = await apiClient.get(`/assets/${assetType}/${assetId}/dependencies/chain`);
+    return response.data;
+  },
+
   // Asset Audit Trail
   getAssetAuditTrail: async (
     assetType: 'physical' | 'information' | 'application' | 'software' | 'supplier',
@@ -1498,12 +1603,17 @@ export const assetsApi = {
       complianceTags?: string[];
       businessUnit?: string;
       department?: string;
+      versionNumber?: string;
+      patchLevel?: string;
+      rollbackOnError?: boolean;
     },
-  ): Promise<{ successful: number; failed: number; errors: Array<{ assetId: string; error: string }> }> => {
-    const response = await apiClient.post<{ successful: number; failed: number; errors: Array<{ assetId: string; error: string }> }>(
-      `/assets/bulk/${assetType}/update`,
-      data,
-    );
+  ): Promise<{ successful: number; failed: number; errors: Array<{ assetId: string; error: string }>; rolledBack?: boolean }> => {
+    const response = await apiClient.post<{
+      successful: number;
+      failed: number;
+      errors: Array<{ assetId: string; error: string }>;
+      rolledBack?: boolean;
+    }>(`/assets/bulk/${assetType}/update`, data);
     return response.data;
   },
 
@@ -1527,6 +1637,213 @@ export const assetsApi = {
 
   getAssetType: async (id: string): Promise<AssetType> => {
     const response = await apiClient.get<AssetType>(`/assets/types/${id}`);
+    return response.data;
+  },
+
+  // Security Test Results
+  getSecurityTestResults: async (
+    assetType: 'application' | 'software',
+    assetId: string,
+  ): Promise<SecurityTestResult[]> => {
+    const response = await apiClient.get<SecurityTestResult[]>(`/assets/security-tests/asset/${assetType}/${assetId}`);
+    return response.data;
+  },
+
+  getSecurityTestResult: async (id: string): Promise<SecurityTestResult> => {
+    const response = await apiClient.get<SecurityTestResult>(`/assets/security-tests/${id}`);
+    return response.data;
+  },
+
+  createSecurityTestResult: async (data: CreateSecurityTestResultDto): Promise<SecurityTestResult> => {
+    const response = await apiClient.post<SecurityTestResult>('/assets/security-tests', data);
+    return response.data;
+  },
+
+  uploadSecurityTestReport: async (
+    file: File,
+    data: {
+      assetType: 'application' | 'software';
+      assetId: string;
+      testType: string;
+      testDate: string;
+      [key: string]: any;
+    },
+  ): Promise<SecurityTestResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    Object.keys(data).forEach((key) => {
+      formData.append(key, data[key]);
+    });
+
+    const response = await apiClient.post<SecurityTestResult>('/assets/security-tests/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  getFailedSecurityTests: async (days?: number): Promise<SecurityTestResult[]> => {
+    const params = days ? { days: days.toString() } : undefined;
+    const response = await apiClient.get<SecurityTestResult[]>('/assets/security-tests/reports/failed', { params });
+    return response.data;
+  },
+
+  getOverdueSecurityTests: async (): Promise<SecurityTestResult[]> => {
+    const response = await apiClient.get<SecurityTestResult[]>('/assets/security-tests/reports/overdue');
+    return response.data;
+  },
+
+  // Report Templates
+  getReportTemplates: async (): Promise<any[]> => {
+    const response = await apiClient.get('/assets/report-templates');
+    return response.data;
+  },
+
+  getReportTemplate: async (id: string): Promise<any> => {
+    const response = await apiClient.get(`/assets/report-templates/${id}`);
+    return response.data;
+  },
+
+  createReportTemplate: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/assets/report-templates', data);
+    return response.data;
+  },
+
+  updateReportTemplate: async (id: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/assets/report-templates/${id}`, data);
+    return response.data;
+  },
+
+  deleteReportTemplate: async (id: string): Promise<void> => {
+    await apiClient.delete(`/assets/report-templates/${id}`);
+  },
+
+  previewReport: async (templateId: string): Promise<{ data: any[]; count: number }> => {
+    const response = await apiClient.get(`/assets/report-templates/${templateId}/preview`);
+    return response.data;
+  },
+
+  generateReport: async (templateId: string): Promise<void> => {
+    const response = await apiClient.post(
+      `/assets/report-templates/${templateId}/generate`,
+      {},
+      {
+        responseType: 'blob',
+      }
+    );
+
+    // Get filename from Content-Disposition header
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `report-${templateId}.xlsx`;
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  sendScheduledReport: async (templateId: string): Promise<void> => {
+    await apiClient.post(`/assets/report-templates/${templateId}/send`);
+  },
+
+  getTemplateVersions: async (templateId: string): Promise<any[]> => {
+    const response = await apiClient.get(`/assets/report-templates/${templateId}/versions`);
+    return response.data;
+  },
+
+  restoreTemplateVersion: async (templateId: string, versionId: string): Promise<any> => {
+    const response = await apiClient.post(`/assets/report-templates/${templateId}/versions/${versionId}/restore`);
+    return response.data;
+  },
+
+  updateTemplateSharing: async (
+    templateId: string,
+    sharing: {
+      isShared?: boolean;
+      sharedWithUserIds?: string[];
+      sharedWithTeamIds?: string[];
+      isOrganizationWide?: boolean;
+    },
+  ): Promise<any> => {
+    const response = await apiClient.put(`/assets/report-templates/${templateId}/sharing`, sharing);
+    return response.data;
+  },
+
+  // Email Distribution Lists
+  getEmailDistributionLists: async (): Promise<any[]> => {
+    const response = await apiClient.get('/assets/email-distribution-lists');
+    return response.data;
+  },
+
+  getEmailDistributionList: async (id: string): Promise<any> => {
+    const response = await apiClient.get(`/assets/email-distribution-lists/${id}`);
+    return response.data;
+  },
+
+  createEmailDistributionList: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/assets/email-distribution-lists', data);
+    return response.data;
+  },
+
+  updateEmailDistributionList: async (id: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/assets/email-distribution-lists/${id}`, data);
+    return response.data;
+  },
+
+  deleteEmailDistributionList: async (id: string): Promise<void> => {
+    await apiClient.delete(`/assets/email-distribution-lists/${id}`);
+  },
+
+  // Validation Rules
+  getValidationRules: async (assetType?: string): Promise<any[]> => {
+    const params = assetType ? { assetType } : {};
+    const response = await apiClient.get('/assets/validation-rules', { params });
+    return response.data;
+  },
+
+  getValidationRule: async (id: string): Promise<any> => {
+    const response = await apiClient.get(`/assets/validation-rules/${id}`);
+    return response.data;
+  },
+
+  createValidationRule: async (data: any): Promise<any> => {
+    const response = await apiClient.post('/assets/validation-rules', data);
+    return response.data;
+  },
+
+  updateValidationRule: async (id: string, data: any): Promise<any> => {
+    const response = await apiClient.put(`/assets/validation-rules/${id}`, data);
+    return response.data;
+  },
+
+  deleteValidationRule: async (id: string): Promise<void> => {
+    await apiClient.delete(`/assets/validation-rules/${id}`);
+  },
+
+  validateAsset: async (asset: any, assetType: string): Promise<any> => {
+    const response = await apiClient.post('/assets/validation-rules/validate', {
+      asset,
+      assetType,
+    });
+    return response.data;
+  },
+
+  testValidationRule: async (ruleId: string, testValue: any): Promise<any> => {
+    const response = await apiClient.post(`/assets/validation-rules/${ruleId}/test`, {
+      testValue,
+    });
     return response.data;
   },
 };

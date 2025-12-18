@@ -1,25 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { validationRulesApi, complianceApi, ValidationRule, AssetType } from '@/lib/api/compliance';
+import { useMutation } from '@tanstack/react-query';
+import { assetsApi } from '@/lib/api/assets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -29,181 +20,85 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-const operatorOptions = [
-  { value: 'equals', label: 'Equals' },
-  { value: 'not_equals', label: 'Not Equals' },
-  { value: 'contains', label: 'Contains' },
-  { value: 'greater_than', label: 'Greater Than' },
-  { value: 'less_than', label: 'Less Than' },
-  { value: 'in', label: 'In (Array)' },
-  { value: 'not_in', label: 'Not In (Array)' },
-  { value: 'exists', label: 'Exists' },
-  { value: 'not_exists', label: 'Not Exists' },
-];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useState } from 'react';
+import { TestTube } from 'lucide-react';
 
 const validationRuleSchema = z.object({
-  requirementId: z.string().min(1, 'Requirement is required'),
-  assetType: z.enum(['physical', 'information', 'application', 'software', 'supplier']),
-  ruleName: z.string().min(1, 'Rule name is required'),
-  ruleDescription: z.string().optional(),
-  priority: z.number().int().min(0).default(0),
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  assetType: z.enum(['physical', 'information', 'application', 'software', 'supplier', 'all']),
+  fieldName: z.string().min(1, 'Field name is required'),
+  validationType: z.enum([
+    'required',
+    'regex',
+    'min_length',
+    'max_length',
+    'min_value',
+    'max_value',
+    'email',
+    'url',
+    'date',
+    'custom',
+  ]),
+  regexPattern: z.string().optional(),
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+  minValue: z.number().optional(),
+  maxValue: z.number().optional(),
+  customValidationScript: z.string().optional(),
+  errorMessage: z.string().optional(),
+  severity: z.enum(['error', 'warning']).default('error'),
+  dependencies: z
+    .array(
+      z.object({
+        field: z.string(),
+        condition: z.string(),
+        value: z.any(),
+      }),
+    )
+    .optional(),
   isActive: z.boolean().default(true),
-  validationLogic: z.object({
-    conditions: z.array(
-      z.object({
-        field: z.string().min(1, 'Field is required'),
-        operator: z.string(),
-        value: z.any(),
-      }),
-    ),
-    complianceCriteria: z.array(
-      z.object({
-        field: z.string().min(1, 'Field is required'),
-        operator: z.string(),
-        value: z.any(),
-      }),
-    ).min(1, 'At least one compliance criterion is required'),
-    nonComplianceCriteria: z
-      .array(
-        z.object({
-          field: z.string().min(1, 'Field is required'),
-          operator: z.string(),
-          value: z.any(),
-        }),
-      )
-      .optional(),
-    partialComplianceCriteria: z
-      .array(
-        z.object({
-          field: z.string().min(1, 'Field is required'),
-          operator: z.string(),
-          value: z.any(),
-        }),
-      )
-      .optional(),
-  }),
+  applyToImport: z.boolean().default(false),
 });
 
-type ValidationRuleFormData = z.infer<typeof validationRuleSchema>;
+type ValidationRuleFormValues = z.infer<typeof validationRuleSchema>;
 
 interface ValidationRuleFormProps {
-  rule?: ValidationRule;
+  rule?: any;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 export function ValidationRuleForm({ rule, onSuccess, onCancel }: ValidationRuleFormProps) {
   const { toast } = useToast();
-  const isEditing = !!rule;
+  const [testValue, setTestValue] = useState('');
+  const [testResult, setTestResult] = useState<any>(null);
 
-  // Fetch requirements - ensure we get the requirement that's already selected when editing
-  const { data: requirementsData, isLoading: isLoadingRequirements } = useQuery({
-    queryKey: ['compliance-requirements', isEditing && rule?.requirementId ? rule.requirementId : 'all'],
-    queryFn: () => {
-      if (isEditing && rule?.requirementId) {
-        // When editing, first try to get the specific requirement
-        return complianceApi.getRequirement(rule.requirementId)
-          .then(specificReq => {
-            // Then get a smaller list of other requirements
-            return complianceApi.getRequirements({ limit: 100 })
-              .then(allReqs => {
-                // Combine the specific requirement with the list
-                const allIds = new Set(allReqs.data.map(r => r.id));
-                if (!allIds.has(specificReq.id)) {
-                  return {
-                    ...allReqs,
-                    data: [specificReq, ...allReqs.data]
-                  };
-                }
-                return allReqs;
-              });
-          })
-          .catch(error => {
-            console.error('Failed to fetch specific requirement, falling back to list:', error);
-            // Fallback to regular list if specific fetch fails
-            return complianceApi.getRequirements({ limit: 200 });
-          });
-      }
-      return complianceApi.getRequirements({ limit: 500 });
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    enabled: !!(rule && isEditing) || !isEditing, // Only enable query when form is properly initialized
-  });
-
-  const form = useForm<ValidationRuleFormData>({
+  const form = useForm<ValidationRuleFormValues>({
     resolver: zodResolver(validationRuleSchema),
-    defaultValues: {
-      requirementId: rule?.requirementId || '',
-      assetType: rule?.assetType || 'physical',
-      ruleName: rule?.ruleName || '',
-      ruleDescription: rule?.ruleDescription || '',
-      priority: rule?.priority || 0,
-      isActive: rule?.isActive ?? true,
-      validationLogic: rule?.validationLogic || {
-        conditions: [],
-        complianceCriteria: [{ field: '', operator: 'equals', value: '' }],
-        nonComplianceCriteria: [],
-        partialComplianceCriteria: [],
-      },
+    defaultValues: rule || {
+      name: '',
+      description: '',
+      assetType: 'physical',
+      fieldName: '',
+      validationType: 'required',
+      severity: 'error',
+      isActive: true,
+      applyToImport: false,
     },
   });
 
-  // Update form values when rule prop changes (for editing)
-  useEffect(() => {
-    if (rule && isEditing) {
-      form.reset({
-        requirementId: rule.requirementId,
-        assetType: rule.assetType,
-        ruleName: rule.ruleName,
-        ruleDescription: rule.ruleDescription || '',
-        priority: rule.priority,
-        isActive: rule.isActive,
-        validationLogic: rule.validationLogic,
-      });
-    }
-  }, [rule, isEditing, form]);
-
-  const conditionsArray = useFieldArray({
-    control: form.control,
-    name: 'validationLogic.conditions',
-  });
-
-  const complianceCriteriaArray = useFieldArray({
-    control: form.control,
-    name: 'validationLogic.complianceCriteria',
-  });
-
-  const nonComplianceCriteriaArray = useFieldArray({
-    control: form.control,
-    name: 'validationLogic.nonComplianceCriteria',
-  });
-
-  const partialComplianceCriteriaArray = useFieldArray({
-    control: form.control,
-    name: 'validationLogic.partialComplianceCriteria',
-  });
+  const validationType = form.watch('validationType');
 
   const createMutation = useMutation({
-    mutationFn: (data: ValidationRuleFormData) => {
-      // Ensure required fields are present for creation
-      const createData = {
-        requirementId: data.requirementId,
-        assetType: data.assetType,
-        ruleName: data.ruleName,
-        ruleDescription: data.ruleDescription,
-        validationLogic: {
-          conditions: (data.validationLogic.conditions || []).filter(c => c.field && c.operator) as any[],
-          complianceCriteria: (data.validationLogic.complianceCriteria || []).filter(c => c.field && c.operator) as any[],
-          nonComplianceCriteria: (data.validationLogic.nonComplianceCriteria || []).filter(c => c.field && c.operator) as any[],
-          partialComplianceCriteria: (data.validationLogic.partialComplianceCriteria || []).filter(c => c.field && c.operator) as any[],
-        },
-        priority: data.priority,
-        isActive: data.isActive,
-      };
-      return validationRulesApi.create(createData);
-    },
+    mutationFn: (data: ValidationRuleFormValues) => assetsApi.createValidationRule(data),
     onSuccess: () => {
       toast({
         title: 'Success',
@@ -214,24 +109,15 @@ export function ValidationRuleForm({ rule, onSuccess, onCancel }: ValidationRule
     onError: (error: any) => {
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to create validation rule',
+        description: error.response?.data?.message || 'Failed to create rule',
         variant: 'destructive',
       });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<ValidationRuleFormData>) => {
-      // Ensure we don't send undefined fields and properly type the validationLogic
-      const updateData: any = {};
-      if (data.ruleName !== undefined) updateData.ruleName = data.ruleName;
-      if (data.ruleDescription !== undefined) updateData.ruleDescription = data.ruleDescription;
-      if (data.validationLogic !== undefined) updateData.validationLogic = data.validationLogic;
-      if (data.priority !== undefined) updateData.priority = data.priority;
-      if (data.isActive !== undefined) updateData.isActive = data.isActive;
-      
-      return validationRulesApi.update(rule!.id, updateData);
-    },
+    mutationFn: (data: ValidationRuleFormValues) =>
+      assetsApi.updateValidationRule(rule.id, data),
     onSuccess: () => {
       toast({
         title: 'Success',
@@ -242,205 +128,85 @@ export function ValidationRuleForm({ rule, onSuccess, onCancel }: ValidationRule
     onError: (error: any) => {
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to update validation rule',
+        description: error.response?.data?.message || 'Failed to update rule',
         variant: 'destructive',
       });
     },
   });
 
-  const onSubmit = (data: ValidationRuleFormData) => {
-    if (isEditing) {
-      // For editing, don't send requirementId as it can't be changed
-      const { requirementId, ...updateData } = data;
-      updateMutation.mutate(updateData);
+  const testMutation = useMutation({
+    mutationFn: ({ ruleId, testValue }: { ruleId: string; testValue: any }) =>
+      assetsApi.testValidationRule(ruleId, testValue),
+    onSuccess: (result) => {
+      setTestResult(result);
+      toast({
+        title: result.isValid ? 'Validation Passed' : 'Validation Failed',
+        description: result.message,
+        variant: result.isValid ? 'default' : 'destructive',
+      });
+    },
+  });
+
+  const onSubmit = (data: ValidationRuleFormValues) => {
+    if (rule) {
+      updateMutation.mutate(data);
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const addCriterion = (
-    type: 'compliance' | 'nonCompliance' | 'partial',
-  ) => {
-    // Create criterion with required fields to match API expectations
-    const newCriterion = { field: '', operator: 'equals', value: '' };
-    if (type === 'compliance') {
-      complianceCriteriaArray.append(newCriterion);
-    } else if (type === 'nonCompliance') {
-      nonComplianceCriteriaArray.append(newCriterion);
-    } else {
-      partialComplianceCriteriaArray.append(newCriterion);
+  const handleTest = () => {
+    if (!rule?.id) {
+      toast({
+        title: 'Error',
+        description: 'Please save the rule first before testing',
+        variant: 'destructive',
+      });
+      return;
     }
-  };
 
-  const renderCriterionField = (
-    index: number,
-    fieldName: 'complianceCriteria' | 'nonComplianceCriteria' | 'partialComplianceCriteria',
-  ) => {
-    const array =
-      fieldName === 'complianceCriteria'
-        ? complianceCriteriaArray
-        : fieldName === 'nonComplianceCriteria'
-          ? nonComplianceCriteriaArray
-          : partialComplianceCriteriaArray;
-
-    return (
-      <Card key={`${fieldName}-${index}`}>
-        <CardContent className="pt-4">
-          <div className="grid grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name={`validationLogic.${fieldName}.${index}.field`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Field</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., criticalityLevel" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={`validationLogic.${fieldName}.${index}.operator`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Operator</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select operator" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {operatorOptions.map((op) => (
-                        <SelectItem key={op.value} value={op.value}>
-                          {op.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={`validationLogic.${fieldName}.${index}.value`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Value</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Value or JSON array"
-                      {...field}
-                      value={typeof field.value === 'object' ? JSON.stringify(field.value) : field.value || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        try {
-                          field.onChange(JSON.parse(val));
-                        } catch {
-                          field.onChange(val);
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="mt-2"
-            onClick={() => array.remove(index)}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Remove
-          </Button>
-        </CardContent>
-      </Card>
-    );
+    testMutation.mutate({ ruleId: rule.id, testValue });
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Rule Name</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="IP Address Format Validation" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea {...field} placeholder="Description of this validation rule" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="requirementId"
-            render={({ field }) => {
-              const hasRequirements = requirementsData?.data && requirementsData.data.length > 0;
-              // Only set value if requirements are loaded and value exists in the list
-              const selectValue = hasRequirements && field.value && requirementsData.data.some(r => r.id === field.value)
-                ? field.value
-                : '';
-              
-              // Find current requirement for display when editing
-              const currentRequirement = isEditing && rule?.requirementId && requirementsData?.data
-                ? requirementsData.data.find(r => r.id === rule.requirementId)
-                : null;
-              
-              return (
-                <FormItem>
-                  <FormLabel>Requirement</FormLabel>
-                  {isLoadingRequirements ? (
-                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
-                      Loading requirements...
-                    </div>
-                  ) : !hasRequirements ? (
-                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
-                      No requirements available
-                    </div>
-                  ) : isEditing && currentRequirement ? (
-                    <div className="space-y-2">
-                      <div className="p-2 bg-muted rounded-md">
-                        <div className="font-medium">{currentRequirement.title}</div>
-                        {currentRequirement.requirementCode && (
-                          <div className="text-sm text-muted-foreground">
-                            Code: {currentRequirement.requirementCode}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Requirement cannot be changed when editing
-                      </div>
-                    </div>
-                  ) : (
-                    <Select
-                      onValueChange={field.onChange}
-                      value={selectValue}
-                      disabled={isEditing}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select requirement" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {requirementsData.data.map((req) => (
-                          <SelectItem key={req.id} value={req.id}>
-                            {req.requirementCode || req.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
           <FormField
             control={form.control}
             name="assetType"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Asset Type</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={isEditing}>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue />
@@ -452,8 +218,23 @@ export function ValidationRuleForm({ rule, onSuccess, onCancel }: ValidationRule
                     <SelectItem value="application">Application</SelectItem>
                     <SelectItem value="software">Software</SelectItem>
                     <SelectItem value="supplier">Supplier</SelectItem>
+                    <SelectItem value="all">All Types</SelectItem>
                   </SelectContent>
                 </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="fieldName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Field Name</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="ipAddress" />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -462,27 +243,166 @@ export function ValidationRuleForm({ rule, onSuccess, onCancel }: ValidationRule
 
         <FormField
           control={form.control}
-          name="ruleName"
+          name="validationType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Rule Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Criticality Level Required" {...field} />
-              </FormControl>
+              <FormLabel>Validation Type</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="required">Required</SelectItem>
+                  <SelectItem value="regex">Regex Pattern</SelectItem>
+                  <SelectItem value="min_length">Minimum Length</SelectItem>
+                  <SelectItem value="max_length">Maximum Length</SelectItem>
+                  <SelectItem value="min_value">Minimum Value</SelectItem>
+                  <SelectItem value="max_value">Maximum Value</SelectItem>
+                  <SelectItem value="email">Email Format</SelectItem>
+                  <SelectItem value="url">URL Format</SelectItem>
+                  <SelectItem value="date">Date Format</SelectItem>
+                  <SelectItem value="custom">Custom Script</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
 
+        {validationType === 'regex' && (
+          <FormField
+            control={form.control}
+            name="regexPattern"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Regex Pattern</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$" />
+                </FormControl>
+                <FormDescription>Enter a valid regular expression pattern</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {validationType === 'min_length' && (
+          <FormField
+            control={form.control}
+            name="minLength"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Minimum Length</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {validationType === 'max_length' && (
+          <FormField
+            control={form.control}
+            name="maxLength"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Maximum Length</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {validationType === 'min_value' && (
+          <FormField
+            control={form.control}
+            name="minValue"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Minimum Value</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {validationType === 'max_value' && (
+          <FormField
+            control={form.control}
+            name="maxValue"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Maximum Value</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {validationType === 'custom' && (
+          <FormField
+            control={form.control}
+            name="customValidationScript"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Custom Validation Script</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="return value && value.length > 0;"
+                    className="font-mono text-sm"
+                  />
+                </FormControl>
+                <FormDescription>
+                  JavaScript function that returns true if valid, false otherwise. Use 'value' as the variable name.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         <FormField
           control={form.control}
-          name="ruleDescription"
+          name="errorMessage"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>Custom Error Message</FormLabel>
               <FormControl>
-                <Textarea placeholder="Describe what this rule validates..." {...field} />
+                <Input {...field} placeholder="Custom error message (optional)" />
               </FormControl>
+              <FormDescription>
+                Leave empty to use default error message
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -491,22 +411,26 @@ export function ValidationRuleForm({ rule, onSuccess, onCancel }: ValidationRule
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="priority"
+            name="severity"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Priority</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                  />
-                </FormControl>
-                <FormDescription>Higher priority rules are evaluated first</FormDescription>
+                <FormLabel>Severity</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="error">Error</SelectItem>
+                    <SelectItem value="warning">Warning</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="isActive"
@@ -517,195 +441,72 @@ export function ValidationRuleForm({ rule, onSuccess, onCancel }: ValidationRule
                 </FormControl>
                 <div className="space-y-1 leading-none">
                   <FormLabel>Active</FormLabel>
-                  <FormDescription>Enable or disable this validation rule</FormDescription>
                 </div>
               </FormItem>
             )}
           />
         </div>
 
-        {/* Conditions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Conditions</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Conditions that must be met for this rule to apply
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {conditionsArray.fields.map((field, index) => (
-              <Card key={field.id}>
-                <CardContent className="pt-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name={`validationLogic.conditions.${index}.field`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Field</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., criticalityLevel" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`validationLogic.conditions.${index}.operator`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Operator</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select operator" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {operatorOptions.map((op) => (
-                                <SelectItem key={op.value} value={op.value}>
-                                  {op.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`validationLogic.conditions.${index}.value`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Value</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Value or JSON array"
-                              {...field}
-                              value={typeof field.value === 'object' ? JSON.stringify(field.value) : field.value || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                try {
-                                  field.onChange(JSON.parse(val));
-                                } catch {
-                                  field.onChange(val);
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => conditionsArray.remove(index)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Remove
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => conditionsArray.append({ field: '', operator: 'equals', value: '' })}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Condition
-            </Button>
-          </CardContent>
-        </Card>
+        <FormField
+          control={form.control}
+          name="applyToImport"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+              <FormControl>
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Apply to Imports</FormLabel>
+                <FormDescription>
+                  Apply this validation rule during bulk asset imports
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
 
-        {/* Compliance Criteria */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Compliance Criteria</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Criteria that must be met for the asset to be compliant
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {complianceCriteriaArray.fields.map((field, index) =>
-              renderCriterionField(index, 'complianceCriteria'),
+        {rule?.id && (
+          <div className="border rounded-lg p-4 space-y-2">
+            <Label>Test Validation Rule</Label>
+            <div className="flex gap-2">
+              <Input
+                value={testValue}
+                onChange={(e) => setTestValue(e.target.value)}
+                placeholder="Enter test value"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleTest}
+                disabled={testMutation.isPending}
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                Test
+              </Button>
+            </div>
+            {testResult && (
+              <div
+                className={`text-sm p-2 rounded ${
+                  testResult.isValid
+                    ? 'bg-green-50 text-green-700'
+                    : 'bg-red-50 text-red-700'
+                }`}
+              >
+                {testResult.message}
+              </div>
             )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => addCriterion('compliance')}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Compliance Criterion
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Non-Compliance Criteria */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Non-Compliance Criteria (Optional)</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Criteria that indicate non-compliance
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {nonComplianceCriteriaArray.fields.map((field, index) =>
-              renderCriterionField(index, 'nonComplianceCriteria'),
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => addCriterion('nonCompliance')}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Non-Compliance Criterion
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Partial Compliance Criteria */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Partial Compliance Criteria (Optional)</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Criteria that indicate partial compliance
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {partialComplianceCriteriaArray.fields.map((field, index) =>
-              renderCriterionField(index, 'partialComplianceCriteria'),
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => addCriterion('partial')}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Partial Compliance Criterion
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-            {(createMutation.isPending || updateMutation.isPending) && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {isEditing ? 'Update Rule' : 'Create Rule'}
+            {rule ? 'Update' : 'Create'} Rule
           </Button>
         </div>
       </form>
     </Form>
   );
 }
-

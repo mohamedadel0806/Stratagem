@@ -46,6 +46,21 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], BulkUpdateDto.prototype, "department", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], BulkUpdateDto.prototype, "versionNumber", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], BulkUpdateDto.prototype, "patchLevel", void 0);
+__decorate([
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], BulkUpdateDto.prototype, "rollbackOnError", void 0);
 class BulkUpdateResponseDto {
 }
 exports.BulkUpdateResponseDto = BulkUpdateResponseDto;

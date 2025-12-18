@@ -1,23 +1,29 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { IntegrationConfig, IntegrationType, IntegrationStatus, AuthenticationType } from '../entities/integration-config.entity';
+import { IntegrationConfig, IntegrationType, IntegrationStatus, AuthenticationType, ConflictResolutionStrategy } from '../entities/integration-config.entity';
 import { IntegrationSyncLog, SyncStatus } from '../entities/integration-sync-log.entity';
 import { CreateIntegrationConfigDto } from '../dto/create-integration-config.dto';
 import { UpdateIntegrationConfigDto } from '../dto/update-integration-config.dto';
 import { PhysicalAssetService } from './physical-asset.service';
+import { NotificationService } from '../../common/services/notification.service';
+import { NotificationPriority, NotificationType } from '../../common/entities/notification.entity';
 
 // Note: For production, install @nestjs/axios and use HttpService
 // npm install @nestjs/axios axios
 
 @Injectable()
 export class IntegrationService {
+  private readonly logger = new Logger(IntegrationService.name);
+
   constructor(
     @InjectRepository(IntegrationConfig)
     private integrationConfigRepository: Repository<IntegrationConfig>,
     @InjectRepository(IntegrationSyncLog)
     private syncLogRepository: Repository<IntegrationSyncLog>,
     private physicalAssetService: PhysicalAssetService,
+    private notificationService: NotificationService,
   ) {}
 
   async createConfig(dto: CreateIntegrationConfigDto, userId: string): Promise<IntegrationConfig> {
@@ -129,20 +135,38 @@ export class IntegrationService {
 
           // Check for duplicates (by unique identifier)
           const existing = await this.findAssetByUniqueIdentifier(mappedData.uniqueIdentifier);
+          const conflictStrategy = config.conflictResolutionStrategy || ConflictResolutionStrategy.SKIP;
+
           if (existing) {
-            skippedRecords++;
-            continue;
+            if (conflictStrategy === ConflictResolutionStrategy.SKIP) {
+              skippedRecords++;
+              continue;
+            } else if (conflictStrategy === ConflictResolutionStrategy.OVERWRITE) {
+              // Update existing asset with new data
+              await this.physicalAssetService.update(existing.id, mappedData, config.createdById);
+              successfulSyncs++;
+              continue;
+            } else if (conflictStrategy === ConflictResolutionStrategy.MERGE) {
+              // Merge: prefer non-null values from new data, keep existing values where new data is null
+              const mergedData = this.mergeAssetData(existing, mappedData);
+              await this.physicalAssetService.update(existing.id, mergedData, config.createdById);
+              successfulSyncs++;
+              continue;
+            }
           }
 
           // Create asset based on integration type
-          if (config.integrationType === IntegrationType.CMDB || config.integrationType === IntegrationType.ASSET_MANAGEMENT_SYSTEM) {
+          if (
+            config.integrationType === IntegrationType.CMDB ||
+            config.integrationType === IntegrationType.ASSET_MANAGEMENT_SYSTEM
+          ) {
             // For now, we'll import as physical assets
             await this.physicalAssetService.create(mappedData, config.createdById);
             successfulSyncs++;
           }
         } catch (error: any) {
           failedSyncs++;
-          console.error(`Failed to sync record:`, error);
+          this.logger.error(`Failed to sync record for integration ${config.id}`, error?.stack || error?.message);
         }
       }
 
@@ -159,6 +183,8 @@ export class IntegrationService {
       config.lastSyncError = null;
       if (config.syncInterval) {
         config.nextSyncAt = this.calculateNextSync(config.syncInterval);
+      } else {
+        config.nextSyncAt = null;
       }
       await this.integrationConfigRepository.save(config);
 
@@ -169,9 +195,49 @@ export class IntegrationService {
       savedLog.completedAt = new Date();
 
       config.lastSyncError = error.message;
+      // Simple retry/backoff: if syncInterval is set, schedule nextSyncAt sooner (e.g., 15 minutes)
+      if (config.syncInterval) {
+        const backoffMinutes = 15;
+        const now = new Date();
+        config.nextSyncAt = new Date(now.getTime() + backoffMinutes * 60 * 1000);
+      }
       await this.integrationConfigRepository.save(config);
 
       await this.syncLogRepository.save(savedLog);
+
+      // Admin notifications for sync failures: create a high-priority GENERAL notification
+      // for the integration owner (createdById) so admins can see failures in the UI.
+      try {
+        await this.notificationService.create({
+          userId: config.createdById,
+          type: NotificationType.GENERAL,
+          priority: NotificationPriority.HIGH,
+          title: `Integration sync failed: ${config.name}`,
+          message: `The integration "${config.name}" (type: ${config.integrationType}) failed to sync: ${
+            error?.message || 'Unknown error'
+          }`,
+          entityType: 'integration',
+          entityId: config.id,
+          actionUrl: '/dashboard/integrations',
+          metadata: {
+            integrationId: config.id,
+            integrationName: config.name,
+            integrationType: config.integrationType,
+          },
+        });
+      } catch (notifyError: any) {
+        this.logger.error(
+          `Failed to create admin notification for integration ${config.id}: ${
+            notifyError?.message || 'Unknown error'
+          }`,
+          notifyError?.stack,
+        );
+      }
+
+      this.logger.error(
+        `Sync failed for integration ${config.id}: ${error?.message || 'Unknown error'}`,
+        error?.stack,
+      );
       throw error;
     }
   }
@@ -219,14 +285,41 @@ export class IntegrationService {
   }
 
   private async findAssetByUniqueIdentifier(identifier: string): Promise<any> {
-    // This would check across all asset types
-    // For now, just check physical assets
-    try {
-      // This is a simplified check - in production, you'd check all asset types
-      return null;
-    } catch {
+    if (!identifier) {
       return null;
     }
+
+    // TODO: Extend this to check other asset types as needed
+    try {
+      const existing = await this.physicalAssetService['assetRepository']?.findOne({
+        where: { uniqueIdentifier: identifier },
+      });
+      return existing || null;
+    } catch (error) {
+      this.logger.warn(
+        `Duplicate check failed for identifier "${identifier}": ${error?.message || 'Unknown error'}`,
+      );
+      return null;
+    }
+  }
+
+  private mergeAssetData(existing: any, newData: any): any {
+    const merged: any = {};
+    // Merge strategy: prefer new non-null values, keep existing values where new is null/undefined
+    for (const key in newData) {
+      if (newData[key] !== null && newData[key] !== undefined && newData[key] !== '') {
+        merged[key] = newData[key];
+      } else if (existing[key] !== null && existing[key] !== undefined) {
+        merged[key] = existing[key];
+      }
+    }
+    // Also include existing fields that aren't in newData
+    for (const key in existing) {
+      if (!(key in merged) && existing[key] !== null && existing[key] !== undefined) {
+        merged[key] = existing[key];
+      }
+    }
+    return merged;
   }
 
   private calculateNextSync(interval: string): Date {
@@ -253,6 +346,123 @@ export class IntegrationService {
     }
 
     return new Date(now.getTime() + milliseconds);
+  }
+
+  /**
+   * Handle webhook-based integrations where the external system pushes
+   * asset data to our API instead of us polling their REST API.
+   *
+   * This reuses the same mapping, duplicate prevention, and logging patterns
+   * as the regular sync method, but operates directly on the webhook payload.
+   */
+  async handleWebhookPayload(id: string, payload: any): Promise<IntegrationSyncLog> {
+    const config = await this.findOne(id);
+
+    if (config.integrationType !== IntegrationType.WEBHOOK && config.integrationType !== IntegrationType.ASSET_MANAGEMENT_SYSTEM) {
+      throw new BadRequestException('Integration is not configured for webhook-based sync');
+    }
+
+    // Create sync log entry for this webhook invocation
+    const syncLog = this.syncLogRepository.create({
+      integrationConfigId: config.id,
+      status: SyncStatus.RUNNING,
+      startedAt: new Date(),
+      syncDetails: { source: 'webhook' },
+    });
+    const savedLog = await this.syncLogRepository.save(syncLog);
+
+    try {
+      const externalData = Array.isArray(payload) ? payload : [payload];
+
+      let successfulSyncs = 0;
+      let failedSyncs = 0;
+      let skippedRecords = 0;
+
+      for (const record of externalData) {
+        try {
+          const mappedData = this.mapFields(record, config.fieldMapping || {});
+
+          const existing = await this.findAssetByUniqueIdentifier(mappedData.uniqueIdentifier);
+          const conflictStrategy = config.conflictResolutionStrategy || ConflictResolutionStrategy.SKIP;
+
+          if (existing) {
+            if (conflictStrategy === ConflictResolutionStrategy.SKIP) {
+              skippedRecords++;
+              continue;
+            } else if (conflictStrategy === ConflictResolutionStrategy.OVERWRITE) {
+              await this.physicalAssetService.update(existing.id, mappedData, config.createdById);
+              successfulSyncs++;
+              continue;
+            } else if (conflictStrategy === ConflictResolutionStrategy.MERGE) {
+              const mergedData = this.mergeAssetData(existing, mappedData);
+              await this.physicalAssetService.update(existing.id, mergedData, config.createdById);
+              successfulSyncs++;
+              continue;
+            }
+          }
+
+          await this.physicalAssetService.create(mappedData, config.createdById);
+          successfulSyncs++;
+        } catch (error: any) {
+          failedSyncs++;
+          this.logger.error(`Failed to process webhook record for integration ${config.id}`, error?.stack || error?.message);
+        }
+      }
+
+      savedLog.status = failedSyncs === 0 ? SyncStatus.COMPLETED : SyncStatus.PARTIAL;
+      savedLog.totalRecords = externalData.length;
+      savedLog.successfulSyncs = successfulSyncs;
+      savedLog.failedSyncs = failedSyncs;
+      savedLog.skippedRecords = skippedRecords;
+      savedLog.completedAt = new Date();
+
+      return this.syncLogRepository.save(savedLog);
+    } catch (error: any) {
+      savedLog.status = SyncStatus.FAILED;
+      savedLog.errorMessage = error.message;
+      savedLog.completedAt = new Date();
+      await this.syncLogRepository.save(savedLog);
+
+      this.logger.error(
+        `Webhook sync failed for integration ${config.id}: ${error?.message || 'Unknown error'}`,
+        error?.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Scheduled task that periodically scans for active integrations
+   * with nextSyncAt in the past and triggers sync for each.
+   *
+   * Uses a coarse cron (every 5 minutes) and relies on per-config
+   * nextSyncAt to control actual frequency.
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async runScheduledSyncs(): Promise<void> {
+    const now = new Date();
+    const dueConfigs = await this.integrationConfigRepository.find({
+      where: {
+        status: IntegrationStatus.ACTIVE,
+        nextSyncAt: { $lte: now } as any, // TypeORM-compatible operator depending on driver
+      } as any,
+    });
+
+    if (!dueConfigs.length) {
+      return;
+    }
+
+    for (const config of dueConfigs) {
+      try {
+        this.logger.log(`Running scheduled sync for integration ${config.id} (${config.name})`);
+        await this.sync(config.id);
+      } catch (error: any) {
+        this.logger.error(
+          `Scheduled sync failed for integration ${config.id}: ${error?.message || 'Unknown error'}`,
+          error?.stack,
+        );
+      }
+    }
   }
 }
 

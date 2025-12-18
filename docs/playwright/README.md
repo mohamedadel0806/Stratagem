@@ -44,3 +44,4 @@ The actual Playwright test files are located in:
 
 - See `frontend/e2e/assets/README-DROPDOWN-TESTS.md` for test-specific documentation
 - See `frontend/playwright.config.ts` for Playwright configuration
+

@@ -24,7 +24,8 @@ export declare enum EntityType {
     RISK = "risk",
     POLICY = "policy",
     COMPLIANCE_REQUIREMENT = "compliance_requirement",
-    TASK = "task"
+    TASK = "task",
+    SOP = "sop"
 }
 export declare class Workflow {
     id: string;

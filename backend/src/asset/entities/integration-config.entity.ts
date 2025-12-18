@@ -29,6 +29,12 @@ export enum AuthenticationType {
   OAUTH2 = 'oauth2',
 }
 
+export enum ConflictResolutionStrategy {
+  SKIP = 'skip', // Skip duplicate records (default)
+  OVERWRITE = 'overwrite', // Overwrite existing records with new data
+  MERGE = 'merge', // Merge new data with existing records (prefer non-null values)
+}
+
 @Entity('integration_configs')
 export class IntegrationConfig {
   @PrimaryGeneratedColumn('uuid')
@@ -93,6 +99,14 @@ export class IntegrationConfig {
   @JoinColumn({ name: 'created_by_id' })
   createdBy: User;
 
+  @Column({
+    type: 'enum',
+    enum: ConflictResolutionStrategy,
+    default: ConflictResolutionStrategy.SKIP,
+    nullable: true,
+  })
+  conflictResolutionStrategy: ConflictResolutionStrategy;
+
   @Column({ type: 'text', nullable: true })
   notes: string;
 
@@ -102,6 +116,7 @@ export class IntegrationConfig {
   @UpdateDateColumn()
   updatedAt: Date;
 }
+
 
 
 

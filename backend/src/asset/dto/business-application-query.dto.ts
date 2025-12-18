@@ -29,6 +29,21 @@ export class BusinessApplicationQueryDto {
   @IsUUID()
   ownerId?: string;
 
+  @ApiProperty({ required: false, description: 'Filter applications missing version number' })
+  @IsOptional()
+  @Type(() => Boolean)
+  missingVersion?: boolean;
+
+  @ApiProperty({ required: false, description: 'Filter applications missing patch level' })
+  @IsOptional()
+  @Type(() => Boolean)
+  missingPatch?: boolean;
+
+  @ApiProperty({ required: false, description: 'Filter by security test status: no-test, overdue, failed, passed' })
+  @IsOptional()
+  @IsString()
+  securityTestStatus?: string;
+
   @ApiProperty({ required: false, default: 1 })
   @IsOptional()
   @Type(() => Number)

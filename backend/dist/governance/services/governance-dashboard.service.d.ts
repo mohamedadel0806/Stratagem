@@ -16,7 +16,7 @@ export declare class GovernanceDashboardService {
     private evidenceRepository;
     private controlAssetMappingRepository;
     constructor(influencerRepository: Repository<Influencer>, policyRepository: Repository<Policy>, unifiedControlRepository: Repository<UnifiedControl>, assessmentRepository: Repository<Assessment>, findingRepository: Repository<Finding>, evidenceRepository: Repository<Evidence>, controlAssetMappingRepository: Repository<ControlAssetMapping>);
-    getDashboard(): Promise<GovernanceDashboardDto>;
+    getDashboard(startDate?: string, endDate?: string): Promise<GovernanceDashboardDto>;
     getSummaryMetrics(): Promise<GovernanceSummaryDto>;
     private getControlStats;
     private getPolicyStats;

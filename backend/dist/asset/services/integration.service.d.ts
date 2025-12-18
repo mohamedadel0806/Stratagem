@@ -4,11 +4,14 @@ import { IntegrationSyncLog } from '../entities/integration-sync-log.entity';
 import { CreateIntegrationConfigDto } from '../dto/create-integration-config.dto';
 import { UpdateIntegrationConfigDto } from '../dto/update-integration-config.dto';
 import { PhysicalAssetService } from './physical-asset.service';
+import { NotificationService } from '../../common/services/notification.service';
 export declare class IntegrationService {
     private integrationConfigRepository;
     private syncLogRepository;
     private physicalAssetService;
-    constructor(integrationConfigRepository: Repository<IntegrationConfig>, syncLogRepository: Repository<IntegrationSyncLog>, physicalAssetService: PhysicalAssetService);
+    private notificationService;
+    private readonly logger;
+    constructor(integrationConfigRepository: Repository<IntegrationConfig>, syncLogRepository: Repository<IntegrationSyncLog>, physicalAssetService: PhysicalAssetService, notificationService: NotificationService);
     createConfig(dto: CreateIntegrationConfigDto, userId: string): Promise<IntegrationConfig>;
     findAll(): Promise<IntegrationConfig[]>;
     findOne(id: string): Promise<IntegrationConfig>;
@@ -23,5 +26,8 @@ export declare class IntegrationService {
     private buildAuthHeaders;
     private mapFields;
     private findAssetByUniqueIdentifier;
+    private mergeAssetData;
     private calculateNextSync;
+    handleWebhookPayload(id: string, payload: any): Promise<IntegrationSyncLog>;
+    runScheduledSyncs(): Promise<void>;
 }

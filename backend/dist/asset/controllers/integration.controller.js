@@ -51,6 +51,9 @@ let IntegrationController = class IntegrationController {
     async sync(id) {
         return this.integrationService.sync(id);
     }
+    async handleWebhook(id, payload) {
+        return this.integrationService.handleWebhookPayload(id, payload);
+    }
     async getSyncHistory(id, limit) {
         return this.integrationService.getSyncHistory(id, limit || 20);
     }
@@ -148,6 +151,17 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], IntegrationController.prototype, "sync", null);
+__decorate([
+    (0, common_1.Post)(':id/webhook'),
+    (0, swagger_1.ApiOperation)({ summary: 'Receive webhook payload for integration (asset management system push)' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'Integration config ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Webhook payload processed' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], IntegrationController.prototype, "handleWebhook", null);
 __decorate([
     (0, common_1.Get)(':id/sync-history'),
     (0, swagger_1.ApiOperation)({ summary: 'Get synchronization history' }),

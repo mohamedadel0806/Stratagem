@@ -64,3 +64,4 @@ test.describe('Treatments Page', () => {
     expect(newCount).toBeGreaterThanOrEqual(initialCount);
   });
 });
+

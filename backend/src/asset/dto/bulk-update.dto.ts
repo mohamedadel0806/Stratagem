@@ -26,13 +26,27 @@ export class BulkUpdateDto {
   @IsString()
   @IsOptional()
   department?: string;
+
+  @IsString()
+  @IsOptional()
+  versionNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  patchLevel?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  rollbackOnError?: boolean; // If true, rollback all changes if any update fails
 }
 
 export class BulkUpdateResponseDto {
   successful: number;
   failed: number;
   errors: Array<{ assetId: string; error: string }>;
+  rolledBack?: boolean; // Indicates if rollback was performed
 }
+
 
 
 

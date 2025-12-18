@@ -102,3 +102,4 @@ export class CreateRiskSettingsTable1702156800000 implements MigrationInterface 
 
 
 
+

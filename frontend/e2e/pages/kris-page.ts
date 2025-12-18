@@ -286,3 +286,4 @@ export class KRIsPage {
     console.log('✅ KRI form submitted successfully');
   }
 }
+

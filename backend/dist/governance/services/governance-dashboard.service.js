@@ -33,7 +33,7 @@ let GovernanceDashboardService = class GovernanceDashboardService {
         this.evidenceRepository = evidenceRepository;
         this.controlAssetMappingRepository = controlAssetMappingRepository;
     }
-    async getDashboard() {
+    async getDashboard(startDate, endDate) {
         const [summary, controlStats, policyStats, assessmentStats, findingStats, assetComplianceStats, upcomingReviews, recentActivity,] = await Promise.all([
             this.getSummaryMetrics(),
             this.getControlStats(),

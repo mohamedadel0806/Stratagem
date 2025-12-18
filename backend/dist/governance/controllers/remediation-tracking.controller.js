@@ -109,7 +109,7 @@ __decorate([
 ], RemediationTrackingController.prototype, "getTrackersByFinding", null);
 exports.RemediationTrackingController = RemediationTrackingController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
-    (0, common_1.Controller)('api/v1/governance/remediation'),
+    (0, common_1.Controller)('governance/remediation'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [remediation_tracking_service_1.RemediationTrackingService])

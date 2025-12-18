@@ -58,10 +58,11 @@ let BusinessApplicationController = class BusinessApplicationController {
             throw new common_1.BadRequestException('File buffer is required. Please ensure file is uploaded correctly.');
         }
         const fileType = body === null || body === void 0 ? void 0 : body.fileType;
+        const sheetName = body === null || body === void 0 ? void 0 : body.sheetName;
         const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
         try {
             if (detectedFileType === 'excel') {
-                return this.importService.previewExcel(file.buffer);
+                return this.importService.previewExcel(file.buffer, 10, sheetName);
             }
             else {
                 return this.importService.previewCSV(file.buffer);

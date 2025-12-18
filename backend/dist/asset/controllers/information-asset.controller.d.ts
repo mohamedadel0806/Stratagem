@@ -18,6 +18,20 @@ export declare class InformationAssetController {
         page: number;
         limit: number;
     }>;
+    getReclassificationUpcoming(days?: string): Promise<{
+        data: InformationAssetResponseDto[];
+        total: number;
+        days: number;
+    }>;
+    getAssetsMissingCompliance(): Promise<{
+        data: InformationAssetResponseDto[];
+        total: number;
+    }>;
+    getComplianceReport(complianceRequirement?: string): Promise<{
+        data: InformationAssetResponseDto[];
+        total: number;
+        complianceRequirement?: string;
+    }>;
     findOne(id: string): Promise<InformationAssetResponseDto>;
     update(id: string, updateDto: UpdateInformationAssetDto, user: User): Promise<InformationAssetResponseDto>;
     remove(id: string, user: User): Promise<{

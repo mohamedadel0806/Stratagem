@@ -302,6 +302,128 @@ export class AssetDependencyService {
     };
   }
 
+  /**
+   * Get multi-level dependency chain using BFS traversal
+   * Returns all assets that would be impacted if the given asset fails (downstream dependencies)
+   */
+  async getDependencyChain(
+    assetType: AssetType,
+    assetId: string,
+    maxDepth: number = 3,
+    direction: 'outgoing' | 'incoming' | 'both' = 'outgoing',
+  ): Promise<{
+    chain: Array<{
+      assetType: AssetType;
+      assetId: string;
+      assetName: string;
+      assetIdentifier: string;
+      depth: number;
+      path: Array<{ assetType: AssetType; assetId: string }>;
+    }>;
+    totalCount: number;
+    maxDepthReached: number;
+  }> {
+    // Verify asset exists
+    await this.getAssetNameAndIdentifier(assetType, assetId);
+
+    const visited = new Set<string>();
+    const chain: Array<{
+      assetType: AssetType;
+      assetId: string;
+      assetName: string;
+      assetIdentifier: string;
+      depth: number;
+      path: Array<{ assetType: AssetType; assetId: string }>;
+    }> = [];
+
+    // BFS queue: [assetType, assetId, depth, path]
+    const queue: Array<[AssetType, string, number, Array<{ assetType: AssetType; assetId: string }>]> = [
+      [assetType, assetId, 0, []],
+    ];
+
+    let maxDepthReached = 0;
+
+    while (queue.length > 0) {
+      const [currentType, currentId, depth, path] = queue.shift()!;
+      const nodeKey = `${currentType}:${currentId}`;
+
+      if (visited.has(nodeKey) || depth > maxDepth) {
+        continue;
+      }
+
+      visited.add(nodeKey);
+      maxDepthReached = Math.max(maxDepthReached, depth);
+
+      // Skip the root node (depth 0) from the chain
+      if (depth > 0) {
+        const assetInfo = await this.getAssetNameAndIdentifier(currentType, currentId);
+        chain.push({
+          assetType: currentType,
+          assetId: currentId,
+          assetName: assetInfo.name,
+          assetIdentifier: assetInfo.identifier,
+          depth,
+          path: [...path],
+        });
+      }
+
+      if (depth >= maxDepth) {
+        continue;
+      }
+
+      // Get dependencies based on direction
+      if (direction === 'outgoing' || direction === 'both') {
+        // Find assets this asset depends on (outgoing)
+        const outgoingDeps = await this.dependencyRepository.find({
+          where: {
+            sourceAssetType: currentType,
+            sourceAssetId: currentId,
+          },
+        });
+
+        for (const dep of outgoingDeps) {
+          const nextKey = `${dep.targetAssetType}:${dep.targetAssetId}`;
+          if (!visited.has(nextKey)) {
+            queue.push([
+              dep.targetAssetType,
+              dep.targetAssetId,
+              depth + 1,
+              [...path, { assetType: currentType, assetId: currentId }],
+            ]);
+          }
+        }
+      }
+
+      if (direction === 'incoming' || direction === 'both') {
+        // Find assets that depend on this asset (incoming)
+        const incomingDeps = await this.dependencyRepository.find({
+          where: {
+            targetAssetType: currentType,
+            targetAssetId: currentId,
+          },
+        });
+
+        for (const dep of incomingDeps) {
+          const nextKey = `${dep.sourceAssetType}:${dep.sourceAssetId}`;
+          if (!visited.has(nextKey)) {
+            queue.push([
+              dep.sourceAssetType,
+              dep.sourceAssetId,
+              depth + 1,
+              [...path, { assetType: currentType, assetId: currentId }],
+            ]);
+          }
+        }
+      }
+    }
+
+    return {
+      chain,
+      totalCount: chain.length,
+      maxDepthReached,
+    };
+  }
+
   private toResponseDto(
     dependency: AssetDependency,
     sourceInfo: { name: string; identifier: string },

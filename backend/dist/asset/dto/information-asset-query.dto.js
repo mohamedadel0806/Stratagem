@@ -30,6 +30,12 @@ __decorate([
     __metadata("design:type", String)
 ], InformationAssetQueryDto.prototype, "dataClassification", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ required: false, description: 'Filter by compliance requirement (e.g., ISO 27001, SOC 2)' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], InformationAssetQueryDto.prototype, "complianceRequirement", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ required: false, description: 'Business unit ID (UUID)' }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsUUID)(),

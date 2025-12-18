@@ -4,12 +4,27 @@ import { Repository } from 'typeorm';
 import { AssetFieldConfig, AssetTypeEnum } from '../entities/asset-field-config.entity';
 import { CreateAssetFieldConfigDto } from '../dto/create-asset-field-config.dto';
 import { UpdateAssetFieldConfigDto } from '../dto/update-asset-field-config.dto';
+import { PhysicalAsset } from '../entities/physical-asset.entity';
+import { InformationAsset } from '../entities/information-asset.entity';
+import { BusinessApplication } from '../entities/business-application.entity';
+import { SoftwareAsset } from '../entities/software-asset.entity';
+import { Supplier } from '../entities/supplier.entity';
 
 @Injectable()
 export class AssetFieldConfigService {
   constructor(
     @InjectRepository(AssetFieldConfig)
     private fieldConfigRepository: Repository<AssetFieldConfig>,
+    @InjectRepository(PhysicalAsset)
+    private physicalAssetRepository: Repository<PhysicalAsset>,
+    @InjectRepository(InformationAsset)
+    private informationAssetRepository: Repository<InformationAsset>,
+    @InjectRepository(BusinessApplication)
+    private businessApplicationRepository: Repository<BusinessApplication>,
+    @InjectRepository(SoftwareAsset)
+    private softwareAssetRepository: Repository<SoftwareAsset>,
+    @InjectRepository(Supplier)
+    private supplierRepository: Repository<Supplier>,
   ) {}
 
   async create(dto: CreateAssetFieldConfigDto, userId: string): Promise<AssetFieldConfig> {
@@ -81,9 +96,7 @@ export class AssetFieldConfigService {
     const config = await this.findOne(id);
 
     // Check if field has data - if yes, only disable, don't delete
-    // For now, we'll check if there are any assets using this field
-    // In production, you'd query the actual asset tables
-    const hasData = false; // Simplified - implement actual check
+    const hasData = await this.fieldHasData(config);
 
     if (hasData) {
       // Disable instead of delete
@@ -145,7 +158,62 @@ export class AssetFieldConfigService {
       order: { displayOrder: 'ASC', createdAt: 'ASC' },
     });
   }
+
+  /**
+   * Check if any asset records currently have data for this configured field.
+   * If so, the field should not be hard-deleted and will be disabled instead.
+   */
+  private async fieldHasData(config: AssetFieldConfig): Promise<boolean> {
+    const fieldName = config.fieldName;
+
+    try {
+      switch (config.assetType) {
+        case AssetTypeEnum.PHYSICAL: {
+          const count = await this.physicalAssetRepository
+            .createQueryBuilder('asset')
+            .where(`asset.${fieldName} IS NOT NULL`)
+            .getCount();
+          return count > 0;
+        }
+        case AssetTypeEnum.INFORMATION: {
+          const count = await this.informationAssetRepository
+            .createQueryBuilder('asset')
+            .where(`asset.${fieldName} IS NOT NULL`)
+            .getCount();
+          return count > 0;
+        }
+        case AssetTypeEnum.APPLICATION: {
+          const count = await this.businessApplicationRepository
+            .createQueryBuilder('asset')
+            .where(`asset.${fieldName} IS NOT NULL`)
+            .getCount();
+          return count > 0;
+        }
+        case AssetTypeEnum.SOFTWARE: {
+          const count = await this.softwareAssetRepository
+            .createQueryBuilder('asset')
+            .where(`asset.${fieldName} IS NOT NULL`)
+            .getCount();
+          return count > 0;
+        }
+        case AssetTypeEnum.SUPPLIER: {
+          const count = await this.supplierRepository
+            .createQueryBuilder('asset')
+            .where(`asset.${fieldName} IS NOT NULL`)
+            .getCount();
+          return count > 0;
+        }
+        default:
+          return false;
+      }
+    } catch {
+      // If the field name doesn't exist on the entity or query fails,
+      // treat it as having no data to avoid blocking deletes incorrectly.
+      return false;
+    }
+  }
 }
+
 
 
 

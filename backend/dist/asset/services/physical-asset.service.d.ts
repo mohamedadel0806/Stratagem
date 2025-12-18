@@ -7,12 +7,25 @@ import { PhysicalAssetQueryDto } from '../dto/physical-asset-query.dto';
 import { AssetAuditService } from './asset-audit.service';
 import { AssetDependency } from '../entities/asset-dependency.entity';
 import { RiskAssetLinkService } from '../../risk/services/risk-asset-link.service';
+import { AssetDependencyService } from './asset-dependency.service';
+import { NotificationService } from '../../common/services/notification.service';
+import { InformationAsset } from '../entities/information-asset.entity';
+import { BusinessApplication } from '../entities/business-application.entity';
+import { SoftwareAsset } from '../entities/software-asset.entity';
+import { Supplier } from '../entities/supplier.entity';
 export declare class PhysicalAssetService {
     private assetRepository;
     private dependencyRepository;
+    private informationAssetRepository;
+    private businessApplicationRepository;
+    private softwareAssetRepository;
+    private supplierRepository;
     private auditService;
     private riskAssetLinkService;
-    constructor(assetRepository: Repository<PhysicalAsset>, dependencyRepository: Repository<AssetDependency>, auditService: AssetAuditService, riskAssetLinkService: RiskAssetLinkService);
+    private assetDependencyService;
+    private notificationService;
+    private readonly logger;
+    constructor(assetRepository: Repository<PhysicalAsset>, dependencyRepository: Repository<AssetDependency>, informationAssetRepository: Repository<InformationAsset>, businessApplicationRepository: Repository<BusinessApplication>, softwareAssetRepository: Repository<SoftwareAsset>, supplierRepository: Repository<Supplier>, auditService: AssetAuditService, riskAssetLinkService: RiskAssetLinkService, assetDependencyService: AssetDependencyService, notificationService: NotificationService);
     findAll(query?: PhysicalAssetQueryDto): Promise<{
         data: PhysicalAssetResponseDto[];
         total: number;
@@ -26,5 +39,7 @@ export declare class PhysicalAssetService {
     private generateUniqueIdentifier;
     private getRiskCountForAsset;
     private getRiskCountsForAssets;
+    private notifyDependentAssetOwners;
+    private getOwnerIdFromAsset;
     private toResponseDto;
 }

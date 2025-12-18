@@ -111,11 +111,13 @@ export class SupplierController {
     }
 
     const fileType = body?.fileType;
-    const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
+    const sheetName = body?.sheetName as string | undefined;
+    const detectedFileType =
+      fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
 
     try {
       if (detectedFileType === 'excel') {
-        return this.importService.previewExcel(file.buffer);
+        return this.importService.previewExcel(file.buffer, 10, sheetName);
       } else {
         return this.importService.previewCSV(file.buffer);
       }
@@ -203,6 +205,39 @@ export class SupplierController {
   @ApiResponse({ status: 200, description: 'Asset risk score summary' })
   async getRiskScore(@Param('id') id: string) {
     return this.riskAssetLinkService.getAssetRiskScore(RiskAssetType.SUPPLIER, id);
+  }
+
+  @Get('contracts/expiring')
+  @ApiOperation({ summary: 'Get suppliers with contracts expiring within specified days' })
+  @ApiResponse({ status: 200, description: 'List of suppliers with expiring contracts' })
+  async getExpiringContracts(
+    @Query('days') days?: string,
+  ): Promise<{
+    data: SupplierResponseDto[];
+    total: number;
+    days: number;
+  }> {
+    const daysNumber = days ? parseInt(days, 10) || 90 : 90;
+    const suppliers = await this.supplierService.getExpiringContracts(daysNumber);
+    return {
+      data: suppliers,
+      total: suppliers.length,
+      days: daysNumber,
+    };
+  }
+
+  @Get('critical/report')
+  @ApiOperation({ summary: 'Get report of critical suppliers for executive review' })
+  @ApiResponse({ status: 200, description: 'List of critical and high criticality suppliers' })
+  async getCriticalSuppliersReport(): Promise<{
+    data: SupplierResponseDto[];
+    total: number;
+  }> {
+    const suppliers = await this.supplierService.getCriticalSuppliersReport();
+    return {
+      data: suppliers,
+      total: suppliers.length,
+    };
   }
 }
 

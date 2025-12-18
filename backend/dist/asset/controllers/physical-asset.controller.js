@@ -51,9 +51,6 @@ let PhysicalAssetController = class PhysicalAssetController {
         return { message: 'Asset deleted successfully' };
     }
     async previewImport(file, body) {
-        console.log('Preview import called');
-        console.log('File:', file ? { fieldname: file.fieldname, originalname: file.originalname, size: file.size, mimetype: file.mimetype } : 'null');
-        console.log('Body:', body);
         if (!file) {
             console.error('File is missing in request');
             throw new common_1.BadRequestException('File is required. Please ensure the file is uploaded with the field name "file".');
@@ -62,10 +59,11 @@ let PhysicalAssetController = class PhysicalAssetController {
             throw new common_1.BadRequestException('File buffer is required. Please ensure file is uploaded correctly.');
         }
         const fileType = body === null || body === void 0 ? void 0 : body.fileType;
+        const sheetName = body === null || body === void 0 ? void 0 : body.sheetName;
         const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
         try {
             if (detectedFileType === 'excel') {
-                return this.importService.previewExcel(file.buffer);
+                return this.importService.previewExcel(file.buffer, 10, sheetName);
             }
             else {
                 return this.importService.previewCSV(file.buffer);
@@ -76,10 +74,6 @@ let PhysicalAssetController = class PhysicalAssetController {
         }
     }
     async importAssets(file, user, body) {
-        console.log('Import assets called');
-        console.log('File:', file ? { fieldname: file.fieldname, originalname: file.originalname, size: file.size, mimetype: file.mimetype } : 'null');
-        console.log('Body:', body);
-        console.log('User:', user ? { userId: user.userId, email: user.email } : 'null');
         if (!file) {
             console.error('File is missing in request');
             throw new common_1.BadRequestException('File is required. Please ensure the file is uploaded with the field name "file".');

@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const unified_controls_service_1 = require("./unified-controls.service");
 const control_asset_mapping_service_1 = require("./services/control-asset-mapping.service");
+const framework_control_mapping_service_1 = require("./services/framework-control-mapping.service");
 const create_unified_control_dto_1 = require("./dto/create-unified-control.dto");
 const unified_control_query_dto_1 = require("./dto/unified-control-query.dto");
 const create_control_asset_mapping_dto_1 = require("./dto/create-control-asset-mapping.dto");
@@ -26,9 +27,10 @@ const control_asset_mapping_query_dto_1 = require("./dto/control-asset-mapping-q
 const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
 const risk_control_link_service_1 = require("../../risk/services/risk-control-link.service");
 let UnifiedControlsController = class UnifiedControlsController {
-    constructor(unifiedControlsService, controlAssetMappingService, riskControlLinkService) {
+    constructor(unifiedControlsService, controlAssetMappingService, frameworkControlMappingService, riskControlLinkService) {
         this.unifiedControlsService = unifiedControlsService;
         this.controlAssetMappingService = controlAssetMappingService;
+        this.frameworkControlMappingService = frameworkControlMappingService;
         this.riskControlLinkService = riskControlLinkService;
     }
     create(createDto, req) {
@@ -81,6 +83,21 @@ let UnifiedControlsController = class UnifiedControlsController {
     }
     getRiskEffectiveness(controlId) {
         return this.riskControlLinkService.getControlEffectivenessForControl(controlId);
+    }
+    getFrameworkMappings(id) {
+        return this.frameworkControlMappingService.getMappingsForControl(id);
+    }
+    createFrameworkMapping(controlId, body, req) {
+        return this.frameworkControlMappingService.createMapping(controlId, body.requirement_id, body.coverage_level, body.mapping_notes, req.user.id);
+    }
+    bulkCreateFrameworkMappings(controlId, body, req) {
+        return this.frameworkControlMappingService.bulkCreateMappings(controlId, body.requirement_ids, body.coverage_level, body.mapping_notes, req.user.id);
+    }
+    updateFrameworkMapping(mappingId, body) {
+        return this.frameworkControlMappingService.updateMapping(mappingId, body.coverage_level, body.mapping_notes);
+    }
+    deleteFrameworkMapping(mappingId) {
+        return this.frameworkControlMappingService.deleteMapping(mappingId);
     }
 };
 exports.UnifiedControlsController = UnifiedControlsController;
@@ -261,6 +278,56 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], UnifiedControlsController.prototype, "getRiskEffectiveness", null);
+__decorate([
+    (0, common_1.Get)(':id/framework-mappings'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get framework mappings for a control' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Framework mappings retrieved successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getFrameworkMappings", null);
+__decorate([
+    (0, common_1.Post)(':id/framework-mappings'),
+    (0, swagger_1.ApiOperation)({ summary: 'Map a control to a framework requirement' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Mapping created successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "createFrameworkMapping", null);
+__decorate([
+    (0, common_1.Post)(':id/framework-mappings/bulk'),
+    (0, swagger_1.ApiOperation)({ summary: 'Bulk map a control to multiple framework requirements' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Mappings created successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "bulkCreateFrameworkMappings", null);
+__decorate([
+    (0, common_1.Patch)('framework-mappings/:mappingId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update a framework-control mapping' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Mapping updated successfully' }),
+    __param(0, (0, common_1.Param)('mappingId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "updateFrameworkMapping", null);
+__decorate([
+    (0, common_1.Delete)('framework-mappings/:mappingId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete a framework-control mapping' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Mapping deleted successfully' }),
+    __param(0, (0, common_1.Param)('mappingId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "deleteFrameworkMapping", null);
 exports.UnifiedControlsController = UnifiedControlsController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
     (0, common_1.Controller)('api/v1/governance/unified-controls'),
@@ -268,6 +335,7 @@ exports.UnifiedControlsController = UnifiedControlsController = __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [unified_controls_service_1.UnifiedControlsService,
         control_asset_mapping_service_1.ControlAssetMappingService,
+        framework_control_mapping_service_1.FrameworkControlMappingService,
         risk_control_link_service_1.RiskControlLinkService])
 ], UnifiedControlsController);
 //# sourceMappingURL=unified-controls.controller.js.map

@@ -102,3 +102,4 @@ export function AssetCriticalityChart({ data, isLoading }: AssetCriticalityChart
 
 
 
+

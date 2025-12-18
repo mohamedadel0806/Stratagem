@@ -13,7 +13,7 @@ import { EntityType } from '../entities/workflow.entity';
 import { WorkflowExecutionStatus } from '../entities/workflow-execution.entity';
 
 @ApiTags('workflows')
-@Controller('api/v1/workflows')
+@Controller('workflows')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class WorkflowController {

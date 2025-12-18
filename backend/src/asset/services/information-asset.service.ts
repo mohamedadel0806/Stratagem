@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
-import { InformationAsset } from '../entities/information-asset.entity';
+import { InformationAsset, ClassificationLevel } from '../entities/information-asset.entity';
 import { CreateInformationAssetDto } from '../dto/create-information-asset.dto';
 import { UpdateInformationAssetDto } from '../dto/update-information-asset.dto';
 import { InformationAssetResponseDto } from '../dto/information-asset-response.dto';
@@ -10,6 +10,8 @@ import { AssetAuditService } from './asset-audit.service';
 import { AssetType } from '../entities/asset-audit-log.entity';
 import { RiskAssetLinkService } from '../../risk/services/risk-asset-link.service';
 import { RiskAssetType } from '../../risk/entities/risk-asset-link.entity';
+import { NotificationService } from '../../common/services/notification.service';
+import { NotificationPriority, NotificationType } from '../../common/entities/notification.entity';
 
 @Injectable()
 export class InformationAssetService {
@@ -18,6 +20,7 @@ export class InformationAssetService {
     private assetRepository: Repository<InformationAsset>,
     private auditService: AssetAuditService,
     private riskAssetLinkService: RiskAssetLinkService,
+    private notificationService: NotificationService,
   ) {}
 
   async findAll(query?: InformationAssetQueryDto): Promise<{
@@ -57,7 +60,17 @@ export class InformationAssetService {
     }
 
     if (query?.ownerId) {
-      queryBuilder.andWhere('asset.informationOwnerId = :informationOwnerId', { informationOwnerId: query.ownerId });
+      queryBuilder.andWhere('asset.informationOwnerId = :informationOwnerId', {
+        informationOwnerId: query.ownerId,
+      });
+    }
+
+    if (query?.complianceRequirement) {
+      // Filter assets whose complianceRequirements JSON array contains the given requirement
+      queryBuilder.andWhere(
+        "asset.complianceRequirements::jsonb @> :complianceRequirement",
+        { complianceRequirement: JSON.stringify([query.complianceRequirement]) },
+      );
     }
 
     const total = await queryBuilder.getCount();
@@ -80,6 +93,84 @@ export class InformationAssetService {
     };
   }
 
+  async getAssetsMissingCompliance(): Promise<InformationAssetResponseDto[]> {
+    const assets = await this.assetRepository
+      .createQueryBuilder('asset')
+      .leftJoin('asset.informationOwner', 'informationOwner')
+      .leftJoin('asset.businessUnit', 'businessUnit')
+      .select([
+        'asset.id',
+        'asset.name',
+        'asset.informationType',
+        'asset.complianceRequirements',
+        'asset.informationOwnerId',
+        'asset.businessUnitId',
+        'asset.createdAt',
+        'asset.updatedAt',
+        'informationOwner.id',
+        'informationOwner.email',
+        'informationOwner.firstName',
+        'informationOwner.lastName',
+        'businessUnit.id',
+        'businessUnit.name',
+      ])
+      .where('asset.deletedAt IS NULL')
+      .andWhere(
+        '(asset.complianceRequirements IS NULL OR asset.complianceRequirements::jsonb = \'[]\'::jsonb OR jsonb_array_length(asset.complianceRequirements::jsonb) = 0)',
+      )
+      .orderBy('asset.createdAt', 'DESC')
+      .getMany();
+
+    const assetIds = assets.map(a => a.id);
+    const riskCounts = await this.getRiskCountsForAssets(assetIds);
+
+    return assets.map((asset) => this.toResponseDto(asset, riskCounts[asset.id]));
+  }
+
+  async getComplianceReport(complianceRequirement?: string): Promise<InformationAssetResponseDto[]> {
+    const queryBuilder = this.assetRepository
+      .createQueryBuilder('asset')
+      .leftJoin('asset.informationOwner', 'informationOwner')
+      .leftJoin('asset.businessUnit', 'businessUnit')
+      .select([
+        'asset.id',
+        'asset.name',
+        'asset.informationType',
+        'asset.classificationLevel',
+        'asset.complianceRequirements',
+        'asset.informationOwnerId',
+        'asset.businessUnitId',
+        'asset.createdAt',
+        'asset.updatedAt',
+        'informationOwner.id',
+        'informationOwner.email',
+        'informationOwner.firstName',
+        'informationOwner.lastName',
+        'businessUnit.id',
+        'businessUnit.name',
+      ])
+      .where('asset.deletedAt IS NULL');
+
+    if (complianceRequirement) {
+      queryBuilder.andWhere(
+        "asset.complianceRequirements::jsonb @> :complianceRequirement",
+        { complianceRequirement: JSON.stringify([complianceRequirement]) },
+      );
+    } else {
+      // Only include assets that have at least one compliance requirement
+      queryBuilder.andWhere(
+        "(asset.complianceRequirements IS NOT NULL AND asset.complianceRequirements::jsonb != '[]'::jsonb AND jsonb_array_length(asset.complianceRequirements::jsonb) > 0)",
+      );
+    }
+
+    const assets = await queryBuilder.orderBy('asset.createdAt', 'DESC').getMany();
+
+    const assetIds = assets.map(a => a.id);
+    const riskCounts = await this.getRiskCountsForAssets(assetIds);
+
+    return assets.map((asset) => this.toResponseDto(asset, riskCounts[asset.id]));
+  }
+
   async findOne(id: string): Promise<InformationAssetResponseDto> {
     const asset = await this.assetRepository.findOne({
       where: { id, deletedAt: IsNull() },
@@ -94,6 +185,35 @@ export class InformationAssetService {
     const riskCount = await this.getRiskCountForAsset(id);
 
     return this.toResponseDto(asset, riskCount);
+  }
+
+  /**
+   * Get information assets that are approaching their reclassification date
+   * within the given number of days (default: 60).
+   */
+  async getAssetsDueForReclassification(days: number = 60): Promise<InformationAssetResponseDto[]> {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endDate = new Date(startOfToday);
+    endDate.setDate(endDate.getDate() + days);
+
+    const assets = await this.assetRepository
+      .createQueryBuilder('asset')
+      .leftJoinAndSelect('asset.informationOwner', 'informationOwner')
+      .leftJoinAndSelect('asset.businessUnit', 'businessUnit')
+      .where('asset.deletedAt IS NULL')
+      .andWhere('asset.reclassificationDate IS NOT NULL')
+      .andWhere('asset.reclassificationDate BETWEEN :start AND :end', {
+        start: startOfToday,
+        end: endDate,
+      })
+      .orderBy('asset.reclassificationDate', 'ASC')
+      .getMany();
+
+    const assetIds = assets.map((a) => a.id);
+    const riskCounts = await this.getRiskCountsForAssets(assetIds);
+
+    return assets.map((asset) => this.toResponseDto(asset, riskCounts[asset.id]));
   }
 
   async create(createDto: CreateInformationAssetDto, userId: string): Promise<InformationAssetResponseDto> {
@@ -163,7 +283,31 @@ export class InformationAssetService {
 
     if (updateDto.reclassificationDate) {
       updateData.reclassificationDate = new Date(updateDto.reclassificationDate);
+      // Reset reminder flag when reclassification date changes so a new reminder can be sent
+      updateData.reclassificationReminderSent = false;
     }
+
+    // Enforce that reclassification date cannot be before classification date
+    const effectiveClassificationDate =
+      updateData.classificationDate || asset.classificationDate || null;
+    const effectiveReclassificationDate =
+      updateData.reclassificationDate || asset.reclassificationDate || null;
+
+    if (
+      effectiveClassificationDate &&
+      effectiveReclassificationDate &&
+      effectiveReclassificationDate < effectiveClassificationDate
+    ) {
+      throw new BadRequestException(
+        'Reclassification date cannot be earlier than classification date',
+      );
+    }
+
+    // Check if classification level is changing to a more restrictive level
+    const oldClassificationLevel = asset.classificationLevel;
+    const newClassificationLevel = updateDto.classificationLevel;
+    const requiresApproval = newClassificationLevel && 
+      this.isMoreRestrictive(newClassificationLevel, oldClassificationLevel);
 
     Object.keys(updateData).forEach((key) => {
       if (key !== 'updatedBy' && asset[key] !== updateData[key]) {
@@ -173,6 +317,31 @@ export class InformationAssetService {
         };
       }
     });
+
+    // If classification change requires approval, create notification
+    if (requiresApproval && asset.informationOwnerId) {
+      try {
+        await this.notificationService.create({
+          userId: asset.informationOwnerId,
+          type: NotificationType.DEADLINE_APPROACHING,
+          priority: NotificationPriority.HIGH,
+          title: 'Classification Change Approval Required',
+          message: `Information asset "${asset.name}" classification is being changed from ${oldClassificationLevel} to ${newClassificationLevel}. Please review and approve this change.`,
+          metadata: {
+            assetType: 'information',
+            assetId: asset.id,
+            assetName: asset.name,
+            oldClassificationLevel,
+            newClassificationLevel,
+            changeType: 'classification_level',
+            requiresApproval: true,
+          },
+        });
+      } catch (error) {
+        // Log error but don't fail the update
+        console.error('Failed to create classification approval notification:', error);
+      }
+    }
 
     Object.assign(asset, updateData);
     const savedAsset = await this.assetRepository.save(asset);
@@ -270,6 +439,22 @@ export class InformationAssetService {
       deletedAt: asset.deletedAt || undefined,
       riskCount: riskCount,
     };
+  }
+
+  /**
+   * Check if new classification level is more restrictive than old level
+   * Order: public < internal < confidential < restricted < secret
+   */
+  private isMoreRestrictive(newLevel: ClassificationLevel, oldLevel: ClassificationLevel): boolean {
+    const levels: Record<ClassificationLevel, number> = {
+      [ClassificationLevel.PUBLIC]: 1,
+      [ClassificationLevel.INTERNAL]: 2,
+      [ClassificationLevel.CONFIDENTIAL]: 3,
+      [ClassificationLevel.RESTRICTED]: 4,
+      [ClassificationLevel.SECRET]: 5,
+    };
+
+    return levels[newLevel] > levels[oldLevel];
   }
 
   private async generateUniqueIdentifier(): Promise<string> {

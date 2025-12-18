@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Supplier } from '../entities/supplier.entity';
+import { CriticalityLevel } from '../entities/physical-asset.entity';
 import { CreateSupplierDto } from '../dto/create-supplier.dto';
 import { UpdateSupplierDto } from '../dto/update-supplier.dto';
 import { SupplierResponseDto } from '../dto/supplier-response.dto';
@@ -250,7 +251,112 @@ export class SupplierService {
     return counts;
   }
 
+  getContractStatus(contractEndDate?: Date, autoRenewal?: boolean): 'active' | 'expired' | 'pending_renewal' | 'no_contract' {
+    if (!contractEndDate) {
+      return 'no_contract';
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(contractEndDate);
+    endDate.setHours(0, 0, 0, 0);
+
+    if (endDate < today) {
+      return 'expired';
+    }
+
+    // Check if within 90 days of expiration
+    const daysUntilExpiration = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntilExpiration <= 90 && !autoRenewal) {
+      return 'pending_renewal';
+    }
+
+    return 'active';
+  }
+
+  async getCriticalSuppliersReport(): Promise<SupplierResponseDto[]> {
+    const suppliers = await this.supplierRepository
+      .createQueryBuilder('supplier')
+      .leftJoin('supplier.owner', 'owner')
+      .leftJoin('supplier.businessUnit', 'businessUnit')
+      .select([
+        'supplier.id',
+        'supplier.supplierName',
+        'supplier.uniqueIdentifier',
+        'supplier.criticalityLevel',
+        'supplier.riskAssessmentDate',
+        'supplier.lastReviewDate',
+        'supplier.riskLevel',
+        'supplier.ownerId',
+        'supplier.businessUnitId',
+        'supplier.createdAt',
+        'supplier.updatedAt',
+        'owner.id',
+        'owner.email',
+        'owner.firstName',
+        'owner.lastName',
+        'businessUnit.id',
+        'businessUnit.name',
+      ])
+      .where('supplier.deletedAt IS NULL')
+      .andWhere('supplier.criticalityLevel IN (:...levels)', {
+        levels: [CriticalityLevel.CRITICAL, CriticalityLevel.HIGH],
+      })
+      .orderBy('supplier.criticalityLevel', 'DESC')
+      .addOrderBy('supplier.riskAssessmentDate', 'ASC', 'NULLS FIRST')
+      .getMany();
+
+    const assetIds = suppliers.map(a => a.id);
+    const riskCounts = await this.getRiskCountsForAssets(assetIds);
+
+    return suppliers.map((supplier) => this.toResponseDto(supplier, riskCounts[supplier.id]));
+  }
+
+  async getExpiringContracts(days: number = 90): Promise<SupplierResponseDto[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const futureDate = new Date(today);
+    futureDate.setDate(futureDate.getDate() + days);
+
+    const suppliers = await this.supplierRepository
+      .createQueryBuilder('supplier')
+      .leftJoin('supplier.owner', 'owner')
+      .leftJoin('supplier.businessUnit', 'businessUnit')
+      .select([
+        'supplier.id',
+        'supplier.supplierName',
+        'supplier.uniqueIdentifier',
+        'supplier.contractReference',
+        'supplier.contractStartDate',
+        'supplier.contractEndDate',
+        'supplier.autoRenewal',
+        'supplier.ownerId',
+        'supplier.businessUnitId',
+        'supplier.createdAt',
+        'supplier.updatedAt',
+        'owner.id',
+        'owner.email',
+        'owner.firstName',
+        'owner.lastName',
+        'businessUnit.id',
+        'businessUnit.name',
+      ])
+      .where('supplier.deletedAt IS NULL')
+      .andWhere('supplier.contractEndDate IS NOT NULL')
+      .andWhere('supplier.contractEndDate >= :today', { today })
+      .andWhere('supplier.contractEndDate <= :futureDate', { futureDate })
+      .orderBy('supplier.contractEndDate', 'ASC')
+      .getMany();
+
+    const assetIds = suppliers.map(a => a.id);
+    const riskCounts = await this.getRiskCountsForAssets(assetIds);
+
+    return suppliers.map((supplier) => this.toResponseDto(supplier, riskCounts[supplier.id]));
+  }
+
   private toResponseDto(supplier: Supplier, riskCount?: number): SupplierResponseDto {
+    const contractStatus = this.getContractStatus(supplier.contractEndDate, supplier.autoRenewal);
+    
     return {
       id: supplier.id,
       uniqueIdentifier: supplier.uniqueIdentifier,
@@ -300,6 +406,7 @@ export class SupplierService {
       updatedAt: supplier.updatedAt,
       deletedAt: supplier.deletedAt || undefined,
       riskCount: riskCount,
+      contractStatus: contractStatus as any, // Add to DTO
     };
   }
 

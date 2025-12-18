@@ -44,11 +44,6 @@ const getStatusColor = (status?: KRIStatus) => {
 };
 
 export function KRITrendChart({ kriId, kri, limit = 50, showThresholds = true }: KRITrendChartProps) {
-  // #region agent log
-  if (kri) {
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-trend-chart.tsx:47',message:'KRI prop received',data:{kriId,kriExists:!!kri,currentValue:kri.current_value,currentValueType:typeof kri.current_value,currentValueIsNull:kri.current_value===null,currentValueIsUndefined:kri.current_value===undefined,currentValueConstructor:kri.current_value?.constructor?.name,fullKri:JSON.stringify(kri)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  }
-  // #endregion
   const { data: measurements, isLoading } = useQuery({
     queryKey: ['kri-measurements', kriId, limit],
     queryFn: () => krisApi.getMeasurements(kriId, limit),
@@ -144,9 +139,11 @@ export function KRITrendChart({ kriId, kri, limit = 50, showThresholds = true }:
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Current Value</p>
               <p className="text-2xl font-semibold">
-                {/* #region agent log */}
-                {(()=>{const cv=kri.current_value;const numValue=typeof cv==='number'?cv:Number(cv);fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-trend-chart.tsx:142',message:'After conversion to number',data:{originalValue:cv,originalType:typeof cv,convertedValue:numValue,convertedType:typeof numValue,isNaN:isNaN(numValue),toFixedResult:numValue.toFixed(2)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});return numValue.toFixed(2);})()}
-                {/* #endregion */}
+                {(() => {
+                  const cv = kri.current_value;
+                  const numValue = typeof cv === 'number' ? cv : Number(cv);
+                  return numValue.toFixed(2);
+                })()}
                 {unit && ` ${unit}`}
               </p>
               {kri.current_status && (

@@ -1,0 +1,47 @@
+import { Repository } from 'typeorm';
+import { ReportTemplate } from '../entities/report-template.entity';
+import { ReportTemplateVersion } from '../entities/report-template-version.entity';
+import { CreateReportTemplateDto } from '../dto/create-report-template.dto';
+import { UpdateReportTemplateDto } from '../dto/update-report-template.dto';
+import { BusinessApplicationService } from './business-application.service';
+import { SoftwareAssetService } from './software-asset.service';
+import { InformationAssetService } from './information-asset.service';
+import { SupplierService } from './supplier.service';
+import { PhysicalAssetService } from './physical-asset.service';
+import { EmailDistributionListService } from './email-distribution-list.service';
+export declare class ReportTemplateService {
+    private templateRepository;
+    private versionRepository;
+    private businessApplicationService;
+    private softwareAssetService;
+    private informationAssetService;
+    private supplierService;
+    private physicalAssetService;
+    private emailDistributionListService;
+    private readonly logger;
+    constructor(templateRepository: Repository<ReportTemplate>, versionRepository: Repository<ReportTemplateVersion>, businessApplicationService: BusinessApplicationService, softwareAssetService: SoftwareAssetService, informationAssetService: InformationAssetService, supplierService: SupplierService, physicalAssetService: PhysicalAssetService, emailDistributionListService: EmailDistributionListService);
+    create(dto: CreateReportTemplateDto, userId: string): Promise<ReportTemplate>;
+    findAll(userId?: string): Promise<ReportTemplate[]>;
+    findOne(id: string): Promise<ReportTemplate>;
+    update(id: string, dto: UpdateReportTemplateDto, userId: string, versionComment?: string): Promise<ReportTemplate>;
+    private saveVersion;
+    getVersionHistory(templateId: string): Promise<ReportTemplateVersion[]>;
+    restoreVersion(templateId: string, versionId: string, userId: string): Promise<ReportTemplate>;
+    delete(id: string): Promise<void>;
+    previewReport(templateId: string): Promise<any[]>;
+    generateReport(templateId: string): Promise<{
+        buffer: Buffer;
+        filename: string;
+        contentType: string;
+    }>;
+    private generateExcelFile;
+    private generateCSVFile;
+    private generateAssetInventoryReport;
+    private generateComplianceReport;
+    private generateSecurityTestReport;
+    private generateSoftwareInventoryReport;
+    private generateContractExpirationReport;
+    private generateSupplierCriticalityReport;
+    sendScheduledReport(templateId: string): Promise<void>;
+    private calculateNextRun;
+}

@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GovernanceDashboardController = void 0;
 const common_1 = require("@nestjs/common");
@@ -22,24 +25,35 @@ let GovernanceDashboardController = class GovernanceDashboardController {
         this.dashboardService = dashboardService;
         this.trendService = trendService;
     }
-    async getDashboard() {
-        return this.dashboardService.getDashboard();
+    async getDashboard(startDate, endDate) {
+        return this.dashboardService.getDashboard(startDate, endDate);
     }
     async getDashboardTrends() {
         return this.trendService.getTrend();
+    }
+    async exportDashboard(startDate, endDate) {
+        const dashboard = await this.dashboardService.getDashboard(startDate, endDate);
+        return {
+            message: 'PDF export functionality will be implemented with a PDF generation library',
+            data: dashboard,
+        };
     }
 };
 exports.GovernanceDashboardController = GovernanceDashboardController;
 __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get Governance dashboard overview' }),
+    (0, swagger_1.ApiQuery)({ name: 'startDate', required: false, type: String, description: 'Start date for filtering (ISO 8601)' }),
+    (0, swagger_1.ApiQuery)({ name: 'endDate', required: false, type: String, description: 'End date for filtering (ISO 8601)' }),
     (0, swagger_1.ApiResponse)({
         status: 200,
         description: 'Governance dashboard data',
         type: governance_dashboard_dto_1.GovernanceDashboardDto,
     }),
+    __param(0, (0, common_1.Query)('startDate')),
+    __param(1, (0, common_1.Query)('endDate')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], GovernanceDashboardController.prototype, "getDashboard", null);
 __decorate([
@@ -50,9 +64,21 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], GovernanceDashboardController.prototype, "getDashboardTrends", null);
+__decorate([
+    (0, common_1.Get)('export'),
+    (0, swagger_1.ApiOperation)({ summary: 'Export dashboard to PDF' }),
+    (0, swagger_1.ApiQuery)({ name: 'startDate', required: false, type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'endDate', required: false, type: String }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'PDF file', content: { 'application/pdf': {} } }),
+    __param(0, (0, common_1.Query)('startDate')),
+    __param(1, (0, common_1.Query)('endDate')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], GovernanceDashboardController.prototype, "exportDashboard", null);
 exports.GovernanceDashboardController = GovernanceDashboardController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
-    (0, common_1.Controller)('api/v1/governance/dashboard'),
+    (0, common_1.Controller)('governance/dashboard'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [governance_dashboard_service_1.GovernanceDashboardService,

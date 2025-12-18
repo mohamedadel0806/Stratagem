@@ -17,9 +17,19 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const asset_field_config_entity_1 = require("../entities/asset-field-config.entity");
+const physical_asset_entity_1 = require("../entities/physical-asset.entity");
+const information_asset_entity_1 = require("../entities/information-asset.entity");
+const business_application_entity_1 = require("../entities/business-application.entity");
+const software_asset_entity_1 = require("../entities/software-asset.entity");
+const supplier_entity_1 = require("../entities/supplier.entity");
 let AssetFieldConfigService = class AssetFieldConfigService {
-    constructor(fieldConfigRepository) {
+    constructor(fieldConfigRepository, physicalAssetRepository, informationAssetRepository, businessApplicationRepository, softwareAssetRepository, supplierRepository) {
         this.fieldConfigRepository = fieldConfigRepository;
+        this.physicalAssetRepository = physicalAssetRepository;
+        this.informationAssetRepository = informationAssetRepository;
+        this.businessApplicationRepository = businessApplicationRepository;
+        this.softwareAssetRepository = softwareAssetRepository;
+        this.supplierRepository = supplierRepository;
     }
     async create(dto, userId) {
         const existing = await this.fieldConfigRepository.findOne({
@@ -67,7 +77,7 @@ let AssetFieldConfigService = class AssetFieldConfigService {
     }
     async delete(id) {
         const config = await this.findOne(id);
-        const hasData = false;
+        const hasData = await this.fieldHasData(config);
         if (hasData) {
             config.isEnabled = false;
             await this.fieldConfigRepository.save(config);
@@ -114,11 +124,68 @@ let AssetFieldConfigService = class AssetFieldConfigService {
             order: { displayOrder: 'ASC', createdAt: 'ASC' },
         });
     }
+    async fieldHasData(config) {
+        const fieldName = config.fieldName;
+        try {
+            switch (config.assetType) {
+                case asset_field_config_entity_1.AssetTypeEnum.PHYSICAL: {
+                    const count = await this.physicalAssetRepository
+                        .createQueryBuilder('asset')
+                        .where(`asset.${fieldName} IS NOT NULL`)
+                        .getCount();
+                    return count > 0;
+                }
+                case asset_field_config_entity_1.AssetTypeEnum.INFORMATION: {
+                    const count = await this.informationAssetRepository
+                        .createQueryBuilder('asset')
+                        .where(`asset.${fieldName} IS NOT NULL`)
+                        .getCount();
+                    return count > 0;
+                }
+                case asset_field_config_entity_1.AssetTypeEnum.APPLICATION: {
+                    const count = await this.businessApplicationRepository
+                        .createQueryBuilder('asset')
+                        .where(`asset.${fieldName} IS NOT NULL`)
+                        .getCount();
+                    return count > 0;
+                }
+                case asset_field_config_entity_1.AssetTypeEnum.SOFTWARE: {
+                    const count = await this.softwareAssetRepository
+                        .createQueryBuilder('asset')
+                        .where(`asset.${fieldName} IS NOT NULL`)
+                        .getCount();
+                    return count > 0;
+                }
+                case asset_field_config_entity_1.AssetTypeEnum.SUPPLIER: {
+                    const count = await this.supplierRepository
+                        .createQueryBuilder('asset')
+                        .where(`asset.${fieldName} IS NOT NULL`)
+                        .getCount();
+                    return count > 0;
+                }
+                default:
+                    return false;
+            }
+        }
+        catch (_a) {
+            return false;
+        }
+    }
 };
 exports.AssetFieldConfigService = AssetFieldConfigService;
 exports.AssetFieldConfigService = AssetFieldConfigService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(asset_field_config_entity_1.AssetFieldConfig)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(physical_asset_entity_1.PhysicalAsset)),
+    __param(2, (0, typeorm_1.InjectRepository)(information_asset_entity_1.InformationAsset)),
+    __param(3, (0, typeorm_1.InjectRepository)(business_application_entity_1.BusinessApplication)),
+    __param(4, (0, typeorm_1.InjectRepository)(software_asset_entity_1.SoftwareAsset)),
+    __param(5, (0, typeorm_1.InjectRepository)(supplier_entity_1.Supplier)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository])
 ], AssetFieldConfigService);
 //# sourceMappingURL=asset-field-config.service.js.map

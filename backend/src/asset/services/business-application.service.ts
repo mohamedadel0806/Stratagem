@@ -65,6 +65,42 @@ export class BusinessApplicationService {
       queryBuilder.andWhere('app.ownerId = :ownerId', { ownerId: query.ownerId });
     }
 
+    if (query?.missingVersion === true) {
+      queryBuilder.andWhere('(app.versionNumber IS NULL OR app.versionNumber = \'\')');
+    }
+
+    if (query?.missingPatch === true) {
+      queryBuilder.andWhere('(app.patchLevel IS NULL OR app.patchLevel = \'\')');
+    }
+
+    if (query?.securityTestStatus) {
+      const now = new Date();
+      const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      
+      switch (query.securityTestStatus) {
+        case 'no-test':
+          queryBuilder.andWhere('app.lastSecurityTestDate IS NULL');
+          break;
+        case 'overdue':
+          queryBuilder.andWhere('app.lastSecurityTestDate IS NOT NULL');
+          queryBuilder.andWhere('app.lastSecurityTestDate < :oneYearAgo', { oneYearAgo });
+          break;
+        case 'failed':
+          queryBuilder.andWhere('app.lastSecurityTestDate IS NOT NULL');
+          queryBuilder.andWhere(
+            "(app.securityTestResults->>'severity' IN ('critical', 'high', 'failed') OR app.securityTestResults->>'severity' ILIKE '%failed%')"
+          );
+          break;
+        case 'passed':
+          queryBuilder.andWhere('app.lastSecurityTestDate IS NOT NULL');
+          queryBuilder.andWhere('app.lastSecurityTestDate >= :oneYearAgo', { oneYearAgo });
+          queryBuilder.andWhere(
+            "(app.securityTestResults->>'severity' NOT IN ('critical', 'high', 'failed') AND app.securityTestResults->>'severity' NOT ILIKE '%failed%')"
+          );
+          break;
+      }
+    }
+
     const total = await queryBuilder.getCount();
 
     const applications = await queryBuilder

@@ -51,3 +51,4 @@ test('assets: create all asset types in one flow (POM + test IDs)', async ({ aut
 
   await page.waitForTimeout(WAIT_SMALL);
 });
+

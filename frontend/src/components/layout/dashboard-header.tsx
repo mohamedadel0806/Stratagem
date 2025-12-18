@@ -6,6 +6,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { LanguageSwitcher } from '@/components/common/language-switcher';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { GlobalSearchBar } from '@/components/assets/global-search-bar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +37,8 @@ export function DashboardHeader() {
           </Link>
         </div>
 
-        <div className="flex flex-1 items-center justify-end space-x-2">
+        <div className="flex flex-1 items-center justify-between space-x-2">
+          <GlobalSearchBar />
           <nav className="flex items-center space-x-2">
             <LanguageSwitcher />
             <NotificationBell />

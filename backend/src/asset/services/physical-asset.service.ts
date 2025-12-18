@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { PhysicalAsset } from '../entities/physical-asset.entity';
@@ -11,16 +11,35 @@ import { AssetType as AuditAssetType } from '../entities/asset-audit-log.entity'
 import { AssetDependency, AssetType } from '../entities/asset-dependency.entity';
 import { RiskAssetLinkService } from '../../risk/services/risk-asset-link.service';
 import { RiskAssetType } from '../../risk/entities/risk-asset-link.entity';
+import { AssetDependencyService } from './asset-dependency.service';
+import { NotificationService } from '../../common/services/notification.service';
+import { NotificationType, NotificationPriority } from '../../common/entities/notification.entity';
+import { InformationAsset } from '../entities/information-asset.entity';
+import { BusinessApplication } from '../entities/business-application.entity';
+import { SoftwareAsset } from '../entities/software-asset.entity';
+import { Supplier } from '../entities/supplier.entity';
 
 @Injectable()
 export class PhysicalAssetService {
+  private readonly logger = new Logger(PhysicalAssetService.name);
+
   constructor(
     @InjectRepository(PhysicalAsset)
     private assetRepository: Repository<PhysicalAsset>,
     @InjectRepository(AssetDependency)
     private dependencyRepository: Repository<AssetDependency>,
+    @InjectRepository(InformationAsset)
+    private informationAssetRepository: Repository<InformationAsset>,
+    @InjectRepository(BusinessApplication)
+    private businessApplicationRepository: Repository<BusinessApplication>,
+    @InjectRepository(SoftwareAsset)
+    private softwareAssetRepository: Repository<SoftwareAsset>,
+    @InjectRepository(Supplier)
+    private supplierRepository: Repository<Supplier>,
     private auditService: AssetAuditService,
     private riskAssetLinkService: RiskAssetLinkService,
+    private assetDependencyService: AssetDependencyService,
+    private notificationService: NotificationService,
   ) {}
 
   async findAll(query?: PhysicalAssetQueryDto): Promise<{
@@ -182,7 +201,9 @@ export class PhysicalAssetService {
   }
 
   async update(id: string, updateDto: UpdatePhysicalAssetDto, userId: string): Promise<PhysicalAssetResponseDto> {
-    const asset = await this.assetRepository.findOne({ where: { id, deletedAt: IsNull() } });
+    const asset = await this.assetRepository.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
 
     if (!asset) {
       throw new NotFoundException(`Physical asset with ID ${id} not found`);
@@ -199,9 +220,15 @@ export class PhysicalAssetService {
       }
     }
 
+    // Capture previous owner for notification workflow
+    const previousOwnerId = asset.ownerId;
+
+    // Extract optional change reason (used for audit logging)
+    const { changeReason, ...rawUpdateDto } = updateDto;
+
     // Prepare update data - JSONB fields should be stored as objects/arrays directly
     const updateData: any = {
-      ...updateDto,
+      ...rawUpdateDto,
       updatedBy: userId,
     };
 
@@ -229,12 +256,30 @@ export class PhysicalAssetService {
       }
     });
 
+    // Determine if any "critical" fields were changed
+    const criticalFields = [
+      'uniqueIdentifier',
+      'assetDescription',
+      'criticalityLevel',
+      'ownerId',
+      'businessUnitId',
+      'physicalLocation',
+    ];
+    const hasCriticalChanges = criticalFields.some((field) => field in changes);
+
+    // If critical fields changed but no changeReason was provided, enforce justification
+    if (hasCriticalChanges && (!changeReason || !changeReason.trim())) {
+      throw new BadRequestException(
+        'A reason for change is required when updating key asset fields (identifier, description, criticality, owner, business unit, or location).',
+      );
+    }
+
     Object.assign(asset, updateData);
     const updated = await this.assetRepository.save(asset);
 
     // Log changes if any
     if (Object.keys(changes).length > 0) {
-      await this.auditService.logUpdate(AuditAssetType.PHYSICAL, id, changes, userId);
+      await this.auditService.logUpdate(AuditAssetType.PHYSICAL, id, changes, userId, changeReason);
     }
 
     // Reload with relations
@@ -242,6 +287,31 @@ export class PhysicalAssetService {
       where: { id: updated.id },
       relations: ['owner', 'assetType', 'businessUnit'],
     });
+
+    // TODO: Owner change notification workflow
+    // If the ownerId changed, this is where we would trigger notifications
+    // (e.g., email new owner, notify previous owner/manager, etc.).
+    const newOwnerId = reloaded?.ownerId;
+    if (previousOwnerId !== newOwnerId && newOwnerId) {
+      // For now, we rely on the audit trail and leave a clear hook
+      // for a future AssetOwnershipNotificationService to plug in here.
+      // Example:
+      // await this.ownershipNotificationService.handleOwnerChange({
+      //   assetType: 'physical',
+      //   assetId: id,
+      //   previousOwnerId,
+      //   newOwnerId,
+      //   changedByUserId: userId,
+      // });
+    }
+
+    // Notify owners of dependent assets if there were changes
+    if (Object.keys(changes).length > 0) {
+      await this.notifyDependentAssetOwners(id, reloaded!, changes, changeReason).catch((error) => {
+        // Log error but don't fail the update
+        this.logger.error(`Failed to notify dependent asset owners: ${error.message}`, error.stack);
+      });
+    }
 
     return this.toResponseDto(reloaded!);
   }
@@ -283,6 +353,126 @@ export class PhysicalAssetService {
       counts[assetId] = links.length;
     }
     return counts;
+  }
+
+  /**
+   * Notify owners of assets that depend on this physical asset when it is updated
+   */
+  private async notifyDependentAssetOwners(
+    physicalAssetId: string,
+    physicalAsset: PhysicalAsset,
+    changes: Record<string, { old: any; new: any }>,
+    changeReason?: string,
+  ): Promise<void> {
+    // Find all dependencies where this physical asset is the target (incoming dependencies)
+    const incomingDependencies = await this.dependencyRepository.find({
+      where: {
+        targetAssetType: AssetType.PHYSICAL,
+        targetAssetId: physicalAssetId,
+      },
+    });
+
+    if (incomingDependencies.length === 0) {
+      return; // No dependent assets to notify
+    }
+
+    // Get owner IDs from all dependent assets
+    const ownerIds = new Set<string>();
+
+    for (const dep of incomingDependencies) {
+      const ownerId = await this.getOwnerIdFromAsset(dep.sourceAssetType, dep.sourceAssetId);
+      if (ownerId) {
+        ownerIds.add(ownerId);
+      }
+    }
+
+    if (ownerIds.size === 0) {
+      return; // No owners to notify
+    }
+
+    // Build change summary
+    const changedFields = Object.keys(changes);
+    const changeSummary = changedFields
+      .map((field) => {
+        const change = changes[field];
+        return `${field}: "${change.old ?? 'N/A'}" → "${change.new ?? 'N/A'}"`;
+      })
+      .join(', ');
+
+    const assetIdentifier = physicalAsset.uniqueIdentifier || physicalAsset.assetDescription || physicalAssetId;
+    const message = `The physical asset "${assetIdentifier}" that your asset depends on has been updated. Changes: ${changeSummary}.${changeReason ? ` Reason: ${changeReason}` : ''}`;
+
+    // Send notifications to all dependent asset owners
+    await this.notificationService.createBulk(Array.from(ownerIds), {
+      type: NotificationType.GENERAL,
+      priority: NotificationPriority.MEDIUM,
+      title: 'Dependent Asset Updated',
+      message,
+      entityType: 'physical_asset',
+      entityId: physicalAssetId,
+      actionUrl: `/dashboard/assets/physical/${physicalAssetId}`,
+    });
+
+    this.logger.log(
+      `Sent dependency notifications to ${ownerIds.size} owners for physical asset ${physicalAssetId}`,
+    );
+  }
+
+  /**
+   * Get the owner ID from an asset based on its type
+   */
+  private async getOwnerIdFromAsset(assetType: AssetType, assetId: string): Promise<string | null> {
+    try {
+      switch (assetType) {
+        case AssetType.PHYSICAL: {
+          const asset = await this.assetRepository.findOne({
+            where: { id: assetId, deletedAt: IsNull() },
+            select: ['ownerId'],
+          });
+          return asset?.ownerId || null;
+        }
+
+        case AssetType.INFORMATION: {
+          const asset = await this.informationAssetRepository.findOne({
+            where: { id: assetId, deletedAt: IsNull() },
+            select: ['informationOwnerId', 'assetCustodianId'],
+          });
+          // Prefer informationOwnerId, fallback to assetCustodianId
+          return asset?.informationOwnerId || asset?.assetCustodianId || null;
+        }
+
+        case AssetType.APPLICATION: {
+          const asset = await this.businessApplicationRepository.findOne({
+            where: { id: assetId, deletedAt: IsNull() },
+            select: ['ownerId'],
+          });
+          return asset?.ownerId || null;
+        }
+
+        case AssetType.SOFTWARE: {
+          const asset = await this.softwareAssetRepository.findOne({
+            where: { id: assetId, deletedAt: IsNull() },
+            select: ['ownerId'],
+          });
+          return asset?.ownerId || null;
+        }
+
+        case AssetType.SUPPLIER: {
+          const asset = await this.supplierRepository.findOne({
+            where: { id: assetId, deletedAt: IsNull() },
+            select: ['ownerId'],
+          });
+          return asset?.ownerId || null;
+        }
+
+        default:
+          this.logger.warn(`Unknown asset type: ${assetType}`);
+          return null;
+      }
+    } catch (error) {
+      this.logger.error(`Error getting owner for ${assetType} asset ${assetId}: ${error.message}`);
+      return null;
+    }
   }
 
   private toResponseDto(asset: PhysicalAsset, riskCount?: number): PhysicalAssetResponseDto {

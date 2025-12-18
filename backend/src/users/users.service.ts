@@ -45,14 +45,39 @@ export class UsersService {
 
   async findAll(): Promise<User[]> {
     return this.usersRepository.find({
-      select: ['id', 'email', 'firstName', 'lastName', 'phone', 'role', 'status', 'createdAt', 'updatedAt'],
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'phone',
+        'role',
+        'status',
+        'businessUnitId',
+        'createdAt',
+        'updatedAt',
+      ],
     });
   }
 
   async findOne(id: string): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { id },
-      select: ['id', 'email', 'firstName', 'lastName', 'phone', 'avatarUrl', 'role', 'status', 'emailVerified', 'phoneVerified', 'createdAt', 'updatedAt'],
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'phone',
+        'avatarUrl',
+        'role',
+        'status',
+        'businessUnitId',
+        'emailVerified',
+        'phoneVerified',
+        'createdAt',
+        'updatedAt',
+      ],
     });
 
     if (!user) {
@@ -65,7 +90,22 @@ export class UsersService {
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { email },
-      select: ['id', 'email', 'firstName', 'lastName', 'phone', 'avatarUrl', 'role', 'status', 'password', 'emailVerified', 'phoneVerified', 'createdAt', 'updatedAt'],
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'phone',
+        'avatarUrl',
+        'role',
+        'status',
+        'businessUnitId',
+        'password',
+        'emailVerified',
+        'phoneVerified',
+        'createdAt',
+        'updatedAt',
+      ],
     });
   }
 

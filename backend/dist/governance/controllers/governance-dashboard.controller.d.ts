@@ -6,6 +6,10 @@ export declare class GovernanceDashboardController {
     private readonly dashboardService;
     private readonly trendService;
     constructor(dashboardService: GovernanceDashboardService, trendService: GovernanceTrendService);
-    getDashboard(): Promise<GovernanceDashboardDto>;
+    getDashboard(startDate?: string, endDate?: string): Promise<GovernanceDashboardDto>;
     getDashboardTrends(): Promise<GovernanceTrendResponseDto>;
+    exportDashboard(startDate?: string, endDate?: string): Promise<{
+        message: string;
+        data: GovernanceDashboardDto;
+    }>;
 }

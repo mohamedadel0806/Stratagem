@@ -5,7 +5,7 @@ import { governanceApi, Policy, PolicyQueryParams, PolicyStatus, ReviewFrequency
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -111,10 +111,16 @@ export default function PoliciesPage() {
           <h1 className="text-3xl font-bold">Policies</h1>
           <p className="text-muted-foreground">Manage governance policies and control objectives</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Policy
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => router.push(`/${locale}/dashboard/governance/policies/my-assigned`)}>
+            <FileText className="h-4 w-4 mr-2" />
+            My Assigned Policies
+          </Button>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Policy
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -159,6 +165,7 @@ export default function PoliciesPage() {
                     <th className="p-4 text-left font-semibold">Type</th>
                     <th className="p-4 text-left font-semibold">Version</th>
                     <th className="p-4 text-left font-semibold">Status</th>
+                    <th className="p-4 text-left font-semibold">Control Objectives</th>
                     <th className="p-4 text-left font-semibold">Owner</th>
                     <th className="p-4 text-left font-semibold">Next Review</th>
                     <th className="p-4 text-right font-semibold">Actions</th>
@@ -179,6 +186,20 @@ export default function PoliciesPage() {
                       </td>
                       <td className="p-4">
                         <Badge variant={statusColors[policy.status]}>{statusLabels[policy.status]}</Badge>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              policy.control_objectives && policy.control_objectives.length > 0
+                                ? 'default'
+                                : 'outline'
+                            }
+                            className="text-xs"
+                          >
+                            {policy.control_objectives?.length || 0} Objectives
+                          </Badge>
+                        </div>
                       </td>
                       <td className="p-4 text-sm text-muted-foreground">
                         {policy.owner

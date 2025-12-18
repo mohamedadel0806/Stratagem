@@ -82,3 +82,4 @@ export class FixSuppliersColumns1700000000023 implements MigrationInterface {
 
 
 
+

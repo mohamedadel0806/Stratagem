@@ -53,3 +53,4 @@ test.describe('Risk Details - KRIs Tab', () => {
     }
   });
 });
+

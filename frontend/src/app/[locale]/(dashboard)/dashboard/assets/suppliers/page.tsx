@@ -5,8 +5,10 @@ import { assetsApi } from '@/lib/api/assets';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2, Upload } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Plus, Eye, Edit, Trash2, Upload, FileText, CheckSquare, Square } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkOperationsBar } from '@/components/assets/bulk-operations-bar-enhanced';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { DataTableFilters } from '@/components/filters/data-table-filters';
@@ -17,6 +19,7 @@ import { AssetImportWizard } from '@/components/forms/asset-import-wizard';
 import { AssetRiskBadge } from '@/components/assets/asset-risk-badge';
 import { downloadSampleExcel } from '@/lib/utils/sample-excel-generator';
 import { Download } from 'lucide-react';
+import { exportToExcel } from '@/lib/utils/excel-export';
 
 // Force dynamic rendering to avoid build-time API calls
 export const dynamic = 'force-dynamic';
@@ -32,6 +35,7 @@ export default function SuppliersPage() {
     page: 1,
     limit: 20,
   });
+  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
   // Track when component has mounted on client to prevent hydration mismatch
   const [mounted, setMounted] = useState(false);
 
@@ -39,13 +43,8 @@ export default function SuppliersPage() {
   const isWindowDefined = typeof window !== 'undefined';
   const queryEnabled = mounted; // Only enable query after mount to prevent hydration mismatch
   useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'suppliers/page.tsx:48',message:'Component render - mount state',data:{mounted,isWindowDefined,queryEnabled},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-  }, [mounted, isWindowDefined, queryEnabled]);
-  useEffect(() => {
     setMounted(true);
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'suppliers/page.tsx:50',message:'Component mounted on client',data:{mounted:true},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
   }, []);
-  // #endregion
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['suppliers', filters],
@@ -56,16 +55,6 @@ export default function SuppliersPage() {
     enabled: mounted, // Only enable query after mount to prevent hydration mismatch
   });
 
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'suppliers/page.tsx:62',message:'Query state after useQuery',data:{isLoading,hasData:!!data,dataLength:data?.data?.length,error:!!error,enabled:mounted},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A,B'})}).catch(()=>{});
-  }, [isLoading, data, error, mounted]);
-  useEffect(() => {
-    if (data?.data) {
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'suppliers/page.tsx:66',message:'Rendering supplier cards list',data:{supplierCount:data.data.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-    }
-  }, [data?.data]);
-  // #endregion
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => assetsApi.deleteSupplier(id),
@@ -91,6 +80,38 @@ export default function SuppliersPage() {
     }
   };
 
+  // Bulk selection handlers
+  const toggleAssetSelection = useCallback((assetId: string) => {
+    setSelectedAssets((prev) => {
+      const next = new Set(prev);
+      if (next.has(assetId)) {
+        next.delete(assetId);
+      } else {
+        next.add(assetId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!data?.data) return;
+    if (selectedAssets.size === data.data.length) {
+      setSelectedAssets(new Set());
+    } else {
+      setSelectedAssets(new Set(data.data.map((a: any) => a.id)));
+    }
+  }, [data?.data, selectedAssets.size]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedAssets(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(async (ids: string[]) => {
+    await Promise.all(ids.map((id) => assetsApi.deleteSupplier(id)));
+    queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+    clearSelection();
+  }, [queryClient, clearSelection]);
+
   if (error) {
     console.error('Error loading suppliers:', error);
     return (
@@ -107,12 +128,6 @@ export default function SuppliersPage() {
     );
   }
 
-  // #region agent log
-  const renderPath = !mounted ? 'ssr' : (isLoading ? 'loading' : (!data?.data || data.data.length === 0) ? 'empty' : 'data');
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'suppliers/page.tsx:90',message:'Render path decision',data:{renderPath,mounted,isLoading,hasData:!!data?.data,dataLength:data?.data?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B,E'})}).catch(()=>{});
-  }, [renderPath, mounted, isLoading, data]);
-  // #endregion
 
   // Render consistent fallback during SSR to prevent hydration mismatch
   if (!mounted) {
@@ -140,6 +155,71 @@ export default function SuppliersPage() {
               <p className="text-muted-foreground">Manage your third-party suppliers and vendors</p>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const report = await assetsApi.getCriticalSuppliersReport();
+                    const exportData = report.data.map((supplier: any) => ({
+                      'Supplier Name': supplier.supplierName,
+                      'Criticality Level': supplier.criticalityLevel || 'N/A',
+                      'Risk Level': supplier.riskLevel || 'N/A',
+                      'Last Risk Assessment': supplier.riskAssessmentDate ? new Date(supplier.riskAssessmentDate).toLocaleDateString() : 'Never',
+                      'Last Review Date': supplier.lastReviewDate ? new Date(supplier.lastReviewDate).toLocaleDateString() : 'Never',
+                      'Owner': supplier.owner ? `${supplier.owner.firstName || ''} ${supplier.owner.lastName || ''}`.trim() || supplier.owner.email : 'N/A',
+                      'Business Unit': supplier.businessUnit?.name || 'N/A',
+                      'Days Since Assessment': supplier.riskAssessmentDate ? Math.floor((new Date().getTime() - new Date(supplier.riskAssessmentDate).getTime()) / (1000 * 60 * 60 * 24)) : 'N/A',
+                    }));
+                    await exportToExcel(exportData, `critical-suppliers-report-${new Date().toISOString().split('T')[0]}`, 'Critical Suppliers');
+                    toast({
+                      title: 'Success',
+                      description: 'Critical suppliers report exported successfully',
+                    });
+                  } catch (error: any) {
+                    toast({
+                      title: 'Error',
+                      description: error.message || 'Failed to export critical suppliers report',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export Critical Suppliers
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const report = await assetsApi.getExpiringContracts(90);
+                    const exportData = report.data.map((supplier: any) => ({
+                      'Supplier Name': supplier.supplierName,
+                      'Contract Reference': supplier.contractReference || 'N/A',
+                      'Contract Start Date': supplier.contractStartDate ? new Date(supplier.contractStartDate).toLocaleDateString() : 'N/A',
+                      'Contract End Date': supplier.contractEndDate ? new Date(supplier.contractEndDate).toLocaleDateString() : 'N/A',
+                      'Contract Status': supplier.contractStatus || 'N/A',
+                      'Auto Renewal': supplier.autoRenewal ? 'Yes' : 'No',
+                      'Owner': supplier.owner ? `${supplier.owner.firstName || ''} ${supplier.owner.lastName || ''}`.trim() || supplier.owner.email : 'N/A',
+                      'Business Unit': supplier.businessUnit?.name || 'N/A',
+                      'Days Until Expiration': supplier.contractEndDate ? Math.ceil((new Date(supplier.contractEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 'N/A',
+                    }));
+                    await exportToExcel(exportData, `expiring-contracts-${new Date().toISOString().split('T')[0]}`, 'Expiring Contracts');
+                    toast({
+                      title: 'Success',
+                      description: 'Expiring contracts report exported successfully',
+                    });
+                  } catch (error: any) {
+                    toast({
+                      title: 'Error',
+                      description: error.message || 'Failed to export expiring contracts report',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export Expiring Contracts
+              </Button>
               <Button variant="outline" onClick={() => setIsImportOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Import
@@ -184,87 +264,139 @@ export default function SuppliersPage() {
           ]}
           />
 
+          {selectedAssets.size > 0 && (
+            <BulkOperationsBar
+              selectedCount={selectedAssets.size}
+              selectedItems={data?.data.filter((a: any) => selectedAssets.has(a.id)) || []}
+              onClearSelection={clearSelection}
+              onDelete={handleBulkDelete}
+              onUpdate={() => {
+                queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+                clearSelection();
+              }}
+              assetType="supplier"
+            />
+          )}
+
           {data?.data && data.data.length > 0 ? (
         <>
+          <div className="flex items-center gap-2 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+            >
+              {selectedAssets.size === data.data.length ? (
+                <>
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Deselect All
+                </>
+              ) : (
+                <>
+                  <Square className="h-4 w-4 mr-2" />
+                  Select All
+                </>
+              )}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {selectedAssets.size} of {data.data.length} selected
+            </span>
+          </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {data.data.map((supplier: any) => (
-              <Card key={supplier.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{supplier.supplierName}</CardTitle>
-                      <CardDescription>{supplier.supplierIdentifier}</CardDescription>
+            {data.data.map((supplier: any) => {
+              const isSelected = selectedAssets.has(supplier.id);
+              return (
+                <Card
+                  key={supplier.id}
+                  className={isSelected ? 'ring-2 ring-primary' : ''}
+                >
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleAssetSelection(supplier.id)}
+                        />
+                        <div>
+                          <CardTitle className="text-lg">{supplier.supplierName}</CardTitle>
+                          <CardDescription>{supplier.supplierIdentifier}</CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {supplier.supplierType && (
+                          <Badge variant="outline">{supplier.supplierType.replace('_', ' ')}</Badge>
+                        )}
+                        <AssetRiskBadge
+                          assetId={supplier.id}
+                          assetType="supplier"
+                          riskCount={(supplier as any).riskCount}
+                        />
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      {supplier.supplierType && (
-                        <Badge variant="outline">{supplier.supplierType.replace('_', ' ')}</Badge>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      {supplier.primaryContactName && (
+                        <div>
+                          <span className="font-medium">Contact:</span> {supplier.primaryContactName}
+                        </div>
                       )}
-                      <AssetRiskBadge 
-                        assetId={supplier.id} 
-                        assetType="supplier" 
-                        riskCount={(supplier as any).riskCount}
-                      />
+                      {supplier.primaryContactEmail && (
+                        <div>
+                          <span className="font-medium">Email:</span> {supplier.primaryContactEmail}
+                        </div>
+                      )}
+                      {supplier.country && (
+                        <div>
+                          <span className="font-medium">Country:</span> {supplier.country}
+                        </div>
+                      )}
+                      {supplier.contractReference && (
+                        <div>
+                          <span className="font-medium">Contract:</span> {supplier.contractReference}
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-medium">Criticality:</span>{' '}
+                        <Badge variant="secondary">{supplier.criticalityLevel}</Badge>
+                      </div>
+                      {supplier.hasDataAccess && (
+                        <div>
+                          <Badge variant="destructive">Has Data Access</Badge>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    {supplier.primaryContactName && (
-                      <div>
-                        <span className="font-medium">Contact:</span> {supplier.primaryContactName}
-                      </div>
-                    )}
-                    {supplier.primaryContactEmail && (
-                      <div>
-                        <span className="font-medium">Email:</span> {supplier.primaryContactEmail}
-                      </div>
-                    )}
-                    {supplier.country && (
-                      <div>
-                        <span className="font-medium">Country:</span> {supplier.country}
-                      </div>
-                    )}
-                    {supplier.contractReference && (
-                      <div>
-                        <span className="font-medium">Contract:</span> {supplier.contractReference}
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-medium">Criticality:</span>{' '}
-                      <Badge variant="secondary">{supplier.criticalityLevel}</Badge>
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/en/dashboard/assets/suppliers/${supplier.id}`)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingSupplier(supplier)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(supplier.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
                     </div>
-                    {supplier.hasDataAccess && (
-                      <div>
-                        <Badge variant="destructive">Has Data Access</Badge>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/en/dashboard/assets/suppliers/${supplier.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setEditingSupplier(supplier)}>
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(supplier.id)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
           <Pagination
             currentPage={data.page}

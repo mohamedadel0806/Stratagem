@@ -1,4 +1,4 @@
-import { IntegrationType, AuthenticationType } from '../entities/integration-config.entity';
+import { IntegrationType, AuthenticationType, ConflictResolutionStrategy } from '../entities/integration-config.entity';
 export declare class CreateIntegrationConfigDto {
     name: string;
     integrationType: IntegrationType;
@@ -10,5 +10,6 @@ export declare class CreateIntegrationConfigDto {
     password?: string;
     fieldMapping?: Record<string, string>;
     syncInterval?: string;
+    conflictResolutionStrategy?: ConflictResolutionStrategy;
     notes?: string;
 }

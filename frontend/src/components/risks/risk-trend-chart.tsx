@@ -104,3 +104,4 @@ export function RiskTrendChart({ days = 30, categoryId }: RiskTrendChartProps) {
 
 
 
+

@@ -9,6 +9,11 @@ export interface User {
   avatarUrl?: string;
   role: string;
   status: string;
+   /**
+    * Optional primary business unit ID for this user.
+    * Used to auto-populate asset business unit when the user is selected as owner.
+    */
+  businessUnitId?: string;
   emailVerified: boolean;
   phoneVerified: boolean;
   createdAt: string;

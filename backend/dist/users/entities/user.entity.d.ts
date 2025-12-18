@@ -28,4 +28,5 @@ export declare class User {
     passwordChangedAt: Date;
     createdAt: Date;
     updatedAt: Date;
+    businessUnitId: string | null;
 }

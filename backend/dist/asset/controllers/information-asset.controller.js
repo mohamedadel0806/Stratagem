@@ -40,6 +40,30 @@ let InformationAssetController = class InformationAssetController {
     async findAll(query) {
         return this.assetService.findAll(query);
     }
+    async getReclassificationUpcoming(days) {
+        const daysNumber = days ? parseInt(days, 10) || 60 : 60;
+        const assets = await this.assetService.getAssetsDueForReclassification(daysNumber);
+        return {
+            data: assets,
+            total: assets.length,
+            days: daysNumber,
+        };
+    }
+    async getAssetsMissingCompliance() {
+        const assets = await this.assetService.getAssetsMissingCompliance();
+        return {
+            data: assets,
+            total: assets.length,
+        };
+    }
+    async getComplianceReport(complianceRequirement) {
+        const assets = await this.assetService.getComplianceReport(complianceRequirement);
+        return {
+            data: assets,
+            total: assets.length,
+            complianceRequirement,
+        };
+    }
     async findOne(id) {
         return this.assetService.findOne(id);
     }
@@ -59,10 +83,11 @@ let InformationAssetController = class InformationAssetController {
                 throw new common_1.BadRequestException('File buffer is required. Please ensure file is uploaded correctly.');
             }
             const fileType = body === null || body === void 0 ? void 0 : body.fileType;
+            const sheetName = body === null || body === void 0 ? void 0 : body.sheetName;
             const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
             try {
                 if (detectedFileType === 'excel') {
-                    return await this.importService.previewExcel(file.buffer);
+                    return await this.importService.previewExcel(file.buffer, 10, sheetName);
                 }
                 else {
                     return await this.importService.previewCSV(file.buffer);
@@ -137,6 +162,32 @@ __decorate([
     __metadata("design:paramtypes", [information_asset_query_dto_1.InformationAssetQueryDto]),
     __metadata("design:returntype", Promise)
 ], InformationAssetController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('reclassification/upcoming'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get information assets approaching reclassification' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of assets due for reclassification' }),
+    __param(0, (0, common_1.Query)('days')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], InformationAssetController.prototype, "getReclassificationUpcoming", null);
+__decorate([
+    (0, common_1.Get)('compliance/missing'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get information assets missing compliance information' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of assets without compliance requirements' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], InformationAssetController.prototype, "getAssetsMissingCompliance", null);
+__decorate([
+    (0, common_1.Get)('compliance/report'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get compliance report for information assets' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Compliance report data' }),
+    __param(0, (0, common_1.Query)('complianceRequirement')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], InformationAssetController.prototype, "getComplianceReport", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get information asset by ID' }),

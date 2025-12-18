@@ -1,16 +1,26 @@
 import { Repository } from 'typeorm';
 import { Policy } from './entities/policy.entity';
+import { PolicyAssignment } from './entities/policy-assignment.entity';
+import { PolicyReview, ReviewOutcome } from './entities/policy-review.entity';
+import { User } from '../../users/entities/user.entity';
+import { BusinessUnit } from '../../common/entities/business-unit.entity';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { PolicyQueryDto } from './dto/policy-query.dto';
 import { WorkflowService } from '../../workflow/services/workflow.service';
 import { NotificationService } from '../../common/services/notification.service';
+import { WorkflowExecution } from '../../workflow/entities/workflow-execution.entity';
 export declare class PoliciesService {
     private policyRepository;
+    private workflowExecutionRepository;
+    private policyAssignmentRepository;
+    private userRepository;
+    private businessUnitRepository;
+    private policyReviewRepository;
     private workflowService?;
     private notificationService?;
     private readonly logger;
-    constructor(policyRepository: Repository<Policy>, workflowService?: WorkflowService, notificationService?: NotificationService);
+    constructor(policyRepository: Repository<Policy>, workflowExecutionRepository: Repository<WorkflowExecution>, policyAssignmentRepository: Repository<PolicyAssignment>, userRepository: Repository<User>, businessUnitRepository: Repository<BusinessUnit>, policyReviewRepository: Repository<PolicyReview>, workflowService?: WorkflowService, notificationService?: NotificationService);
     create(createPolicyDto: CreatePolicyDto, userId: string): Promise<Policy>;
     findAll(queryDto: PolicyQueryDto): Promise<{
         data: Policy[];
@@ -22,7 +32,50 @@ export declare class PoliciesService {
         };
     }>;
     findOne(id: string): Promise<Policy>;
+    getWorkflowExecutions(policyId: string): Promise<{
+        id: string;
+        workflowId: string;
+        workflowName: string;
+        workflowType: import("../../workflow/entities/workflow.entity").WorkflowType;
+        status: import("../../workflow/entities/workflow-execution.entity").WorkflowExecutionStatus;
+        inputData: Record<string, any>;
+        outputData: Record<string, any>;
+        errorMessage: string;
+        assignedTo: {
+            id: string;
+            name: string;
+        };
+        startedAt: string;
+        completedAt: string;
+        createdAt: string;
+        approvals: any[];
+    }[]>;
+    getPendingApprovals(policyId: string, userId: string): Promise<any[]>;
+    publish(id: string, userId: string, assignToUserIds?: string[], assignToRoleIds?: string[], assignToBusinessUnitIds?: string[], notificationMessage?: string): Promise<Policy>;
+    getAssignedPolicies(userId: string, role?: string, businessUnitId?: string): Promise<Policy[]>;
+    getPublicationStatistics(): Promise<{
+        totalPublished: number;
+        publishedThisMonth: number;
+        publishedThisYear: number;
+        assignmentsCount: number;
+        acknowledgedCount: number;
+        acknowledgmentRate: number;
+    }>;
     update(id: string, updatePolicyDto: UpdatePolicyDto, userId: string): Promise<Policy>;
     remove(id: string): Promise<void>;
     findVersions(id: string): Promise<Policy[]>;
+    getPendingReviews(daysAhead?: number): Promise<Policy[]>;
+    getPoliciesDueForReview(days?: number): Promise<Policy[]>;
+    initiateReview(policyId: string, reviewDate: Date, initiatedBy: string): Promise<PolicyReview>;
+    completeReview(reviewId: string, outcome: ReviewOutcome, reviewerId: string, notes?: string, reviewSummary?: string, recommendedChanges?: string, nextReviewDate?: Date): Promise<PolicyReview>;
+    getReviewHistory(policyId: string): Promise<PolicyReview[]>;
+    getActiveReview(policyId: string): Promise<PolicyReview | null>;
+    private calculateNextReviewDate;
+    getReviewStatistics(): Promise<{
+        pending: number;
+        overdue: number;
+        dueIn30Days: number;
+        dueIn60Days: number;
+        dueIn90Days: number;
+    }>;
 }

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FindingForm } from '@/components/governance/finding-form';
 import { FindingLinkedRisks } from '@/components/risks/finding-linked-risks';
+import { FindingRemediationTracker } from '@/components/governance/finding-remediation-tracker';
 
 const severityLabels: Record<FindingSeverity, string> = {
   [FindingSeverity.CRITICAL]: 'Critical',
@@ -136,6 +137,7 @@ export default function FindingDetailPage() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="remediation">Remediation</TabsTrigger>
           <TabsTrigger value="risks">Linked Risks</TabsTrigger>
         </TabsList>
 
@@ -272,6 +274,10 @@ export default function FindingDetailPage() {
           )}
         </TabsContent>
 
+        <TabsContent value="remediation" className="space-y-4">
+          <FindingRemediationTracker findingId={findingId} />
+        </TabsContent>
+
         <TabsContent value="risks" className="space-y-4">
           <FindingLinkedRisks findingId={findingId} />
         </TabsContent>
@@ -298,3 +304,4 @@ export default function FindingDetailPage() {
     </div>
   );
 }
+

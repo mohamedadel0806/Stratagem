@@ -65,3 +65,4 @@ echo "💡 The auto-switch hook will automatically use Node 24 when you enter th
 
 
 
+

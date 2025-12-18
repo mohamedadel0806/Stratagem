@@ -62,6 +62,9 @@ export class SupplierResponseDto {
   @ApiPropertyOptional()
   autoRenewal?: boolean;
 
+  @ApiPropertyOptional({ enum: ['active', 'expired', 'pending_renewal', 'no_contract'], description: 'Computed contract status' })
+  contractStatus?: 'active' | 'expired' | 'pending_renewal' | 'no_contract';
+
   @ApiPropertyOptional({ type: Object })
   primaryContact?: {
     name: string;

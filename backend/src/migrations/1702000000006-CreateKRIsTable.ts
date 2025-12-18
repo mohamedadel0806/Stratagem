@@ -580,3 +580,4 @@ export class CreateKRIsTable1702000000006 implements MigrationInterface {
 
 
 
+

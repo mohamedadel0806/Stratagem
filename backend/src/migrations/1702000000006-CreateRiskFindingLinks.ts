@@ -101,3 +101,4 @@ export class CreateRiskFindingLinks1702000000006 implements MigrationInterface {
     await queryRunner.dropTable('risk_finding_links', true);
   }
 }
+

@@ -111,11 +111,13 @@ export class SoftwareAssetController {
     }
 
     const fileType = body?.fileType;
-    const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
+    const sheetName = body?.sheetName as string | undefined;
+    const detectedFileType =
+      fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
 
     try {
       if (detectedFileType === 'excel') {
-        return this.importService.previewExcel(file.buffer);
+        return this.importService.previewExcel(file.buffer, 10, sheetName);
       } else {
         return this.importService.previewCSV(file.buffer);
       }
@@ -203,6 +205,15 @@ export class SoftwareAssetController {
   @ApiResponse({ status: 200, description: 'Asset risk score summary' })
   async getRiskScore(@Param('id') id: string) {
     return this.riskAssetLinkService.getAssetRiskScore(RiskAssetType.SOFTWARE, id);
+  }
+
+  @Get('inventory/report')
+  @ApiOperation({ summary: 'Get software inventory report' })
+  @ApiResponse({ status: 200, description: 'Software inventory report with grouping and unlicensed software' })
+  async getInventoryReport(
+    @Query('groupBy') groupBy?: 'type' | 'vendor' | 'none',
+  ) {
+    return this.softwareService.getInventoryReport(groupBy);
   }
 }
 

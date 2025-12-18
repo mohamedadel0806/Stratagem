@@ -49,3 +49,4 @@ test.describe('Risk Details - Treatments Tab', () => {
     console.log('✅ Treatment created successfully');
   });
 });
+

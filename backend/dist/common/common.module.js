@@ -32,6 +32,7 @@ const audit_log_service_1 = require("./services/audit-log.service");
 const file_service_1 = require("./services/file.service");
 const compliance_assessment_service_1 = require("./services/compliance-assessment.service");
 const compliance_assessment_scheduler_1 = require("./schedulers/compliance-assessment.scheduler");
+const information_asset_classification_scheduler_1 = require("./schedulers/information-asset-classification.scheduler");
 const tasks_controller_1 = require("./controllers/tasks.controller");
 const compliance_controller_1 = require("./controllers/compliance.controller");
 const notification_controller_1 = require("./controllers/notification.controller");
@@ -86,6 +87,7 @@ exports.CommonModule = CommonModule = __decorate([
             file_service_1.FileService,
             compliance_assessment_service_1.ComplianceAssessmentService,
             compliance_assessment_scheduler_1.ComplianceAssessmentScheduler,
+            information_asset_classification_scheduler_1.InformationAssetClassificationScheduler,
             business_unit_service_1.BusinessUnitService,
         ],
         exports: [tasks_service_1.TasksService, compliance_service_1.ComplianceService, notification_service_1.NotificationService, audit_log_service_1.AuditLogService, file_service_1.FileService, compliance_assessment_service_1.ComplianceAssessmentService, business_unit_service_1.BusinessUnitService],

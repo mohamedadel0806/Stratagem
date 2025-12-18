@@ -5,8 +5,10 @@ import { assetsApi } from '@/lib/api/assets';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Eye, Edit, Trash2, Upload, CheckSquare, Square } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkOperationsBar } from '@/components/assets/bulk-operations-bar-enhanced';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { DataTableFilters } from '@/components/filters/data-table-filters';
@@ -29,6 +31,7 @@ export default function SoftwareAssetsPage() {
     page: 1,
     limit: 20,
   });
+  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['software-assets', filters],
@@ -61,6 +64,38 @@ export default function SoftwareAssetsPage() {
       deleteMutation.mutate(id);
     }
   };
+
+  // Bulk selection handlers
+  const toggleAssetSelection = useCallback((assetId: string) => {
+    setSelectedAssets((prev) => {
+      const next = new Set(prev);
+      if (next.has(assetId)) {
+        next.delete(assetId);
+      } else {
+        next.add(assetId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!data?.data) return;
+    if (selectedAssets.size === data.data.length) {
+      setSelectedAssets(new Set());
+    } else {
+      setSelectedAssets(new Set(data.data.map((a: any) => a.id)));
+    }
+  }, [data?.data, selectedAssets.size]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedAssets(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(async (ids: string[]) => {
+    await Promise.all(ids.map((id) => assetsApi.deleteSoftwareAsset(id)));
+    queryClient.invalidateQueries({ queryKey: ['software-assets'] });
+    clearSelection();
+  }, [queryClient, clearSelection]);
 
   if (isLoading) {
     return <div className="p-6">Loading...</div>;
@@ -135,87 +170,140 @@ export default function SoftwareAssetsPage() {
         ]}
       />
 
+      {selectedAssets.size > 0 && (
+        <BulkOperationsBar
+          selectedCount={selectedAssets.size}
+          selectedItems={data?.data.filter((a: any) => selectedAssets.has(a.id)) || []}
+          onClearSelection={clearSelection}
+          onDelete={handleBulkDelete}
+          onUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ['software-assets'] });
+            clearSelection();
+          }}
+          assetType="software"
+        />
+      )}
+
       {data?.data && data.data.length > 0 ? (
         <>
+          <div className="flex items-center gap-2 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+            >
+              {selectedAssets.size === data.data.length ? (
+                <>
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Deselect All
+                </>
+              ) : (
+                <>
+                  <Square className="h-4 w-4 mr-2" />
+                  Select All
+                </>
+              )}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {selectedAssets.size} of {data.data.length} selected
+            </span>
+          </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {data.data.map((software: any) => (
-              <Card key={software.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{software.softwareName}</CardTitle>
-                      <CardDescription>{software.softwareIdentifier}</CardDescription>
+            {data.data.map((software: any) => {
+              const isSelected = selectedAssets.has(software.id);
+              return (
+                <Card
+                  key={software.id}
+                  className={isSelected ? 'ring-2 ring-primary' : ''}
+                >
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleAssetSelection(software.id)}
+                        />
+                        <div>
+                          <CardTitle className="text-lg">{software.softwareName}</CardTitle>
+                          <CardDescription>{software.softwareIdentifier}</CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {software.softwareType && (
+                          <Badge variant="outline">{software.softwareType.replace('_', ' ')}</Badge>
+                        )}
+                        <AssetRiskBadge
+                          assetId={software.id}
+                          assetType="software"
+                          riskCount={(software as any).riskCount}
+                        />
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      {software.softwareType && (
-                        <Badge variant="outline">{software.softwareType.replace('_', ' ')}</Badge>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      {software.version && (
+                        <div>
+                          <span className="font-medium">Version:</span> {software.version}
+                        </div>
                       )}
-                      <AssetRiskBadge 
-                        assetId={software.id} 
-                        assetType="software" 
-                        riskCount={(software as any).riskCount}
-                      />
+                      {software.vendor && (
+                        <div>
+                          <span className="font-medium">Vendor:</span> {software.vendor}
+                        </div>
+                      )}
+                      {software.licenseType && (
+                        <div>
+                          <span className="font-medium">License:</span> {software.licenseType}
+                        </div>
+                      )}
+                      {software.numberOfLicenses && (
+                        <div>
+                          <span className="font-medium">Licenses:</span>{' '}
+                          {software.licensesInUse || 0} / {software.numberOfLicenses}
+                        </div>
+                      )}
+                      {software.ownerName && (
+                        <div>
+                          <span className="font-medium">Owner:</span> {software.ownerName}
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-medium">Criticality:</span>{' '}
+                        <Badge variant="secondary">{software.criticalityLevel}</Badge>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    {software.version && (
-                      <div>
-                        <span className="font-medium">Version:</span> {software.version}
-                      </div>
-                    )}
-                    {software.vendor && (
-                      <div>
-                        <span className="font-medium">Vendor:</span> {software.vendor}
-                      </div>
-                    )}
-                    {software.licenseType && (
-                      <div>
-                        <span className="font-medium">License:</span> {software.licenseType}
-                      </div>
-                    )}
-                    {software.numberOfLicenses && (
-                      <div>
-                        <span className="font-medium">Licenses:</span> {software.licensesInUse || 0} / {software.numberOfLicenses}
-                      </div>
-                    )}
-                    {software.ownerName && (
-                      <div>
-                        <span className="font-medium">Owner:</span> {software.ownerName}
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-medium">Criticality:</span>{' '}
-                      <Badge variant="secondary">{software.criticalityLevel}</Badge>
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/en/dashboard/assets/software/${software.id}`)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingSoftware(software)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(software.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
                     </div>
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/en/dashboard/assets/software/${software.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setEditingSoftware(software)}>
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(software.id)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
           <Pagination
             currentPage={data.page}

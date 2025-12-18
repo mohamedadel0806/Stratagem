@@ -3,17 +3,41 @@
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { risksApi, riskAssessmentsApi, riskTreatmentsApi, krisApi, riskLinksApi, riskAssessmentRequestsApi } from "@/lib/api/risks"
+import {
+  risksApi,
+  riskAssessmentsApi,
+  riskTreatmentsApi,
+  krisApi,
+  riskLinksApi,
+  riskAssessmentRequestsApi,
+} from "@/lib/api/risks"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { 
-  ShieldAlert, ArrowLeft, Edit, Trash2, Plus, Link2, Unlink, 
-  AlertTriangle, TrendingUp, TrendingDown, Minus, Clock, 
-  CheckCircle2, XCircle, Activity, Target, Shield, Package
+import {
+  ShieldAlert,
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Plus,
+  Link2,
+  Unlink,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Activity,
+  Target,
+  Shield,
+  Package,
+  Eye,
 } from "lucide-react"
+import { assetsApi } from "@/lib/api/assets"
 import { RiskForm } from "@/components/forms/risk-form"
 import { TreatmentForm } from "@/components/forms/treatment-form"
 import { RiskAssessmentForm } from "@/components/forms/risk-assessment-form"
@@ -29,6 +53,112 @@ import { useState } from "react"
 const toast = {
   success: (message: string) => alert(`✅ ${message}`),
   error: (message: string) => alert(`❌ ${message}`),
+}
+
+// Component to display linked asset with details
+function LinkedAssetItem({ link, locale, onUnlink }: { link: any; locale: string; onUnlink: (linkId: string) => void }) {
+  const { data: asset } = useQuery({
+    queryKey: ['asset-detail', link.asset_type, link.asset_id],
+    queryFn: async () => {
+      switch (link.asset_type) {
+        case 'physical': return assetsApi.getPhysicalAsset(link.asset_id);
+        case 'information': return assetsApi.getInformationAsset(link.asset_id);
+        case 'application': return assetsApi.getBusinessApplication(link.asset_id);
+        case 'software': return assetsApi.getSoftwareAsset(link.asset_id);
+        case 'supplier': return assetsApi.getSupplier(link.asset_id);
+        default: return null;
+      }
+    },
+    enabled: !!link.asset_id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch security test results for applications and software
+  const { data: testResults } = useQuery({
+    queryKey: ['security-tests', link.asset_type, link.asset_id],
+    queryFn: () => {
+      if (link.asset_type === 'application' || link.asset_type === 'software') {
+        return assetsApi.getSecurityTestResults(link.asset_type, link.asset_id);
+      }
+      return Promise.resolve([]);
+    },
+    enabled: !!link.asset_id && (link.asset_type === 'application' || link.asset_type === 'software'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const assetName = asset?.assetDescription || asset?.name || asset?.applicationName || asset?.supplierName || link.asset_id.substring(0, 8);
+  const criticality = asset?.criticalityLevel;
+  const compliance = asset?.complianceRequirements;
+  const classification = asset?.classificationLevel;
+  const latestTest = testResults && testResults.length > 0 ? testResults[0] : null;
+
+  return (
+    <div className="flex items-center justify-between p-3 border rounded-lg">
+      <div className="flex items-center gap-3 flex-1 flex-wrap">
+        <Package className="h-4 w-4 text-muted-foreground" />
+        <Badge variant="outline" className="capitalize">{link.asset_type}</Badge>
+        <span className="text-sm font-medium">{assetName}</span>
+        {criticality && (
+          <Badge
+            variant="outline"
+            className={`text-xs ${
+              criticality === 'critical' ? 'bg-red-50 text-red-700 border-red-200' :
+              criticality === 'high' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+              criticality === 'medium' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+              'bg-green-50 text-green-700 border-green-200'
+            }`}
+          >
+            {criticality}
+          </Badge>
+        )}
+        {compliance && Array.isArray(compliance) && compliance.length > 0 && (
+          <Badge variant="outline" className="text-xs">
+            {compliance.length} Compliance
+          </Badge>
+        )}
+        {classification && (
+          <Badge variant="outline" className="text-xs capitalize">
+            {classification}
+          </Badge>
+        )}
+        {latestTest && (
+          <Badge
+            variant="outline"
+            className={`text-xs ${
+              latestTest.severity === 'critical' || latestTest.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200' :
+              latestTest.severity === 'high' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+              'bg-green-50 text-green-700 border-green-200'
+            }`}
+            title={`Last test: ${new Date(latestTest.testDate).toLocaleDateString()}`}
+          >
+            <Shield className="h-3 w-3 mr-1 inline" />
+            {latestTest.status === 'failed' ? 'Failed' : latestTest.severity || 'Tested'}
+          </Badge>
+        )}
+        {link.impact_description && (
+          <span className="text-sm text-muted-foreground">- {link.impact_description}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Link href={`/${locale}/dashboard/assets/${link.asset_type}/${link.asset_id}`}>
+          <Button variant="ghost" size="sm">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </Link>
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={() => {
+            if (confirm('Are you sure you want to unlink this asset?')) {
+              onUnlink(link.id);
+            }
+          }}
+        >
+          <Unlink className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export default function RiskDetailPage() {
@@ -698,11 +828,8 @@ export default function RiskDetailPage() {
         <TabsContent value="assets" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Linked Assets</h3>
-            <Button 
+            <Button
               onClick={() => {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'risks/[id]/page.tsx:657',message:'Link Asset button clicked',data:{riskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 setIsAssetBrowserOpen(true)
               }}
               data-testid="risk-details-link-asset-button"
@@ -711,49 +838,37 @@ export default function RiskDetailPage() {
               Link Asset
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Badges on each asset show <span className="font-semibold">criticality</span> (color-coded), number of{" "}
+            <span className="font-semibold">compliance frameworks</span>,{" "}
+            <span className="font-semibold">classification level</span>, and, for applications/software, a quick view of
+            the latest <span className="font-semibold">security test status</span>.
+          </p>
           <Card>
             <CardContent className="p-4">
               {linkedAssets && linkedAssets.length > 0 ? (
                 <div className="space-y-2">
                   {linkedAssets.map((link) => (
-                    <div key={link.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                        <Badge variant="outline" className="capitalize">{link.asset_type}</Badge>
-                        <span className="text-sm font-mono">{link.asset_id.substring(0, 8)}...</span>
-                        {link.impact_description && (
-                          <span className="text-sm text-muted-foreground">- {link.impact_description}</span>
-                        )}
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'risks/[id]/page.tsx:676',message:'Unlink Asset button clicked',data:{linkId:link.id,riskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                          // #endregion
-                          if (confirm('Are you sure you want to unlink this asset?')) {
-                            unlinkAssetMutation.mutate(link.id)
-                          }
-                        }}
-                        disabled={unlinkAssetMutation.isPending}
-                      >
-                        <Unlink className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <LinkedAssetItem
+                      key={link.id}
+                      link={link}
+                      locale={locale}
+                      onUnlink={(linkId) => {
+                        if (confirm("Are you sure you want to unlink this asset?")) {
+                          unlinkAssetMutation.mutate(linkId)
+                        }
+                      }}
+                    />
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">No assets linked to this risk</p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="mt-4"
                     onClick={() => {
-                      // #region agent log
-                      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'risks/[id]/page.tsx:686',message:'Link First Asset button clicked',data:{riskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                      // #endregion
                       setIsAssetBrowserOpen(true)
                     }}
                   >
@@ -772,9 +887,6 @@ export default function RiskDetailPage() {
             <h3 className="text-lg font-semibold">Linked Controls</h3>
             <Button 
               onClick={() => {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'risks/[id]/page.tsx:741',message:'Link Control button clicked',data:{riskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
                 setIsControlBrowserOpen(true)
               }}
               data-testid="risk-details-link-control-button"
@@ -805,9 +917,6 @@ export default function RiskDetailPage() {
                         variant="ghost" 
                         size="sm"
                         onClick={() => {
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'risks/[id]/page.tsx:764',message:'Unlink Control button clicked',data:{linkId:link.id,riskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                          // #endregion
                           if (confirm('Are you sure you want to unlink this control?')) {
                             unlinkControlMutation.mutate(link.id)
                           }
@@ -827,9 +936,6 @@ export default function RiskDetailPage() {
                     variant="outline" 
                     className="mt-4"
                     onClick={() => {
-                      // #region agent log
-                      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'risks/[id]/page.tsx:774',message:'Link First Control button clicked',data:{riskId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                      // #endregion
                       setIsControlBrowserOpen(true)
                     }}
                   >

@@ -214,3 +214,4 @@ docker exec stratagem-postgres-1 psql -U postgres -d grc_platform -c "SELECT * F
 
 
 
+

@@ -32,3 +32,4 @@ export class RiskAssessmentRequestResponseDto {
   created_at: Date;
   updated_at: Date;
 }
+

@@ -66,3 +66,4 @@ export class RiskFindingLink {
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 }
+

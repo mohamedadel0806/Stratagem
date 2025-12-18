@@ -290,7 +290,7 @@ __decorate([
 ], WorkflowController.prototype, "instantiateTemplate", null);
 exports.WorkflowController = WorkflowController = __decorate([
     (0, swagger_1.ApiTags)('workflows'),
-    (0, common_1.Controller)('api/v1/workflows'),
+    (0, common_1.Controller)('workflows'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [workflow_service_1.WorkflowService,

@@ -206,6 +206,107 @@ let SoftwareAssetService = class SoftwareAssetService {
             riskCount: riskCount,
         };
     }
+    async getInventoryReport(groupBy) {
+        const allSoftware = await this.softwareRepository
+            .createQueryBuilder('software')
+            .leftJoin('software.businessUnit', 'businessUnit')
+            .select([
+            'software.id',
+            'software.softwareName',
+            'software.versionNumber',
+            'software.patchLevel',
+            'software.vendorName',
+            'software.softwareType',
+            'software.installationCount',
+            'software.licenseCount',
+            'software.licenseType',
+            'software.licenseExpiry',
+            'software.businessUnitId',
+            'businessUnit.id',
+            'businessUnit.name',
+        ])
+            .where('software.deletedAt IS NULL')
+            .getMany();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const summary = {
+            totalSoftware: allSoftware.length,
+            totalInstallations: allSoftware.reduce((sum, s) => sum + (s.installationCount || 0), 0),
+            unlicensedCount: 0,
+            expiredLicenseCount: 0,
+        };
+        const unlicensed = [];
+        const grouped = {};
+        for (const software of allSoftware) {
+            const licenseStatus = this.getLicenseStatus(software.licenseExpiry, software.licenseCount, software.installationCount);
+            if (licenseStatus === 'expired') {
+                summary.expiredLicenseCount++;
+                summary.unlicensedCount++;
+            }
+            if (licenseStatus === 'unlicensed' || licenseStatus === 'expired' || licenseStatus === 'installation_exceeds_license') {
+                if (licenseStatus !== 'expired') {
+                    summary.unlicensedCount++;
+                }
+                unlicensed.push({
+                    softwareName: software.softwareName,
+                    version: software.versionNumber || 'N/A',
+                    patchLevel: software.patchLevel || 'N/A',
+                    vendor: software.vendorName || 'Unknown',
+                    softwareType: software.softwareType || 'Unknown',
+                    installationCount: software.installationCount || 0,
+                    businessUnits: software.businessUnit ? [software.businessUnit.name] : ['N/A'],
+                    reason: licenseStatus === 'expired' ? 'expired_license' : licenseStatus === 'installation_exceeds_license' ? 'installation_exceeds_license' : 'no_license',
+                });
+            }
+            const item = {
+                softwareName: software.softwareName,
+                version: software.versionNumber || 'N/A',
+                patchLevel: software.patchLevel || 'N/A',
+                vendor: software.vendorName || 'Unknown',
+                softwareType: software.softwareType || 'Unknown',
+                installationCount: software.installationCount || 0,
+                licenseCount: software.licenseCount,
+                licenseType: software.licenseType || null,
+                licenseExpiry: software.licenseExpiry || null,
+                licenseStatus,
+                businessUnits: software.businessUnit ? [software.businessUnit.name] : ['N/A'],
+                locations: software.businessUnit ? [software.businessUnit.name] : ['N/A'],
+            };
+            let groupKey = 'All Software';
+            if (groupBy === 'type' && software.softwareType) {
+                groupKey = software.softwareType;
+            }
+            else if (groupBy === 'vendor' && software.vendorName) {
+                groupKey = software.vendorName;
+            }
+            if (!grouped[groupKey]) {
+                grouped[groupKey] = [];
+            }
+            grouped[groupKey].push(item);
+        }
+        return { summary, grouped, unlicensed };
+    }
+    getLicenseStatus(licenseExpiry, licenseCount, installationCount) {
+        if (licenseExpiry) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const expiry = new Date(licenseExpiry);
+            expiry.setHours(0, 0, 0, 0);
+            if (expiry < today) {
+                return 'expired';
+            }
+        }
+        if (!licenseExpiry && licenseCount === null) {
+            return 'unlicensed';
+        }
+        if (licenseCount !== null && installationCount > licenseCount) {
+            return 'installation_exceeds_license';
+        }
+        if (licenseExpiry || (licenseCount !== null && licenseCount > 0)) {
+            return 'licensed';
+        }
+        return 'unknown';
+    }
     async generateUniqueIdentifier() {
         const prefix = 'SW';
         const timestamp = Date.now().toString(36).toUpperCase();

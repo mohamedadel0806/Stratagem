@@ -38,6 +38,7 @@ export enum EntityType {
   POLICY = 'policy',
   COMPLIANCE_REQUIREMENT = 'compliance_requirement',
   TASK = 'task',
+  SOP = 'sop',
 }
 
 @Entity('workflows')

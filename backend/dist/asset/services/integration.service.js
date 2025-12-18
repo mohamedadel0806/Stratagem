@@ -11,19 +11,25 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var IntegrationService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IntegrationService = void 0;
 const common_1 = require("@nestjs/common");
+const schedule_1 = require("@nestjs/schedule");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const integration_config_entity_1 = require("../entities/integration-config.entity");
 const integration_sync_log_entity_1 = require("../entities/integration-sync-log.entity");
 const physical_asset_service_1 = require("./physical-asset.service");
-let IntegrationService = class IntegrationService {
-    constructor(integrationConfigRepository, syncLogRepository, physicalAssetService) {
+const notification_service_1 = require("../../common/services/notification.service");
+const notification_entity_1 = require("../../common/entities/notification.entity");
+let IntegrationService = IntegrationService_1 = class IntegrationService {
+    constructor(integrationConfigRepository, syncLogRepository, physicalAssetService, notificationService) {
         this.integrationConfigRepository = integrationConfigRepository;
         this.syncLogRepository = syncLogRepository;
         this.physicalAssetService = physicalAssetService;
+        this.notificationService = notificationService;
+        this.logger = new common_1.Logger(IntegrationService_1.name);
     }
     async createConfig(dto, userId) {
         const config = this.integrationConfigRepository.create(Object.assign(Object.assign({}, dto), { createdById: userId, status: integration_config_entity_1.IntegrationStatus.INACTIVE }));
@@ -105,18 +111,33 @@ let IntegrationService = class IntegrationService {
                 try {
                     const mappedData = this.mapFields(record, config.fieldMapping || {});
                     const existing = await this.findAssetByUniqueIdentifier(mappedData.uniqueIdentifier);
+                    const conflictStrategy = config.conflictResolutionStrategy || integration_config_entity_1.ConflictResolutionStrategy.SKIP;
                     if (existing) {
-                        skippedRecords++;
-                        continue;
+                        if (conflictStrategy === integration_config_entity_1.ConflictResolutionStrategy.SKIP) {
+                            skippedRecords++;
+                            continue;
+                        }
+                        else if (conflictStrategy === integration_config_entity_1.ConflictResolutionStrategy.OVERWRITE) {
+                            await this.physicalAssetService.update(existing.id, mappedData, config.createdById);
+                            successfulSyncs++;
+                            continue;
+                        }
+                        else if (conflictStrategy === integration_config_entity_1.ConflictResolutionStrategy.MERGE) {
+                            const mergedData = this.mergeAssetData(existing, mappedData);
+                            await this.physicalAssetService.update(existing.id, mergedData, config.createdById);
+                            successfulSyncs++;
+                            continue;
+                        }
                     }
-                    if (config.integrationType === integration_config_entity_1.IntegrationType.CMDB || config.integrationType === integration_config_entity_1.IntegrationType.ASSET_MANAGEMENT_SYSTEM) {
+                    if (config.integrationType === integration_config_entity_1.IntegrationType.CMDB ||
+                        config.integrationType === integration_config_entity_1.IntegrationType.ASSET_MANAGEMENT_SYSTEM) {
                         await this.physicalAssetService.create(mappedData, config.createdById);
                         successfulSyncs++;
                     }
                 }
                 catch (error) {
                     failedSyncs++;
-                    console.error(`Failed to sync record:`, error);
+                    this.logger.error(`Failed to sync record for integration ${config.id}`, (error === null || error === void 0 ? void 0 : error.stack) || (error === null || error === void 0 ? void 0 : error.message));
                 }
             }
             savedLog.status = failedSyncs === 0 ? integration_sync_log_entity_1.SyncStatus.COMPLETED : integration_sync_log_entity_1.SyncStatus.PARTIAL;
@@ -130,6 +151,9 @@ let IntegrationService = class IntegrationService {
             if (config.syncInterval) {
                 config.nextSyncAt = this.calculateNextSync(config.syncInterval);
             }
+            else {
+                config.nextSyncAt = null;
+            }
             await this.integrationConfigRepository.save(config);
             return this.syncLogRepository.save(savedLog);
         }
@@ -138,8 +162,34 @@ let IntegrationService = class IntegrationService {
             savedLog.errorMessage = error.message;
             savedLog.completedAt = new Date();
             config.lastSyncError = error.message;
+            if (config.syncInterval) {
+                const backoffMinutes = 15;
+                const now = new Date();
+                config.nextSyncAt = new Date(now.getTime() + backoffMinutes * 60 * 1000);
+            }
             await this.integrationConfigRepository.save(config);
             await this.syncLogRepository.save(savedLog);
+            try {
+                await this.notificationService.create({
+                    userId: config.createdById,
+                    type: notification_entity_1.NotificationType.GENERAL,
+                    priority: notification_entity_1.NotificationPriority.HIGH,
+                    title: `Integration sync failed: ${config.name}`,
+                    message: `The integration "${config.name}" (type: ${config.integrationType}) failed to sync: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`,
+                    entityType: 'integration',
+                    entityId: config.id,
+                    actionUrl: '/dashboard/integrations',
+                    metadata: {
+                        integrationId: config.id,
+                        integrationName: config.name,
+                        integrationType: config.integrationType,
+                    },
+                });
+            }
+            catch (notifyError) {
+                this.logger.error(`Failed to create admin notification for integration ${config.id}: ${(notifyError === null || notifyError === void 0 ? void 0 : notifyError.message) || 'Unknown error'}`, notifyError === null || notifyError === void 0 ? void 0 : notifyError.stack);
+            }
+            this.logger.error(`Sync failed for integration ${config.id}: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`, error === null || error === void 0 ? void 0 : error.stack);
             throw error;
         }
     }
@@ -179,12 +229,37 @@ let IntegrationService = class IntegrationService {
         return mapped;
     }
     async findAssetByUniqueIdentifier(identifier) {
+        var _a;
+        if (!identifier) {
+            return null;
+        }
         try {
+            const existing = await ((_a = this.physicalAssetService['assetRepository']) === null || _a === void 0 ? void 0 : _a.findOne({
+                where: { uniqueIdentifier: identifier },
+            }));
+            return existing || null;
+        }
+        catch (error) {
+            this.logger.warn(`Duplicate check failed for identifier "${identifier}": ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`);
             return null;
         }
-        catch (_a) {
-            return null;
+    }
+    mergeAssetData(existing, newData) {
+        const merged = {};
+        for (const key in newData) {
+            if (newData[key] !== null && newData[key] !== undefined && newData[key] !== '') {
+                merged[key] = newData[key];
+            }
+            else if (existing[key] !== null && existing[key] !== undefined) {
+                merged[key] = existing[key];
+            }
         }
+        for (const key in existing) {
+            if (!(key in merged) && existing[key] !== null && existing[key] !== undefined) {
+                merged[key] = existing[key];
+            }
+        }
+        return merged;
     }
     calculateNextSync(interval) {
         const now = new Date();
@@ -208,14 +283,106 @@ let IntegrationService = class IntegrationService {
         }
         return new Date(now.getTime() + milliseconds);
     }
+    async handleWebhookPayload(id, payload) {
+        const config = await this.findOne(id);
+        if (config.integrationType !== integration_config_entity_1.IntegrationType.WEBHOOK && config.integrationType !== integration_config_entity_1.IntegrationType.ASSET_MANAGEMENT_SYSTEM) {
+            throw new common_1.BadRequestException('Integration is not configured for webhook-based sync');
+        }
+        const syncLog = this.syncLogRepository.create({
+            integrationConfigId: config.id,
+            status: integration_sync_log_entity_1.SyncStatus.RUNNING,
+            startedAt: new Date(),
+            syncDetails: { source: 'webhook' },
+        });
+        const savedLog = await this.syncLogRepository.save(syncLog);
+        try {
+            const externalData = Array.isArray(payload) ? payload : [payload];
+            let successfulSyncs = 0;
+            let failedSyncs = 0;
+            let skippedRecords = 0;
+            for (const record of externalData) {
+                try {
+                    const mappedData = this.mapFields(record, config.fieldMapping || {});
+                    const existing = await this.findAssetByUniqueIdentifier(mappedData.uniqueIdentifier);
+                    const conflictStrategy = config.conflictResolutionStrategy || integration_config_entity_1.ConflictResolutionStrategy.SKIP;
+                    if (existing) {
+                        if (conflictStrategy === integration_config_entity_1.ConflictResolutionStrategy.SKIP) {
+                            skippedRecords++;
+                            continue;
+                        }
+                        else if (conflictStrategy === integration_config_entity_1.ConflictResolutionStrategy.OVERWRITE) {
+                            await this.physicalAssetService.update(existing.id, mappedData, config.createdById);
+                            successfulSyncs++;
+                            continue;
+                        }
+                        else if (conflictStrategy === integration_config_entity_1.ConflictResolutionStrategy.MERGE) {
+                            const mergedData = this.mergeAssetData(existing, mappedData);
+                            await this.physicalAssetService.update(existing.id, mergedData, config.createdById);
+                            successfulSyncs++;
+                            continue;
+                        }
+                    }
+                    await this.physicalAssetService.create(mappedData, config.createdById);
+                    successfulSyncs++;
+                }
+                catch (error) {
+                    failedSyncs++;
+                    this.logger.error(`Failed to process webhook record for integration ${config.id}`, (error === null || error === void 0 ? void 0 : error.stack) || (error === null || error === void 0 ? void 0 : error.message));
+                }
+            }
+            savedLog.status = failedSyncs === 0 ? integration_sync_log_entity_1.SyncStatus.COMPLETED : integration_sync_log_entity_1.SyncStatus.PARTIAL;
+            savedLog.totalRecords = externalData.length;
+            savedLog.successfulSyncs = successfulSyncs;
+            savedLog.failedSyncs = failedSyncs;
+            savedLog.skippedRecords = skippedRecords;
+            savedLog.completedAt = new Date();
+            return this.syncLogRepository.save(savedLog);
+        }
+        catch (error) {
+            savedLog.status = integration_sync_log_entity_1.SyncStatus.FAILED;
+            savedLog.errorMessage = error.message;
+            savedLog.completedAt = new Date();
+            await this.syncLogRepository.save(savedLog);
+            this.logger.error(`Webhook sync failed for integration ${config.id}: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`, error === null || error === void 0 ? void 0 : error.stack);
+            throw error;
+        }
+    }
+    async runScheduledSyncs() {
+        const now = new Date();
+        const dueConfigs = await this.integrationConfigRepository.find({
+            where: {
+                status: integration_config_entity_1.IntegrationStatus.ACTIVE,
+                nextSyncAt: { $lte: now },
+            },
+        });
+        if (!dueConfigs.length) {
+            return;
+        }
+        for (const config of dueConfigs) {
+            try {
+                this.logger.log(`Running scheduled sync for integration ${config.id} (${config.name})`);
+                await this.sync(config.id);
+            }
+            catch (error) {
+                this.logger.error(`Scheduled sync failed for integration ${config.id}: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'}`, error === null || error === void 0 ? void 0 : error.stack);
+            }
+        }
+    }
 };
 exports.IntegrationService = IntegrationService;
-exports.IntegrationService = IntegrationService = __decorate([
+__decorate([
+    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_5_MINUTES),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], IntegrationService.prototype, "runScheduledSyncs", null);
+exports.IntegrationService = IntegrationService = IntegrationService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(integration_config_entity_1.IntegrationConfig)),
     __param(1, (0, typeorm_1.InjectRepository)(integration_sync_log_entity_1.IntegrationSyncLog)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        physical_asset_service_1.PhysicalAssetService])
+        physical_asset_service_1.PhysicalAssetService,
+        notification_service_1.NotificationService])
 ], IntegrationService);
 //# sourceMappingURL=integration.service.js.map

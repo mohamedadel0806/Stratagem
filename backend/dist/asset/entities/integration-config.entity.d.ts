@@ -16,6 +16,11 @@ export declare enum AuthenticationType {
     BASIC_AUTH = "basic_auth",
     OAUTH2 = "oauth2"
 }
+export declare enum ConflictResolutionStrategy {
+    SKIP = "skip",
+    OVERWRITE = "overwrite",
+    MERGE = "merge"
+}
 export declare class IntegrationConfig {
     id: string;
     name: string;
@@ -34,6 +39,7 @@ export declare class IntegrationConfig {
     nextSyncAt: Date;
     createdById: string;
     createdBy: User;
+    conflictResolutionStrategy: ConflictResolutionStrategy;
     notes: string;
     createdAt: Date;
     updatedAt: Date;

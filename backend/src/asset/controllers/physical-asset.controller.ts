@@ -106,11 +106,6 @@ export class PhysicalAssetController {
     @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
   ) {
-    // Debug logging
-    console.log('Preview import called');
-    console.log('File:', file ? { fieldname: file.fieldname, originalname: file.originalname, size: file.size, mimetype: file.mimetype } : 'null');
-    console.log('Body:', body);
-    
     if (!file) {
       console.error('File is missing in request');
       throw new BadRequestException('File is required. Please ensure the file is uploaded with the field name "file".');
@@ -120,14 +115,17 @@ export class PhysicalAssetController {
       throw new BadRequestException('File buffer is required. Please ensure file is uploaded correctly.');
     }
 
-    // Extract fileType from body (multipart/form-data)
+    // Extract fileType and optional sheetName from body (multipart/form-data)
     const fileType = body?.fileType;
+    const sheetName = body?.sheetName as string | undefined;
     // Determine file type from parameter or file extension
-    const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
+    const detectedFileType =
+      fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
 
     try {
       if (detectedFileType === 'excel') {
-        return this.importService.previewExcel(file.buffer);
+        // Support multiple worksheets by allowing optional sheetName selection
+        return this.importService.previewExcel(file.buffer, 10, sheetName);
       } else {
         return this.importService.previewCSV(file.buffer);
       }
@@ -150,12 +148,6 @@ export class PhysicalAssetController {
     @CurrentUser() user: { userId: string; email: string; role: string },
     @Body() body: any,
   ) {
-    // Debug logging
-    console.log('Import assets called');
-    console.log('File:', file ? { fieldname: file.fieldname, originalname: file.originalname, size: file.size, mimetype: file.mimetype } : 'null');
-    console.log('Body:', body);
-    console.log('User:', user ? { userId: user.userId, email: user.email } : 'null');
-    
     if (!file) {
       console.error('File is missing in request');
       throw new BadRequestException('File is required. Please ensure the file is uploaded with the field name "file".');

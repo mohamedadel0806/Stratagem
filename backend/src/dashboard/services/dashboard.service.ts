@@ -84,7 +84,10 @@ export class DashboardService {
       // Get asset statistics
       const assetStats = await this.getAssetStats();
 
-      return { summary, assetStats };
+      // Get supplier criticality (dedicated widget)
+      const supplierCriticality = await this.getSupplierCriticality();
+
+      return { summary, assetStats, supplierCriticality };
     } catch (error) {
       console.error('Error in getOverview:', error);
       throw error;
@@ -111,6 +114,12 @@ export class DashboardService {
       // Assets with outdated security tests
       const assetsWithOutdatedSecurityTests = await this.getAssetsWithOutdatedSecurityTests();
 
+      // Assets by connectivity status (connected / disconnected / unknown)
+      const countByConnectivityStatus = await this.getAssetCountByConnectivityStatus();
+
+      // Supplier criticality (dedicated widget)
+      const supplierCriticality = await this.getSupplierCriticality();
+
       return {
         countByType,
         countByCriticality,
@@ -118,7 +127,9 @@ export class DashboardService {
         recentChanges,
         assetsByComplianceScope,
         assetsWithOutdatedSecurityTests,
-      };
+        countByConnectivityStatus,
+        supplierCriticality,
+      } as any; // Type assertion needed due to optional field
     } catch (error) {
       console.error('Error in getAssetStats:', error);
       // Return default stats instead of throwing to prevent breaking the entire overview
@@ -141,7 +152,18 @@ export class DashboardService {
         recentChanges: [],
         assetsByComplianceScope: [],
         assetsWithOutdatedSecurityTests: [],
-      };
+        countByConnectivityStatus: {
+          connected: 0,
+          disconnected: 0,
+          unknown: 0,
+        },
+        supplierCriticality: {
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        },
+      } as any;
     }
   }
 
@@ -173,6 +195,31 @@ export class DashboardService {
         supplier: 0,
         total: 0,
       };
+    }
+  }
+
+  async getSupplierCriticality(): Promise<{ critical: number; high: number; medium: number; low: number }> {
+    try {
+      const criticalityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+
+      const supplierCounts = await this.supplierRepository
+        .createQueryBuilder('supplier')
+        .select('supplier.criticalityLevel', 'level')
+        .addSelect('COUNT(*)', 'count')
+        .where('supplier.deletedAt IS NULL')
+        .groupBy('supplier.criticalityLevel')
+        .getRawMany();
+
+      supplierCounts.forEach((row) => {
+        if (row.level && row.level in criticalityCounts) {
+          criticalityCounts[row.level as keyof typeof criticalityCounts] += parseInt(row.count, 10) || 0;
+        }
+      });
+
+      return criticalityCounts;
+    } catch (error) {
+      console.error('Error in getSupplierCriticality:', error);
+      return { critical: 0, high: 0, medium: 0, low: 0 };
     }
   }
 
@@ -340,11 +387,25 @@ export class DashboardService {
 
   private async getRecentAssetChanges(): Promise<RecentAssetChangeDto[]> {
     try {
-      const recentLogs = await this.auditLogRepository.find({
-        take: 15,
-        order: { createdAt: 'DESC' },
-        relations: ['changedBy'],
-      });
+      // Use query builder with explicit column selection to avoid loading relations
+      // and prevent TypeORM from trying to select columns from the users table
+      const recentLogs = await this.auditLogRepository
+        .createQueryBuilder('log')
+        .select([
+          'log.id',
+          'log.assetType',
+          'log.assetId',
+          'log.action',
+          'log.fieldName',
+          'log.oldValue',
+          'log.newValue',
+          'log.changedById',
+          'log.changeReason',
+          'log.createdAt',
+        ])
+        .orderBy('log.createdAt', 'DESC')
+        .take(15)
+        .getMany();
 
       // Get asset names for each log entry
       const results: RecentAssetChangeDto[] = [];
@@ -397,9 +458,9 @@ export class DashboardService {
           assetName,
           action: log.action,
           fieldName: log.fieldName,
-          changedByName: log.changedBy
-            ? `${log.changedBy.firstName || ''} ${log.changedBy.lastName || ''}`.trim() || 'Unknown User'
-            : 'System',
+          // For now, skip resolving the full user to avoid selecting
+          // non-existent columns from the users table.
+          changedByName: 'System',
           createdAt: log.createdAt,
         });
       }
@@ -510,15 +571,32 @@ export class DashboardService {
             daysSinceLastTest: undefined,
           });
         } else {
+          const lastTest =
+            app.lastSecurityTestDate instanceof Date
+              ? app.lastSecurityTestDate
+              : new Date(app.lastSecurityTestDate as any);
+
+          if (isNaN(lastTest.getTime())) {
+            // Bad or unparsable date, treat as "no test date"
+            results.push({
+              id: app.id,
+              name: app.applicationName,
+              type: 'application',
+              lastSecurityTestDate: undefined,
+              daysSinceLastTest: undefined,
+            });
+            return;
+          }
+
           const daysSince = Math.floor(
-            (now.getTime() - app.lastSecurityTestDate.getTime()) / (1000 * 60 * 60 * 24),
+            (now.getTime() - lastTest.getTime()) / (1000 * 60 * 60 * 24),
           );
           if (daysSince > daysThreshold) {
             results.push({
               id: app.id,
               name: app.applicationName,
               type: 'application',
-              lastSecurityTestDate: app.lastSecurityTestDate,
+              lastSecurityTestDate: lastTest,
               daysSinceLastTest: daysSince,
             });
           }
@@ -541,15 +619,32 @@ export class DashboardService {
             daysSinceLastTest: undefined,
           });
         } else {
+          const lastTest =
+            asset.lastSecurityTestDate instanceof Date
+              ? asset.lastSecurityTestDate
+              : new Date(asset.lastSecurityTestDate as any);
+
+          if (isNaN(lastTest.getTime())) {
+            // Bad or unparsable date, treat as "no test date"
+            results.push({
+              id: asset.id,
+              name: asset.softwareName,
+              type: 'software',
+              lastSecurityTestDate: undefined,
+              daysSinceLastTest: undefined,
+            });
+            return;
+          }
+
           const daysSince = Math.floor(
-            (now.getTime() - asset.lastSecurityTestDate.getTime()) / (1000 * 60 * 60 * 24),
+            (now.getTime() - lastTest.getTime()) / (1000 * 60 * 60 * 24),
           );
           if (daysSince > daysThreshold) {
             results.push({
               id: asset.id,
               name: asset.softwareName,
               type: 'software',
-              lastSecurityTestDate: asset.lastSecurityTestDate,
+              lastSecurityTestDate: lastTest,
               daysSinceLastTest: daysSince,
             });
           }
@@ -566,6 +661,49 @@ export class DashboardService {
     } catch (error) {
       console.error('Error in getAssetsWithOutdatedSecurityTests:', error);
       return [];
+    }
+  }
+
+  private async getAssetCountByConnectivityStatus(): Promise<{
+    connected: number;
+    disconnected: number;
+    unknown: number;
+  }> {
+    try {
+      const counts: { [key: string]: number } = {
+        connected: 0,
+        disconnected: 0,
+        unknown: 0,
+      };
+
+      const rows = await this.physicalAssetRepository
+        .createQueryBuilder('asset')
+        .select('asset.connectivityStatus', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .where('asset.deletedAt IS NULL')
+        .groupBy('asset.connectivityStatus')
+        .getRawMany();
+
+      rows.forEach((row) => {
+        const status = row.status as string | null;
+        const count = parseInt(row.count, 10) || 0;
+        if (status && counts.hasOwnProperty(status)) {
+          counts[status] += count;
+        }
+      });
+
+      return {
+        connected: counts.connected || 0,
+        disconnected: counts.disconnected || 0,
+        unknown: counts.unknown || 0,
+      };
+    } catch (error) {
+      console.error('Error in getAssetCountByConnectivityStatus:', error);
+      return {
+        connected: 0,
+        disconnected: 0,
+        unknown: 0,
+      };
     }
   }
 }

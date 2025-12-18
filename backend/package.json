@@ -5,6 +5,9 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
@@ -28,6 +31,7 @@
     "seed:risks": "ts-node -r tsconfig-paths/register ./src/scripts/seed-risks.ts",
     "seed:kris": "ts-node -r tsconfig-paths/register ./src/scripts/seed-kris.ts",
     "seed:assessment-requests": "ts-node -r tsconfig-paths/register ./src/scripts/seed-assessment-requests.ts",
+    "seed:report-templates": "ts-node -r tsconfig-paths/register ./src/scripts/seed-report-templates.ts",
     "check:governance": "ts-node -r tsconfig-paths/register ./src/scripts/check-governance-data.ts",
     "fix:policies-schema": "ts-node -r tsconfig-paths/register ./src/scripts/fix-policies-schema.ts",
     "test:signature": "ts-node -r tsconfig-paths/register ./src/scripts/test-digital-signature.ts"

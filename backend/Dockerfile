@@ -21,6 +21,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
+# Copy and make healthcheck script executable
+COPY healthcheck.sh /app/healthcheck.sh
+RUN chmod +x /app/healthcheck.sh
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nestjs -u 1001
 RUN chown -R nestjs:nodejs /app
@@ -36,6 +39,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Copy and make healthcheck script executable
+COPY healthcheck.sh /app/healthcheck.sh
+RUN chmod +x /app/healthcheck.sh
 # Rebuild bcrypt for the container architecture after copying
 RUN npm rebuild bcrypt --build-from-source || true
 EXPOSE 3001

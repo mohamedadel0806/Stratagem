@@ -11,6 +11,7 @@ export declare class GlobalAssetSearchService {
     private businessApplicationRepository;
     private softwareAssetRepository;
     private supplierRepository;
+    private readonly logger;
     constructor(physicalAssetRepository: Repository<PhysicalAsset>, informationAssetRepository: Repository<InformationAsset>, businessApplicationRepository: Repository<BusinessApplication>, softwareAssetRepository: Repository<SoftwareAsset>, supplierRepository: Repository<Supplier>);
     search(query: GlobalAssetSearchQueryDto): Promise<GlobalAssetSearchResponseDto>;
 }

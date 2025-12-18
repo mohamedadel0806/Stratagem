@@ -30,6 +30,8 @@ import {
   AlertTriangle,
   Gavel,
   Target,
+  Mail,
+  ShieldCheck,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -237,10 +239,28 @@ export function Sidebar({ className }: SidebarProps) {
                     Compliance
                   </DropdownMenuItem>
                 </Link>
+            <Link href={`/${locale}/dashboard/assets/field-config`}>
+              <DropdownMenuItem className={pathname?.includes("/assets/field-config") ? "bg-accent" : ""}>
+                <ListChecks className="mr-2 h-4 w-4" />
+                Field Configuration
+              </DropdownMenuItem>
+            </Link>
                 <Link href={`/${locale}/dashboard/assets/reports`}>
                   <DropdownMenuItem className={pathname?.includes("/assets/reports") ? "bg-accent" : ""}>
                     <BarChart3 className="mr-2 h-4 w-4" />
                     Reports
+                  </DropdownMenuItem>
+                </Link>
+                <Link href={`/${locale}/dashboard/assets/email-distribution-lists`}>
+                  <DropdownMenuItem className={pathname?.includes("/assets/email-distribution-lists") ? "bg-accent" : ""}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Email Distribution Lists
+                  </DropdownMenuItem>
+                </Link>
+                <Link href={`/${locale}/dashboard/assets/validation-rules`}>
+                  <DropdownMenuItem className={pathname?.includes("/assets/validation-rules") ? "bg-accent" : ""}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Validation Rules
                   </DropdownMenuItem>
                 </Link>
               </DropdownMenuContent>

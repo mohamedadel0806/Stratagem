@@ -92,6 +92,33 @@ export class AssetDependencyController {
     return this.dependencyService.checkDependencies(type, id);
   }
 
+  @Get(':type/:id/dependencies/chain')
+  @ApiOperation({ summary: 'Get multi-level dependency chain (impact analysis)' })
+  @ApiParam({ name: 'type', description: 'Asset type', enum: AssetType })
+  @ApiParam({ name: 'id', description: 'Asset ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Multi-level dependency chain',
+  })
+  @ApiResponse({ status: 404, description: 'Asset not found' })
+  async getDependencyChain(
+    @Param('type') type: AssetType,
+    @Param('id') id: string,
+  ): Promise<{
+    chain: Array<{
+      assetType: AssetType;
+      assetId: string;
+      assetName: string;
+      assetIdentifier: string;
+      depth: number;
+      path: Array<{ assetType: AssetType; assetId: string }>;
+    }>;
+    totalCount: number;
+    maxDepthReached: number;
+  }> {
+    return this.dependencyService.getDependencyChain(type, id, 3, 'outgoing');
+  }
+
   @Delete('dependencies/:dependencyId')
   @ApiOperation({ summary: 'Remove a dependency' })
   @ApiParam({ name: 'dependencyId', description: 'Dependency ID' })

@@ -87,9 +87,6 @@ export default function PhysicalAssetDetailPage() {
   };
 
   const getTypeDisplay = (type: PhysicalAsset['assetType']) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'physical/[id]/page.tsx:89',message:'getTypeDisplay called',data:{type,typeType:typeof type,isObject:typeof type === 'object' && type !== null,keys:typeof type === 'object' && type !== null ? Object.keys(type) : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     if (typeof type === 'string') {
       return type.replace('_', ' ');
     }
@@ -487,6 +484,10 @@ export default function PhysicalAssetDetailPage() {
         </TabsContent>
 
         <TabsContent value="risks" className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Linked risks show how this asset contributes to overall risk. Click a risk title to open full details
+            and manage assessments and treatments from the risk module.
+          </p>
           <AssetLinkedRisks assetType="physical" assetId={assetId} />
         </TabsContent>
 

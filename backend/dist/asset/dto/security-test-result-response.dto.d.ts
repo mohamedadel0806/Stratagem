@@ -1,0 +1,30 @@
+import { TestType, TestStatus, SeverityLevel } from '../entities/security-test-result.entity';
+export declare class SecurityTestResultResponseDto {
+    id: string;
+    assetType: 'application' | 'software';
+    assetId: string;
+    testType: TestType;
+    testDate: Date;
+    status: TestStatus;
+    testerName?: string;
+    testerCompany?: string;
+    findingsCritical: number;
+    findingsHigh: number;
+    findingsMedium: number;
+    findingsLow: number;
+    findingsInfo: number;
+    severity?: SeverityLevel;
+    overallScore?: number;
+    passed: boolean;
+    summary?: string;
+    findings?: string;
+    recommendations?: string;
+    reportFileId?: string;
+    reportUrl?: string;
+    remediationDueDate?: Date;
+    remediationCompleted: boolean;
+    retestRequired: boolean;
+    retestDate?: Date;
+    createdAt: Date;
+    updatedAt: Date;
+}

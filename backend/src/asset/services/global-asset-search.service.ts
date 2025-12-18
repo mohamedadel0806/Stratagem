@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PhysicalAsset } from '../entities/physical-asset.entity';
@@ -15,6 +15,8 @@ import {
 
 @Injectable()
 export class GlobalAssetSearchService {
+  private readonly logger = new Logger(GlobalAssetSearchService.name);
+
   constructor(
     @InjectRepository(PhysicalAsset)
     private physicalAssetRepository: Repository<PhysicalAsset>,
@@ -29,10 +31,11 @@ export class GlobalAssetSearchService {
   ) {}
 
   async search(query: GlobalAssetSearchQueryDto): Promise<GlobalAssetSearchResponseDto> {
-    const page = query.page || 1;
-    const limit = query.limit || 20;
-    const searchTerm = query.q || '';
-    const assetType = query.type || AssetType.ALL;
+    try {
+      const page = query.page || 1;
+      const limit = query.limit || 20;
+      const searchTerm = query.q || '';
+      const assetType = query.type || AssetType.ALL;
 
     // Build search conditions for each asset type
     const searchConditions = searchTerm
@@ -55,53 +58,86 @@ export class GlobalAssetSearchService {
 
     // Search Physical Assets
     if (typesToSearch.includes(AssetType.PHYSICAL)) {
-      const physicalQuery = this.physicalAssetRepository
-        .createQueryBuilder('asset')
-        .leftJoinAndSelect('asset.owner', 'owner')
-        .leftJoinAndSelect('asset.businessUnit', 'businessUnit')
-        .where('asset.deletedAt IS NULL');
+      try {
+        const physicalQuery = this.physicalAssetRepository
+          .createQueryBuilder('asset')
+          .leftJoin('asset.owner', 'owner')
+          .leftJoin('asset.businessUnit', 'businessUnit')
+          .select([
+            'asset.id',
+            'asset.assetDescription',
+            'asset.uniqueIdentifier',
+            'asset.criticalityLevel',
+            'asset.createdAt',
+            'asset.updatedAt',
+            'owner.id',
+            'owner.email',
+            'owner.firstName',
+            'owner.lastName',
+            'businessUnit.id',
+            'businessUnit.name',
+          ])
+          .where('asset.deletedAt IS NULL');
 
-      if (searchConditions) {
-        physicalQuery.andWhere(
-          '(asset.assetDescription ILIKE :search OR asset.uniqueIdentifier ILIKE :search OR asset.serialNumber ILIKE :search)',
-          { search: searchConditions },
+        if (searchConditions) {
+          physicalQuery.andWhere(
+            '(asset.assetDescription ILIKE :search OR asset.uniqueIdentifier ILIKE :search OR asset.serialNumber ILIKE :search)',
+            { search: searchConditions },
+          );
+        }
+
+        if (query.criticality) {
+          physicalQuery.andWhere('asset.criticalityLevel = :criticality', {
+            criticality: query.criticality,
+          });
+        }
+
+        if (query.businessUnit) {
+          physicalQuery.andWhere('asset.businessUnitId = :businessUnitId', {
+            businessUnitId: query.businessUnit,
+          });
+        }
+
+        const physicalAssets = await physicalQuery.getMany();
+        results.push(
+          ...physicalAssets.map((asset) => ({
+            id: asset.id,
+            type: AssetType.PHYSICAL,
+            name: asset.assetDescription || asset.uniqueIdentifier,
+            identifier: asset.uniqueIdentifier,
+            criticality: asset.criticalityLevel,
+            owner: asset.owner?.email || (asset.owner?.firstName && asset.owner?.lastName ? `${asset.owner.firstName} ${asset.owner.lastName}` : asset.owner?.firstName || asset.owner?.lastName || null),
+            businessUnit: asset.businessUnit?.name || null,
+            createdAt: asset.createdAt,
+            updatedAt: asset.updatedAt,
+          })),
         );
+      } catch (error: any) {
+        this.logger.error(`Error searching physical assets: ${error?.message}`, error?.stack);
+        // Continue with other asset types even if one fails
       }
-
-      if (query.criticality) {
-        physicalQuery.andWhere('asset.criticalityLevel = :criticality', {
-          criticality: query.criticality,
-        });
-      }
-
-      if (query.businessUnit) {
-        physicalQuery.andWhere('asset.businessUnitId = :businessUnitId', {
-          businessUnitId: query.businessUnit,
-        });
-      }
-
-      const physicalAssets = await physicalQuery.getMany();
-      results.push(
-        ...physicalAssets.map((asset) => ({
-          id: asset.id,
-          type: AssetType.PHYSICAL,
-          name: asset.assetDescription || asset.uniqueIdentifier,
-          identifier: asset.uniqueIdentifier,
-          criticality: asset.criticalityLevel,
-          owner: asset.owner?.email || (asset.owner?.firstName && asset.owner?.lastName ? `${asset.owner.firstName} ${asset.owner.lastName}` : asset.owner?.firstName || asset.owner?.lastName || null),
-          businessUnit: asset.businessUnit?.name || null,
-          createdAt: asset.createdAt,
-          updatedAt: asset.updatedAt,
-        })),
-      );
     }
 
     // Search Information Assets
     if (typesToSearch.includes(AssetType.INFORMATION)) {
-      const informationQuery = this.informationAssetRepository
+      try {
+        const informationQuery = this.informationAssetRepository
         .createQueryBuilder('asset')
-        .leftJoinAndSelect('asset.informationOwner', 'owner')
-        .leftJoinAndSelect('asset.businessUnit', 'businessUnit')
+        .leftJoin('asset.informationOwner', 'owner')
+        .leftJoin('asset.businessUnit', 'businessUnit')
+        .select([
+          'asset.id',
+          'asset.name',
+          'asset.informationType',
+          'asset.createdAt',
+          'asset.updatedAt',
+          'owner.id',
+          'owner.email',
+          'owner.firstName',
+          'owner.lastName',
+          'businessUnit.id',
+          'businessUnit.name',
+        ])
         .where('asset.deletedAt IS NULL');
 
       if (searchConditions) {
@@ -131,14 +167,33 @@ export class GlobalAssetSearchService {
           updatedAt: asset.updatedAt,
         })),
       );
+      } catch (error: any) {
+        this.logger.error(`Error searching information assets: ${error?.message}`, error?.stack);
+        // Continue with other asset types even if one fails
+      }
     }
 
     // Search Business Applications
     if (typesToSearch.includes(AssetType.APPLICATION)) {
-      const applicationQuery = this.businessApplicationRepository
+      try {
+        const applicationQuery = this.businessApplicationRepository
         .createQueryBuilder('app')
-        .leftJoinAndSelect('app.owner', 'owner')
-        .leftJoinAndSelect('app.businessUnit', 'businessUnit')
+        .leftJoin('app.owner', 'owner')
+        .leftJoin('app.businessUnit', 'businessUnit')
+        .select([
+          'app.id',
+          'app.applicationName',
+          'app.applicationType',
+          'app.criticalityLevel',
+          'app.createdAt',
+          'app.updatedAt',
+          'owner.id',
+          'owner.email',
+          'owner.firstName',
+          'owner.lastName',
+          'businessUnit.id',
+          'businessUnit.name',
+        ])
         .where('app.deletedAt IS NULL');
 
       if (searchConditions) {
@@ -174,14 +229,32 @@ export class GlobalAssetSearchService {
           updatedAt: app.updatedAt,
         })),
       );
+      } catch (error: any) {
+        this.logger.error(`Error searching business applications: ${error?.message}`, error?.stack);
+        // Continue with other asset types even if one fails
+      }
     }
 
     // Search Software Assets
     if (typesToSearch.includes(AssetType.SOFTWARE)) {
-      const softwareQuery = this.softwareAssetRepository
+      try {
+        const softwareQuery = this.softwareAssetRepository
         .createQueryBuilder('software')
-        .leftJoinAndSelect('software.owner', 'owner')
-        .leftJoinAndSelect('software.businessUnit', 'businessUnit')
+        .leftJoin('software.owner', 'owner')
+        .leftJoin('software.businessUnit', 'businessUnit')
+        .select([
+          'software.id',
+          'software.softwareName',
+          'software.softwareType',
+          'software.createdAt',
+          'software.updatedAt',
+          'owner.id',
+          'owner.email',
+          'owner.firstName',
+          'owner.lastName',
+          'businessUnit.id',
+          'businessUnit.name',
+        ])
         .where('software.deletedAt IS NULL');
 
       if (searchConditions) {
@@ -211,14 +284,33 @@ export class GlobalAssetSearchService {
           updatedAt: software.updatedAt,
         })),
       );
+      } catch (error: any) {
+        this.logger.error(`Error searching software assets: ${error?.message}`, error?.stack);
+        // Continue with other asset types even if one fails
+      }
     }
 
     // Search Suppliers
     if (typesToSearch.includes(AssetType.SUPPLIER)) {
-      const supplierQuery = this.supplierRepository
+      try {
+        const supplierQuery = this.supplierRepository
         .createQueryBuilder('supplier')
-        .leftJoinAndSelect('supplier.owner', 'owner')
-        .leftJoinAndSelect('supplier.businessUnit', 'businessUnit')
+        .leftJoin('supplier.owner', 'owner')
+        .leftJoin('supplier.businessUnit', 'businessUnit')
+        .select([
+          'supplier.id',
+          'supplier.supplierName',
+          'supplier.uniqueIdentifier',
+          'supplier.criticalityLevel',
+          'supplier.createdAt',
+          'supplier.updatedAt',
+          'owner.id',
+          'owner.email',
+          'owner.firstName',
+          'owner.lastName',
+          'businessUnit.id',
+          'businessUnit.name',
+        ])
         .where('supplier.deletedAt IS NULL');
 
       if (searchConditions) {
@@ -254,10 +346,18 @@ export class GlobalAssetSearchService {
           updatedAt: supplier.updatedAt,
         })),
       );
+      } catch (error: any) {
+        this.logger.error(`Error searching suppliers: ${error?.message}`, error?.stack);
+        // Continue with other asset types even if one fails
+      }
     }
 
-    // Sort by updatedAt (most recent first)
-    results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    // Sort by updatedAt (most recent first), handle null values
+    results.sort((a, b) => {
+      const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return timeB - timeA;
+    });
 
     // Apply pagination
     const total = results.length;
@@ -265,12 +365,19 @@ export class GlobalAssetSearchService {
     const endIndex = startIndex + limit;
     const paginatedResults = results.slice(startIndex, endIndex);
 
-    return {
-      data: paginatedResults,
-      total,
-      page,
-      limit,
-    };
+      return {
+        data: paginatedResults,
+        total,
+        page,
+        limit,
+      };
+    } catch (error: any) {
+      this.logger.error(`Error in global asset search: ${error?.message}`, error?.stack);
+      // Re-throw as InternalServerErrorException for better error handling
+      throw new InternalServerErrorException(
+        `Global asset search failed: ${error?.message || 'Unknown error'}`,
+      );
+    }
   }
 }
 

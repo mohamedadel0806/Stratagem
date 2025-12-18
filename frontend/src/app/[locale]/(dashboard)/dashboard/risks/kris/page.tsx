@@ -36,27 +36,13 @@ export default function KRIsPage() {
   const { data: kris, isLoading, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['kris', statusFilter, searchQuery],
     queryFn: () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kris/page.tsx:38',message:'Query function executing',data:{statusFilter,searchQuery},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       return krisApi.getAll({
         status: statusFilter !== 'all' ? (statusFilter as KRIStatus) : undefined,
         isActive: true,
-      }).then((result) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kris/page.tsx:41',message:'Query function completed',data:{kriCount:result.length,kriIds:result.map(r=>r.id),kriNames:result.map(r=>r.name)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        return result;
       });
     },
   })
 
-  // Track query state changes
-  React.useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kris/page.tsx:53',message:'Query state changed',data:{isLoading,isFetching,dataUpdatedAt,kriCount:kris?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-  }, [isLoading, isFetching, dataUpdatedAt, kris])
 
   // Filter and sort KRIs by search query and creation date
   const filteredKRIs = React.useMemo(() => {
@@ -75,9 +61,6 @@ export default function KRIsPage() {
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
       return dateB - dateA
     })
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kris/page.tsx:45',message:'Filtered KRIs computed',data:{totalKris:kris?.length||0,filteredCount:result.length,searchQuery,statusFilter,kriIds:result.map(r=>r.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     return result;
   }, [kris, searchQuery])
 
@@ -332,13 +315,7 @@ export default function KRIsPage() {
         kriId={editingKRI?.id}
         initialData={editingKRI || undefined}
         onSuccess={() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kris/page.tsx:305',message:'Page onSuccess callback - before invalidation',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
           queryClient.invalidateQueries({ queryKey: ['kris'] })
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kris/page.tsx:306',message:'Page onSuccess callback - after invalidation',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
           setIsFormOpen(false)
           setEditingKRI(null)
         }}

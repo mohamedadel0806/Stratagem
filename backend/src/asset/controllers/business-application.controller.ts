@@ -111,11 +111,13 @@ export class BusinessApplicationController {
     }
 
     const fileType = body?.fileType;
-    const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
+    const sheetName = body?.sheetName as string | undefined;
+    const detectedFileType =
+      fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
 
     try {
       if (detectedFileType === 'excel') {
-        return this.importService.previewExcel(file.buffer);
+        return this.importService.previewExcel(file.buffer, 10, sheetName);
       } else {
         return this.importService.previewCSV(file.buffer);
       }

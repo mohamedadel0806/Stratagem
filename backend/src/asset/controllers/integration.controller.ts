@@ -89,6 +89,17 @@ export class IntegrationController {
     return this.integrationService.sync(id);
   }
 
+  @Post(':id/webhook')
+  @ApiOperation({ summary: 'Receive webhook payload for integration (asset management system push)' })
+  @ApiParam({ name: 'id', description: 'Integration config ID' })
+  @ApiResponse({ status: 200, description: 'Webhook payload processed' })
+  async handleWebhook(
+    @Param('id') id: string,
+    @Body() payload: any,
+  ): Promise<any> {
+    return this.integrationService.handleWebhookPayload(id, payload);
+  }
+
   @Get(':id/sync-history')
   @ApiOperation({ summary: 'Get synchronization history' })
   @ApiParam({ name: 'id', description: 'Integration config ID' })
@@ -123,6 +134,7 @@ export class IntegrationController {
     };
   }
 }
+
 
 
 

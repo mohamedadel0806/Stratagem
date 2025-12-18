@@ -21,11 +21,6 @@ export function AssetRiskBadge({ assetId, assetType, showZero = false, className
   const params = useParams()
   const locale = params?.locale || 'en'
 
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'asset-risk-badge.tsx:25',message:'AssetRiskBadge render',data:{assetId,assetType,providedRiskCount,hasWindow:typeof window !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  }, [assetId, assetType, providedRiskCount]);
-  // #endregion
 
   // Only fetch risks if riskCount is not provided and we need detailed risk info
   const { data: risks, isLoading } = useQuery({
@@ -141,6 +136,7 @@ export function AssetRiskBadgeCompact({ assetId, assetType, className }: AssetRi
     </TooltipProvider>
   )
 }
+
 
 
 

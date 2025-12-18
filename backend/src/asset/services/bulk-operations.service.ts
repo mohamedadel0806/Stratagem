@@ -38,7 +38,9 @@ export class BulkOperationsService {
       dto.criticalityLevel !== undefined ||
       dto.complianceTags !== undefined ||
       dto.businessUnit !== undefined ||
-      dto.department !== undefined;
+      dto.department !== undefined ||
+      dto.versionNumber !== undefined ||
+      dto.patchLevel !== undefined;
 
     if (!hasUpdates) {
       throw new BadRequestException('At least one field must be provided for update');
@@ -46,6 +48,7 @@ export class BulkOperationsService {
 
     const errors: Array<{ assetId: string; error: string }> = [];
     let successful = 0;
+    const rollbackData: Array<{ assetId: string; originalData: any }> = [];
 
     // Get the appropriate repository
     const repository = this.getRepository(assetType);
@@ -55,16 +58,20 @@ export class BulkOperationsService {
       where: { id: In(dto.assetIds) },
     });
 
-    // Update each asset
+    // Update each asset with rollback tracking
     for (const asset of assets) {
       try {
+        // Store original data for rollback
+        const originalData: any = {};
         const updateData: any = {};
 
         // Update owner (field name varies by asset type)
         if (dto.ownerId !== undefined) {
           if (assetType === 'information') {
+            originalData.informationOwnerId = asset.informationOwnerId;
             updateData.informationOwnerId = dto.ownerId;
           } else {
+            originalData.ownerId = asset.ownerId;
             updateData.ownerId = dto.ownerId;
           }
         }
@@ -72,6 +79,7 @@ export class BulkOperationsService {
         // Update criticality (only for assets that support it)
         if (dto.criticalityLevel !== undefined) {
           if (assetType === 'physical' || assetType === 'application' || assetType === 'supplier') {
+            originalData.criticalityLevel = asset.criticalityLevel;
             updateData.criticalityLevel = dto.criticalityLevel;
           }
         }
@@ -79,6 +87,7 @@ export class BulkOperationsService {
         // Update compliance tags
         if (dto.complianceTags !== undefined) {
           if (assetType === 'physical' || assetType === 'application' || assetType === 'information') {
+            originalData.complianceRequirements = asset.complianceRequirements;
             updateData.complianceRequirements = dto.complianceTags;
           }
         }
@@ -92,7 +101,24 @@ export class BulkOperationsService {
         // Update department
         if (dto.department !== undefined) {
           if (assetType === 'physical') {
+            originalData.department = asset.department;
             updateData.department = dto.department;
+          }
+        }
+
+        // Update version number (for applications and software)
+        if (dto.versionNumber !== undefined) {
+          if (assetType === 'application' || assetType === 'software') {
+            originalData.versionNumber = asset.versionNumber;
+            updateData.versionNumber = dto.versionNumber;
+          }
+        }
+
+        // Update patch level (for applications and software)
+        if (dto.patchLevel !== undefined) {
+          if (assetType === 'application' || assetType === 'software') {
+            originalData.patchLevel = asset.patchLevel;
+            updateData.patchLevel = dto.patchLevel;
           }
         }
 
@@ -102,6 +128,7 @@ export class BulkOperationsService {
         }
 
         await repository.update(asset.id, updateData);
+        rollbackData.push({ assetId: asset.id, originalData });
         successful++;
       } catch (error: any) {
         errors.push({
@@ -111,10 +138,44 @@ export class BulkOperationsService {
       }
     }
 
+    // If there were errors and rollback is requested, restore original values
+    if (errors.length > 0 && dto.rollbackOnError) {
+      console.warn(
+        `Bulk update encountered errors for ${assetType} assets; initiating rollback`,
+        {
+          assetType,
+          totalRequested: dto.assetIds.length,
+          successfulBeforeRollback: successful,
+          failed: errors.length,
+        },
+      );
+      for (const rollback of rollbackData) {
+        try {
+          await repository.update(rollback.assetId, rollback.originalData);
+        } catch (rollbackError: any) {
+          // Log rollback error but don't fail the entire operation
+          console.error(`Failed to rollback asset ${rollback.assetId}:`, rollbackError);
+        }
+      }
+      return {
+        successful: 0,
+        failed: dto.assetIds.length,
+        errors: [
+          ...errors,
+          ...rollbackData.map((r) => ({
+            assetId: r.assetId,
+            error: 'Rolled back due to other failures',
+          })),
+        ],
+        rolledBack: true,
+      };
+    }
+
     return {
       successful,
       failed: errors.length,
       errors,
+      rolledBack: false,
     };
   }
 
@@ -166,6 +227,7 @@ export class BulkOperationsService {
     }
   }
 }
+
 
 
 

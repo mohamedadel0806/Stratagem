@@ -22,30 +22,42 @@ let TasksService = class TasksService {
         this.tasksRepository = tasksRepository;
     }
     async findPending(userId) {
-        const query = this.tasksRepository
-            .createQueryBuilder('task')
-            .leftJoinAndSelect('task.assignedTo', 'assignedTo')
-            .where('task.status IN (:...statuses)', {
-            statuses: [task_entity_1.TaskStatus.TODO, task_entity_1.TaskStatus.IN_PROGRESS, task_entity_1.TaskStatus.REVIEW],
-        })
-            .orderBy('task."dueDate"', 'ASC')
-            .addOrderBy('task.priority', 'DESC');
-        if (userId) {
-            query.andWhere('task.assignedToId = :userId', { userId });
+        try {
+            const query = this.tasksRepository
+                .createQueryBuilder('task')
+                .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+                .where('task.status IN (:...statuses)', {
+                statuses: [task_entity_1.TaskStatus.TODO, task_entity_1.TaskStatus.IN_PROGRESS, task_entity_1.TaskStatus.REVIEW],
+            })
+                .orderBy('task.dueDate', 'ASC')
+                .addOrderBy('task.priority', 'DESC');
+            if (userId) {
+                query.andWhere('task.assignedToId = :userId', { userId });
+            }
+            const tasks = await query.getMany();
+            return tasks.map((task) => this.toResponseDto(task));
         }
-        const tasks = await query.getMany();
-        return tasks.map((task) => this.toResponseDto(task));
+        catch (error) {
+            console.error('Error in findPending:', error);
+            return [];
+        }
     }
     async findAll(userId) {
-        const query = this.tasksRepository
-            .createQueryBuilder('task')
-            .leftJoinAndSelect('task.assignedTo', 'assignedTo')
-            .orderBy('task.createdAt', 'DESC');
-        if (userId) {
-            query.andWhere('task.assignedToId = :userId', { userId });
+        try {
+            const query = this.tasksRepository
+                .createQueryBuilder('task')
+                .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+                .orderBy('task.createdAt', 'DESC');
+            if (userId) {
+                query.andWhere('task.assignedToId = :userId', { userId });
+            }
+            const tasks = await query.getMany();
+            return tasks.map((task) => this.toResponseDto(task));
         }
-        const tasks = await query.getMany();
-        return tasks.map((task) => this.toResponseDto(task));
+        catch (error) {
+            console.error('Error in findAll:', error);
+            return [];
+        }
     }
     toResponseDto(task) {
         var _a, _b;

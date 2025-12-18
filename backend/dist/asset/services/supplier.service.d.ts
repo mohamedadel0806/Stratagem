@@ -23,6 +23,9 @@ export declare class SupplierService {
     remove(id: string, userId: string): Promise<void>;
     private getRiskCountForAsset;
     private getRiskCountsForAssets;
+    getContractStatus(contractEndDate?: Date, autoRenewal?: boolean): 'active' | 'expired' | 'pending_renewal' | 'no_contract';
+    getCriticalSuppliersReport(): Promise<SupplierResponseDto[]>;
+    getExpiringContracts(days?: number): Promise<SupplierResponseDto[]>;
     private toResponseDto;
     private generateUniqueIdentifier;
 }

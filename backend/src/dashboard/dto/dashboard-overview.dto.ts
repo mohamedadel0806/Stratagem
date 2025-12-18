@@ -54,6 +54,20 @@ export class AssetCountByCriticalityDto {
   low: number;
 }
 
+export class SupplierCriticalityDto {
+  @ApiProperty()
+  critical: number;
+
+  @ApiProperty()
+  high: number;
+
+  @ApiProperty()
+  medium: number;
+
+  @ApiProperty()
+  low: number;
+}
+
 export class AssetWithoutOwnerDto {
   @ApiProperty()
   id: string;
@@ -143,6 +157,16 @@ export class AssetStatsDto {
 
   @ApiProperty({ type: [AssetWithOutdatedSecurityTestDto], required: false })
   assetsWithOutdatedSecurityTests?: AssetWithOutdatedSecurityTestDto[];
+
+  @ApiProperty({ description: 'Counts of assets by connectivity status', required: false })
+  countByConnectivityStatus?: {
+    connected: number;
+    disconnected: number;
+    unknown: number;
+  };
+
+  @ApiProperty({ type: SupplierCriticalityDto, required: false })
+  supplierCriticality?: SupplierCriticalityDto;
 }
 
 export class DashboardOverviewDto {
@@ -151,5 +175,8 @@ export class DashboardOverviewDto {
 
   @ApiProperty({ type: AssetStatsDto, required: false })
   assetStats?: AssetStatsDto;
+
+  @ApiProperty({ type: SupplierCriticalityDto, required: false })
+  supplierCriticality?: SupplierCriticalityDto;
 }
 

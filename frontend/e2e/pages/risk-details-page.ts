@@ -1358,3 +1358,4 @@ export class RiskDetailsPage {
     console.log('✅ Assessment request submitted successfully');
   }
 }
+

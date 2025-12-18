@@ -16,6 +16,7 @@ export declare class IntegrationController {
         message: string;
     }>;
     sync(id: string): Promise<any>;
+    handleWebhook(id: string, payload: any): Promise<any>;
     getSyncHistory(id: string, limit?: number): Promise<any[]>;
     private mapToResponseDto;
 }

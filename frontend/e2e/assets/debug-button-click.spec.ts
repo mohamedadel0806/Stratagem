@@ -127,3 +127,4 @@ test('Debug: Investigate New Asset button', async ({ authenticatedPage }) => {
   // Wait a bit to see results
   await authenticatedPage.waitForTimeout(5000);
 });
+

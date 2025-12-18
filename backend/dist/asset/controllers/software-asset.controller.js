@@ -58,10 +58,11 @@ let SoftwareAssetController = class SoftwareAssetController {
             throw new common_1.BadRequestException('File buffer is required. Please ensure file is uploaded correctly.');
         }
         const fileType = body === null || body === void 0 ? void 0 : body.fileType;
+        const sheetName = body === null || body === void 0 ? void 0 : body.sheetName;
         const detectedFileType = fileType || (file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls') ? 'excel' : 'csv');
         try {
             if (detectedFileType === 'excel') {
-                return this.importService.previewExcel(file.buffer);
+                return this.importService.previewExcel(file.buffer, 10, sheetName);
             }
             else {
                 return this.importService.previewCSV(file.buffer);
@@ -104,6 +105,9 @@ let SoftwareAssetController = class SoftwareAssetController {
     }
     async getRiskScore(id) {
         return this.riskAssetLinkService.getAssetRiskScore(risk_asset_link_entity_1.RiskAssetType.SOFTWARE, id);
+    }
+    async getInventoryReport(groupBy) {
+        return this.softwareService.getInventoryReport(groupBy);
     }
 };
 exports.SoftwareAssetController = SoftwareAssetController;
@@ -228,6 +232,15 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], SoftwareAssetController.prototype, "getRiskScore", null);
+__decorate([
+    (0, common_1.Get)('inventory/report'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get software inventory report' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Software inventory report with grouping and unlicensed software' }),
+    __param(0, (0, common_1.Query)('groupBy')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], SoftwareAssetController.prototype, "getInventoryReport", null);
 exports.SoftwareAssetController = SoftwareAssetController = __decorate([
     (0, swagger_1.ApiTags)('assets'),
     (0, common_1.Controller)('assets/software'),

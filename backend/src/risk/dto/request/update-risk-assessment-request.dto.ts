@@ -41,3 +41,4 @@ export class UpdateRiskAssessmentRequestDto {
   @MaxLength(1000)
   rejection_reason?: string;
 }
+

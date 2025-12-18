@@ -73,7 +73,7 @@ export function BulkOperationsBar({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
-  const [updateResult, setUpdateResult] = useState<{ successful: number; failed: number; errors: any[] } | null>(null);
+  const [updateResult, setUpdateResult] = useState<{ successful: number; failed: number; errors: any[]; rolledBack?: boolean } | null>(null);
   const [isFieldSelectorOpen, setIsFieldSelectorOpen] = useState(false);
   const [selectedExportType, setSelectedExportType] = useState<'csv' | 'excel' | 'pdf'>('csv');
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
@@ -82,6 +82,8 @@ export function BulkOperationsBar({
   const [updateOwnerId, setUpdateOwnerId] = useState<string>('');
   const [updateCriticality, setUpdateCriticality] = useState<string>('');
   const [updateComplianceTags, setUpdateComplianceTags] = useState<string>('');
+  const [updateVersionNumber, setUpdateVersionNumber] = useState<string>('');
+  const [updatePatchLevel, setUpdatePatchLevel] = useState<string>('');
 
   // Fetch users for owner selection
   const { data: users } = useQuery({
@@ -133,13 +135,28 @@ export function BulkOperationsBar({
       if (updateComplianceTags) {
         updateData.complianceTags = updateComplianceTags.split(',').map((tag) => tag.trim()).filter(Boolean);
       }
+      if (updateVersionNumber) {
+        updateData.versionNumber = updateVersionNumber;
+      }
+      if (updatePatchLevel) {
+        updateData.patchLevel = updatePatchLevel;
+      }
+
+      // Enable backend rollback support so partial failures don't leave mixed state
+      updateData.rollbackOnError = true;
 
       setUpdateProgress(50);
       const result = await assetsApi.bulkUpdate(assetType, updateData);
       setUpdateProgress(100);
       setUpdateResult(result);
 
-      if (result.failed === 0) {
+      if (result.rolledBack) {
+        toast({
+          title: 'Update rolled back',
+          description: `Bulk update failed for one or more items. All changes were rolled back; no assets were modified.`,
+          variant: 'destructive',
+        });
+      } else if (result.failed === 0) {
         toast({
           title: 'Update successful',
           description: `Successfully updated ${result.successful} item(s).`,
@@ -393,6 +410,42 @@ export function BulkOperationsBar({
                 />
                 <p className="text-xs text-muted-foreground">
                   Enter comma-separated compliance tags. Leave empty to skip.
+                </p>
+              </div>
+            )}
+
+            {/* Version Number (only for applications and software) */}
+            {(assetType === 'application' || assetType === 'software') && (
+              <div className="space-y-2">
+                <Label htmlFor="versionNumber">Version Number</Label>
+                <input
+                  id="versionNumber"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background font-mono"
+                  placeholder="e.g., 1.2.3"
+                  value={updateVersionNumber}
+                  onChange={(e) => setUpdateVersionNumber(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter version number. Leave empty to skip.
+                </p>
+              </div>
+            )}
+
+            {/* Patch Level (only for applications and software) */}
+            {(assetType === 'application' || assetType === 'software') && (
+              <div className="space-y-2">
+                <Label htmlFor="patchLevel">Patch Level</Label>
+                <input
+                  id="patchLevel"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background font-mono"
+                  placeholder="e.g., 4"
+                  value={updatePatchLevel}
+                  onChange={(e) => setUpdatePatchLevel(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter patch level. Leave empty to skip.
                 </p>
               </div>
             )}

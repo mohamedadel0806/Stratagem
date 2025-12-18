@@ -227,3 +227,4 @@ export class CreateRiskAssessmentRequestsTable1702160000000 implements Migration
     await queryRunner.dropTable('risk_assessment_requests', true);
   }
 }
+

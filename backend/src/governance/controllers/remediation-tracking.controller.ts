@@ -22,7 +22,7 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiTags('governance')
-@Controller('api/v1/governance/remediation')
+@Controller('governance/remediation')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class RemediationTrackingController {

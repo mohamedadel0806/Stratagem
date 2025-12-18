@@ -5,6 +5,9 @@ export declare class BusinessApplicationQueryDto {
     criticalityLevel?: CriticalityLevel;
     businessUnit?: string;
     ownerId?: string;
+    missingVersion?: boolean;
+    missingPatch?: boolean;
+    securityTestStatus?: string;
     page?: number;
     limit?: number;
 }

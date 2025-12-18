@@ -277,6 +277,170 @@ export class SoftwareAssetService {
     };
   }
 
+  async getInventoryReport(groupBy?: 'type' | 'vendor' | 'none'): Promise<{
+    summary: {
+      totalSoftware: number;
+      totalInstallations: number;
+      unlicensedCount: number;
+      expiredLicenseCount: number;
+    };
+    grouped: Record<string, {
+      softwareName: string;
+      version: string;
+      patchLevel: string;
+      vendor: string;
+      softwareType: string;
+      installationCount: number;
+      licenseCount: number | null;
+      licenseType: string | null;
+      licenseExpiry: Date | null;
+      licenseStatus: 'licensed' | 'unlicensed' | 'expired' | 'unknown';
+      businessUnits: string[];
+      locations: string[];
+    }[]>;
+    unlicensed: Array<{
+      softwareName: string;
+      version: string;
+      patchLevel: string;
+      vendor: string;
+      softwareType: string;
+      installationCount: number;
+      businessUnits: string[];
+      reason: 'no_license' | 'expired_license' | 'installation_exceeds_license';
+    }>;
+  }> {
+    const allSoftware = await this.softwareRepository
+      .createQueryBuilder('software')
+      .leftJoin('software.businessUnit', 'businessUnit')
+      .select([
+        'software.id',
+        'software.softwareName',
+        'software.versionNumber',
+        'software.patchLevel',
+        'software.vendorName',
+        'software.softwareType',
+        'software.installationCount',
+        'software.licenseCount',
+        'software.licenseType',
+        'software.licenseExpiry',
+        'software.businessUnitId',
+        'businessUnit.id',
+        'businessUnit.name',
+      ])
+      .where('software.deletedAt IS NULL')
+      .getMany();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const summary = {
+      totalSoftware: allSoftware.length,
+      totalInstallations: allSoftware.reduce((sum, s) => sum + (s.installationCount || 0), 0),
+      unlicensedCount: 0,
+      expiredLicenseCount: 0,
+    };
+
+    const unlicensed: Array<{
+      softwareName: string;
+      version: string;
+      patchLevel: string;
+      vendor: string;
+      softwareType: string;
+      installationCount: number;
+      businessUnits: string[];
+      reason: 'no_license' | 'expired_license' | 'installation_exceeds_license';
+    }> = [];
+
+    const grouped: Record<string, any[]> = {};
+
+    for (const software of allSoftware) {
+      const licenseStatus = this.getLicenseStatus(software.licenseExpiry, software.licenseCount, software.installationCount);
+      
+      if (licenseStatus === 'expired') {
+        summary.expiredLicenseCount++;
+        summary.unlicensedCount++;
+      }
+      if (licenseStatus === 'unlicensed' || licenseStatus === 'expired' || licenseStatus === 'installation_exceeds_license') {
+        if (licenseStatus !== 'expired') {
+          summary.unlicensedCount++;
+        }
+        unlicensed.push({
+          softwareName: software.softwareName,
+          version: software.versionNumber || 'N/A',
+          patchLevel: software.patchLevel || 'N/A',
+          vendor: software.vendorName || 'Unknown',
+          softwareType: software.softwareType || 'Unknown',
+          installationCount: software.installationCount || 0,
+          businessUnits: software.businessUnit ? [software.businessUnit.name] : ['N/A'],
+          reason: licenseStatus === 'expired' ? 'expired_license' : licenseStatus === 'installation_exceeds_license' ? 'installation_exceeds_license' : 'no_license',
+        });
+      }
+
+      const item = {
+        softwareName: software.softwareName,
+        version: software.versionNumber || 'N/A',
+        patchLevel: software.patchLevel || 'N/A',
+        vendor: software.vendorName || 'Unknown',
+        softwareType: software.softwareType || 'Unknown',
+        installationCount: software.installationCount || 0,
+        licenseCount: software.licenseCount,
+        licenseType: software.licenseType || null,
+        licenseExpiry: software.licenseExpiry || null,
+        licenseStatus,
+        businessUnits: software.businessUnit ? [software.businessUnit.name] : ['N/A'],
+        locations: software.businessUnit ? [software.businessUnit.name] : ['N/A'],
+      };
+
+      let groupKey = 'All Software';
+      if (groupBy === 'type' && software.softwareType) {
+        groupKey = software.softwareType;
+      } else if (groupBy === 'vendor' && software.vendorName) {
+        groupKey = software.vendorName;
+      }
+
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = [];
+      }
+      grouped[groupKey].push(item);
+    }
+
+    return { summary, grouped, unlicensed };
+  }
+
+  private getLicenseStatus(
+    licenseExpiry: Date | null,
+    licenseCount: number | null,
+    installationCount: number,
+  ): 'licensed' | 'unlicensed' | 'expired' | 'installation_exceeds_license' | 'unknown' {
+    // Check if license is expired first
+    if (licenseExpiry) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expiry = new Date(licenseExpiry);
+      expiry.setHours(0, 0, 0, 0);
+      if (expiry < today) {
+        return 'expired';
+      }
+    }
+
+    // Check if no license information at all
+    if (!licenseExpiry && licenseCount === null) {
+      return 'unlicensed';
+    }
+
+    // Check if installations exceed license count
+    if (licenseCount !== null && installationCount > licenseCount) {
+      return 'installation_exceeds_license';
+    }
+
+    // If we have license info and it's valid, it's licensed
+    if (licenseExpiry || (licenseCount !== null && licenseCount > 0)) {
+      return 'licensed';
+    }
+
+    return 'unknown';
+  }
+
   private async generateUniqueIdentifier(): Promise<string> {
     const prefix = 'SW';
     const timestamp = Date.now().toString(36).toUpperCase();

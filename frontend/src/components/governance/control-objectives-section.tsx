@@ -3,12 +3,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { governanceApi, ControlObjective, CreateControlObjectiveData } from '@/lib/api/governance';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, ExternalLink, Eye } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ControlObjectiveForm } from './control-objective-form';
 import { Badge } from '@/components/ui/badge';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
 
 interface ControlObjectivesSectionProps {
   policyId: string;
@@ -17,6 +19,8 @@ interface ControlObjectivesSectionProps {
 export function ControlObjectivesSection({ policyId }: ControlObjectivesSectionProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const params = useParams();
+  const locale = (params.locale as string) || 'en';
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingObjective, setEditingObjective] = useState<ControlObjective | null>(null);
 
@@ -70,13 +74,24 @@ export function ControlObjectivesSection({ policyId }: ControlObjectivesSectionP
                     <Badge variant="secondary">{objective.priority}</Badge>
                   )}
                   <Badge variant="outline">{objective.implementation_status}</Badge>
+                  {objective.mandatory && (
+                    <Badge variant="default" className="text-xs">Mandatory</Badge>
+                  )}
                 </div>
                 <p className="text-sm font-medium mb-1">{objective.statement}</p>
                 {objective.rationale && (
                   <p className="text-sm text-muted-foreground">{objective.rationale}</p>
                 )}
+                {objective.domain && (
+                  <p className="text-xs text-muted-foreground mt-1">Domain: {objective.domain}</p>
+                )}
               </div>
               <div className="flex gap-2">
+                <Link href={`/${locale}/dashboard/governance/control-objectives/${objective.id}`}>
+                  <Button variant="ghost" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </Link>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -128,6 +143,7 @@ export function ControlObjectivesSection({ policyId }: ControlObjectivesSectionP
     </div>
   );
 }
+
 
 
 

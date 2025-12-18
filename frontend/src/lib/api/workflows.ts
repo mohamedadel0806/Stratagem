@@ -7,7 +7,7 @@ export interface Workflow {
   type: 'approval' | 'notification' | 'escalation' | 'status_change' | 'deadline_reminder';
   status: 'active' | 'inactive' | 'archived';
   trigger: 'manual' | 'on_create' | 'on_update' | 'on_status_change' | 'on_deadline_approaching' | 'on_deadline_passed' | 'scheduled';
-  entityType: 'risk' | 'policy' | 'compliance_requirement' | 'task';
+  entityType: 'risk' | 'policy' | 'compliance_requirement' | 'task' | 'sop';
   conditions?: Record<string, any>;
   actions: WorkflowActions;
   daysBeforeDeadline?: number;

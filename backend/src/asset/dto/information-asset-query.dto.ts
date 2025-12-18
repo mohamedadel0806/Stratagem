@@ -14,6 +14,11 @@ export class InformationAssetQueryDto {
   @IsEnum(ClassificationLevel)
   dataClassification?: ClassificationLevel;
 
+  @ApiProperty({ required: false, description: 'Filter by compliance requirement (e.g., ISO 27001, SOC 2)' })
+  @IsOptional()
+  @IsString()
+  complianceRequirement?: string;
+
   @ApiProperty({ required: false, description: 'Business unit ID (UUID)' })
   @IsOptional()
   @IsUUID()

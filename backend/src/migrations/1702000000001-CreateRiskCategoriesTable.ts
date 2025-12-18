@@ -147,3 +147,4 @@ export class CreateRiskCategoriesTable1702000000001 implements MigrationInterfac
 
 
 
+

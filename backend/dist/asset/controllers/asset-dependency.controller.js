@@ -38,6 +38,9 @@ let AssetDependencyController = class AssetDependencyController {
     async checkDependencies(type, id) {
         return this.dependencyService.checkDependencies(type, id);
     }
+    async getDependencyChain(type, id) {
+        return this.dependencyService.getDependencyChain(type, id, 3, 'outgoing');
+    }
     async remove(dependencyId) {
         await this.dependencyService.remove(dependencyId);
         return { message: 'Dependency removed successfully' };
@@ -115,6 +118,22 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], AssetDependencyController.prototype, "checkDependencies", null);
+__decorate([
+    (0, common_1.Get)(':type/:id/dependencies/chain'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get multi-level dependency chain (impact analysis)' }),
+    (0, swagger_1.ApiParam)({ name: 'type', description: 'Asset type', enum: asset_dependency_entity_1.AssetType }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'Asset ID' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Multi-level dependency chain',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Asset not found' }),
+    __param(0, (0, common_1.Param)('type')),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], AssetDependencyController.prototype, "getDependencyChain", null);
 __decorate([
     (0, common_1.Delete)('dependencies/:dependencyId'),
     (0, swagger_1.ApiOperation)({ summary: 'Remove a dependency' }),

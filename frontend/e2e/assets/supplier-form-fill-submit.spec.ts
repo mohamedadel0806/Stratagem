@@ -377,3 +377,4 @@ test('should fill complete supplier form and submit successfully', async ({ auth
 
   console.log('✅ Test completed successfully!');
 });
+

@@ -1,5 +1,5 @@
 import { IsString, IsEnum, IsUrl, IsOptional, IsObject, ValidateIf } from 'class-validator';
-import { IntegrationType, AuthenticationType } from '../entities/integration-config.entity';
+import { IntegrationType, AuthenticationType, ConflictResolutionStrategy } from '../entities/integration-config.entity';
 
 export class CreateIntegrationConfigDto {
   @IsString()
@@ -42,10 +42,15 @@ export class CreateIntegrationConfigDto {
   @IsOptional()
   syncInterval?: string; // e.g., '1h', '24h', '1d'
 
+  @IsEnum(ConflictResolutionStrategy)
+  @IsOptional()
+  conflictResolutionStrategy?: ConflictResolutionStrategy;
+
   @IsString()
   @IsOptional()
   notes?: string;
 }
+
 
 
 

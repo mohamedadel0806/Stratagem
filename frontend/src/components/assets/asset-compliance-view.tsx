@@ -137,9 +137,6 @@ export function AssetComplianceView({ initialFilters }: AssetComplianceViewProps
           : (typeof asset.assetType === 'object' && asset.assetType !== null && 'name' in asset.assetType)
             ? (asset.assetType as any).name || (asset.assetType as any).code || (asset.assetType as any).id || 'unknown'
             : String(asset.assetType || 'unknown');
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'asset-compliance-view.tsx:137',message:'Converting assetType for CSV export',data:{assetType:asset.assetType,assetTypeType:typeof asset.assetType,isObject:typeof asset.assetType === 'object' && asset.assetType !== null,keys:typeof asset.assetType === 'object' && asset.assetType !== null ? Object.keys(asset.assetType) : null,converted:assetTypeStr},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-        // #endregion
         return [
           asset.assetId,
           asset.assetName,
@@ -384,9 +381,6 @@ export function AssetComplianceView({ initialFilters }: AssetComplianceViewProps
                       : (typeof asset.assetType === 'object' && asset.assetType !== null && 'name' in asset.assetType)
                         ? (asset.assetType as any).name || (asset.assetType as any).code || (asset.assetType as any).id || 'unknown'
                         : String(asset.assetType || 'unknown');
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'asset-compliance-view.tsx:372',message:'Converting assetType for React key',data:{assetType:asset.assetType,assetTypeType:typeof asset.assetType,isObject:typeof asset.assetType === 'object' && asset.assetType !== null,keys:typeof asset.assetType === 'object' && asset.assetType !== null ? Object.keys(asset.assetType) : null,convertedKey:assetTypeKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-                    // #endregion
                     return (
                     <TableRow key={`${assetTypeKey}-${asset.assetId}`}>
                       <TableCell>
@@ -406,21 +400,12 @@ export function AssetComplianceView({ initialFilters }: AssetComplianceViewProps
                         </div>
                       </TableCell>
                       <TableCell>
-                        {/* #region agent log */}
-                        {(() => {
-                          fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'asset-compliance-view.tsx:383',message:'Rendering assetType in table',data:{assetType:asset.assetType,assetTypeType:typeof asset.assetType,isObject:typeof asset.assetType === 'object' && asset.assetType !== null,keys:typeof asset.assetType === 'object' && asset.assetType !== null ? Object.keys(asset.assetType) : null,assetId:asset.assetId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                          return null;
-                        })()}
-                        {/* #endregion */}
                         {(() => {
                           const assetTypeStr = typeof asset.assetType === 'string' 
                             ? asset.assetType 
                             : (typeof asset.assetType === 'object' && asset.assetType !== null && 'name' in asset.assetType)
                               ? (asset.assetType as any).name || (asset.assetType as any).code || 'unknown'
                               : String(asset.assetType || 'unknown');
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'asset-compliance-view.tsx:395',message:'assetType converted for display',data:{original:asset.assetType,converted:assetTypeStr},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                          // #endregion
                           return (
                             <span className="text-sm">{assetTypeIcons[assetTypeStr as keyof typeof assetTypeIcons] || ''} {assetTypeStr}</span>
                           );

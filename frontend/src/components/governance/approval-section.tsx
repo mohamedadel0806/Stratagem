@@ -11,16 +11,17 @@ import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 
 interface ApprovalSectionProps {
-  policyId: string;
+  entityType: 'policy' | 'sop';
+  entityId: string;
   currentUserId?: string;
 }
 
-export function ApprovalSection({ policyId, currentUserId }: ApprovalSectionProps) {
-  // Get workflow executions for this policy
+export function ApprovalSection({ entityType, entityId, currentUserId }: ApprovalSectionProps) {
+  // Get workflow executions for this entity
   const { data: executions, isLoading: executionsLoading } = useQuery({
-    queryKey: ['workflow-executions', 'policy', policyId],
-    queryFn: () => workflowsApi.getExecutions({ entityType: 'policy', entityId: policyId }),
-    enabled: !!policyId,
+    queryKey: ['workflow-executions', entityType, entityId],
+    queryFn: () => workflowsApi.getExecutions({ entityType, entityId }),
+    enabled: !!entityId,
   });
 
   // Get current user's pending approvals
@@ -63,9 +64,9 @@ export function ApprovalSection({ policyId, currentUserId }: ApprovalSectionProp
     enabled: !!selectedExecutionId,
   });
 
-  // Find pending approvals for this policy
-  const pendingApprovalsForPolicy = myPendingApprovals?.filter(
-    (approval) => approval.entityType === 'policy' && approval.entityId === policyId
+  // Find pending approvals for this entity
+  const pendingApprovalsForEntity = myPendingApprovals?.filter(
+    (approval) => approval.entityType === entityType && approval.entityId === entityId
   ) || [];
 
   if (executionsLoading) {
@@ -88,11 +89,11 @@ export function ApprovalSection({ policyId, currentUserId }: ApprovalSectionProp
       <Card>
         <CardHeader>
           <CardTitle>Approval Status</CardTitle>
-          <CardDescription>No approval workflows initiated for this policy</CardDescription>
+          <CardDescription>No approval workflows initiated for this {entityType === 'policy' ? 'policy' : 'SOP'}</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Approval workflows will appear here when a policy is submitted for approval.
+            Approval workflows will appear here when this {entityType === 'policy' ? 'policy' : 'SOP'} is submitted for approval.
           </p>
         </CardContent>
       </Card>
@@ -149,19 +150,19 @@ export function ApprovalSection({ policyId, currentUserId }: ApprovalSectionProp
               </div>
 
               {/* Pending Approvals for Current User */}
-              {pendingApprovalsForPolicy.length > 0 && (
+              {pendingApprovalsForEntity.length > 0 && (
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-start gap-2 mb-2">
                     <Clock className="h-5 w-5 text-yellow-600 mt-0.5" />
                     <div className="flex-1">
                       <h4 className="font-semibold text-yellow-900">Action Required</h4>
                       <p className="text-sm text-yellow-700">
-                        You have {pendingApprovalsForPolicy.length} pending approval{pendingApprovalsForPolicy.length > 1 ? 's' : ''} for this policy
+                        You have {pendingApprovalsForEntity.length} pending approval{pendingApprovalsForEntity.length > 1 ? 's' : ''} for this {entityType === 'policy' ? 'policy' : 'SOP'}
                       </p>
                     </div>
                   </div>
                   <div className="space-y-2 mt-3">
-                    {pendingApprovalsForPolicy.map((approval) => (
+                    {pendingApprovalsForEntity.map((approval) => (
                       <div key={approval.id} className="p-3 bg-white rounded border">
                         <div className="flex items-center justify-between">
                           <div>

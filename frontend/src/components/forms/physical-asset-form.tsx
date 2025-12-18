@@ -43,6 +43,8 @@ const physicalAssetSchema = z.object({
   connectivityStatus: z.enum(['connected', 'disconnected', 'unknown']).optional(),
   networkApprovalStatus: z.enum(['approved', 'pending', 'rejected', 'not_required']).optional(),
   notes: z.string().optional(),
+  // Reason for changes when updating an existing asset (optional but recommended)
+  changeReason: z.string().optional(),
 });
 
 type PhysicalAssetFormValues = z.infer<typeof physicalAssetSchema>;
@@ -131,6 +133,7 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
       connectivityStatus: normalizedAsset?.connectivityStatus || 'connected',
       networkApprovalStatus: normalizedAsset?.networkApprovalStatus || 'not_required',
       notes: '',
+      changeReason: '',
     },
   });
 
@@ -177,7 +180,7 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
       if (!asset?.id) {
         throw new Error('Asset ID is required to update a physical asset');
       }
-      const payload: Partial<CreatePhysicalAssetData> = {
+      const payload: Partial<CreatePhysicalAssetData & { changeReason?: string }> = {
         uniqueIdentifier: values.uniqueIdentifier,
         assetDescription: values.assetDescription,
         assetTypeId: values.assetTypeId || undefined,
@@ -191,6 +194,10 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
         connectivityStatus: values.connectivityStatus,
         networkApprovalStatus: values.networkApprovalStatus,
       };
+      // Always send changeReason when provided so backend can record it in the audit log
+      if (values.changeReason && values.changeReason.trim().length > 0) {
+        (payload as any).changeReason = values.changeReason.trim();
+      }
       return assetsApi.updatePhysicalAsset(asset.id, payload);
     },
     onSuccess: () => {
@@ -312,7 +319,19 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
                 <FormItem>
                   <FormLabel>Owner</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Auto-populate business unit from owner profile if available
+                      const selectedUser = users.find((user) => user.id === value);
+                      const ownerBusinessUnitId = selectedUser?.businessUnitId;
+                      const currentBusinessUnitId = form.getValues('businessUnitId');
+                      if (ownerBusinessUnitId && !currentBusinessUnitId) {
+                        form.setValue('businessUnitId', ownerBusinessUnitId, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        });
+                      }
+                    }}
                     value={field.value || undefined}
                   >
                     <FormControl>
@@ -429,6 +448,26 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
                 </FormItem>
               )}
             />
+
+            {asset && (
+              <FormField
+                control={form.control}
+                name="changeReason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reason for Change</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Briefly explain why you are updating this asset (e.g. ownership, criticality, or location change)."
+                        rows={3}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </TabsContent>
         </Tabs>
 

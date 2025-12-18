@@ -15,6 +15,7 @@ import { Search, Package, FileText, Monitor, Code, Building2, Loader2 } from 'lu
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface RiskAssetBrowserDialogProps {
   open: boolean;
@@ -47,6 +48,8 @@ export function RiskAssetBrowserDialog({ open, onOpenChange, riskId, existingAss
   const [searchQuery, setSearchQuery] = useState('');
   const [impactDescription, setImpactDescription] = useState('');
   const [linkProgress, setLinkProgress] = useState(0);
+  const [criticalityFilter, setCriticalityFilter] = useState<string>('');
+  const [complianceFilter, setComplianceFilter] = useState<string>('');
 
   const linkMutation = useMutation({
     mutationFn: async ({ assetIds, assetType }: { assetIds: string[]; assetType: RiskAssetType }) => {
@@ -138,8 +141,8 @@ export function RiskAssetBrowserDialog({ open, onOpenChange, riskId, existingAss
           </DialogHeader>
 
           <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-            <div>
-              <div className="relative">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search assets..."
@@ -148,6 +151,31 @@ export function RiskAssetBrowserDialog({ open, onOpenChange, riskId, existingAss
                   className="pl-9"
                 />
               </div>
+              <Select value={criticalityFilter} onValueChange={setCriticalityFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Criticality" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Criticality</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={complianceFilter} onValueChange={setComplianceFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Compliance" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Compliance</SelectItem>
+                  <SelectItem value="ISO 27001">ISO 27001</SelectItem>
+                  <SelectItem value="SOC 2">SOC 2</SelectItem>
+                  <SelectItem value="PCI DSS">PCI DSS</SelectItem>
+                  <SelectItem value="HIPAA">HIPAA</SelectItem>
+                  <SelectItem value="GDPR">GDPR</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {selectedAssets.size > 0 && (
@@ -179,6 +207,8 @@ export function RiskAssetBrowserDialog({ open, onOpenChange, riskId, existingAss
                   selectedAssets={selectedAssets}
                   existingAssetIds={existingAssetIds}
                   onToggleAsset={handleToggleAsset}
+                  criticalityFilter={criticalityFilter}
+                  complianceFilter={complianceFilter}
                 />
               </TabsContent>
             </Tabs>
@@ -219,14 +249,16 @@ interface AssetTypeTabProps {
   selectedAssets: Map<string, RiskAssetType>;
   existingAssetIds: Set<string>;
   onToggleAsset: (assetId: string, assetType: RiskAssetType) => void;
+  criticalityFilter?: string;
+  complianceFilter?: string;
 }
 
-function AssetTypeTab({ assetType, searchQuery, selectedAssets, existingAssetIds, onToggleAsset }: AssetTypeTabProps) {
+function AssetTypeTab({ assetType, searchQuery, selectedAssets, existingAssetIds, onToggleAsset, criticalityFilter, complianceFilter }: AssetTypeTabProps) {
   const [page, setPage] = useState(1);
   const limit = 20;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['assets', assetType, searchQuery, page, limit],
+    queryKey: ['assets', assetType, searchQuery, page, limit, criticalityFilter, complianceFilter],
     queryFn: () => {
       const params: any = {
         type: assetType,
@@ -235,6 +267,12 @@ function AssetTypeTab({ assetType, searchQuery, selectedAssets, existingAssetIds
       };
       if (searchQuery) {
         params.search = searchQuery;
+      }
+      if (criticalityFilter) {
+        params.criticalityLevel = criticalityFilter;
+      }
+      if (complianceFilter && (assetType === 'information' || assetType === 'application')) {
+        params.complianceRequirement = complianceFilter;
       }
       return assetsApi.getAllAssets(params);
     },
@@ -298,12 +336,39 @@ function AssetTypeTab({ assetType, searchQuery, selectedAssets, existingAssetIds
               {assetIdentifier && (
                 <p className="text-xs text-muted-foreground truncate">{assetIdentifier}</p>
               )}
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {asset.criticalityLevel && (
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${
+                      asset.criticalityLevel === 'critical' ? 'bg-red-50 text-red-700 border-red-200' :
+                      asset.criticalityLevel === 'high' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                      asset.criticalityLevel === 'medium' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                      'bg-green-50 text-green-700 border-green-200'
+                    }`}
+                  >
+                    {asset.criticalityLevel}
+                  </Badge>
+                )}
+                {asset.complianceRequirements && Array.isArray(asset.complianceRequirements) && asset.complianceRequirements.length > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {asset.complianceRequirements.length} Compliance
+                  </Badge>
+                )}
+                {asset.classificationLevel && (
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {asset.classificationLevel}
+                  </Badge>
+                )}
+              </div>
             </div>
-            {isAlreadyLinked && (
-              <Badge variant="secondary" className="text-xs">
-                Already Linked
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {isAlreadyLinked && (
+                <Badge variant="secondary" className="text-xs">
+                  Already Linked
+                </Badge>
+              )}
+            </div>
           </div>
         );
       })}
@@ -322,3 +387,4 @@ function AssetTypeTab({ assetType, searchQuery, selectedAssets, existingAssetIds
     </div>
   );
 }
+

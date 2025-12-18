@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const supplier_entity_1 = require("../entities/supplier.entity");
+const physical_asset_entity_1 = require("../entities/physical-asset.entity");
 const asset_audit_service_1 = require("./asset-audit.service");
 const asset_audit_log_entity_1 = require("../entities/asset-audit-log.entity");
 const risk_asset_link_service_1 = require("../../risk/services/risk-asset-link.service");
@@ -176,7 +177,98 @@ let SupplierService = class SupplierService {
         }
         return counts;
     }
+    getContractStatus(contractEndDate, autoRenewal) {
+        if (!contractEndDate) {
+            return 'no_contract';
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const endDate = new Date(contractEndDate);
+        endDate.setHours(0, 0, 0, 0);
+        if (endDate < today) {
+            return 'expired';
+        }
+        const daysUntilExpiration = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysUntilExpiration <= 90 && !autoRenewal) {
+            return 'pending_renewal';
+        }
+        return 'active';
+    }
+    async getCriticalSuppliersReport() {
+        const suppliers = await this.supplierRepository
+            .createQueryBuilder('supplier')
+            .leftJoin('supplier.owner', 'owner')
+            .leftJoin('supplier.businessUnit', 'businessUnit')
+            .select([
+            'supplier.id',
+            'supplier.supplierName',
+            'supplier.uniqueIdentifier',
+            'supplier.criticalityLevel',
+            'supplier.riskAssessmentDate',
+            'supplier.lastReviewDate',
+            'supplier.riskLevel',
+            'supplier.ownerId',
+            'supplier.businessUnitId',
+            'supplier.createdAt',
+            'supplier.updatedAt',
+            'owner.id',
+            'owner.email',
+            'owner.firstName',
+            'owner.lastName',
+            'businessUnit.id',
+            'businessUnit.name',
+        ])
+            .where('supplier.deletedAt IS NULL')
+            .andWhere('supplier.criticalityLevel IN (:...levels)', {
+            levels: [physical_asset_entity_1.CriticalityLevel.CRITICAL, physical_asset_entity_1.CriticalityLevel.HIGH],
+        })
+            .orderBy('supplier.criticalityLevel', 'DESC')
+            .addOrderBy('supplier.riskAssessmentDate', 'ASC', 'NULLS FIRST')
+            .getMany();
+        const assetIds = suppliers.map(a => a.id);
+        const riskCounts = await this.getRiskCountsForAssets(assetIds);
+        return suppliers.map((supplier) => this.toResponseDto(supplier, riskCounts[supplier.id]));
+    }
+    async getExpiringContracts(days = 90) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const futureDate = new Date(today);
+        futureDate.setDate(futureDate.getDate() + days);
+        const suppliers = await this.supplierRepository
+            .createQueryBuilder('supplier')
+            .leftJoin('supplier.owner', 'owner')
+            .leftJoin('supplier.businessUnit', 'businessUnit')
+            .select([
+            'supplier.id',
+            'supplier.supplierName',
+            'supplier.uniqueIdentifier',
+            'supplier.contractReference',
+            'supplier.contractStartDate',
+            'supplier.contractEndDate',
+            'supplier.autoRenewal',
+            'supplier.ownerId',
+            'supplier.businessUnitId',
+            'supplier.createdAt',
+            'supplier.updatedAt',
+            'owner.id',
+            'owner.email',
+            'owner.firstName',
+            'owner.lastName',
+            'businessUnit.id',
+            'businessUnit.name',
+        ])
+            .where('supplier.deletedAt IS NULL')
+            .andWhere('supplier.contractEndDate IS NOT NULL')
+            .andWhere('supplier.contractEndDate >= :today', { today })
+            .andWhere('supplier.contractEndDate <= :futureDate', { futureDate })
+            .orderBy('supplier.contractEndDate', 'ASC')
+            .getMany();
+        const assetIds = suppliers.map(a => a.id);
+        const riskCounts = await this.getRiskCountsForAssets(assetIds);
+        return suppliers.map((supplier) => this.toResponseDto(supplier, riskCounts[supplier.id]));
+    }
     toResponseDto(supplier, riskCount) {
+        const contractStatus = this.getContractStatus(supplier.contractEndDate, supplier.autoRenewal);
         return {
             id: supplier.id,
             uniqueIdentifier: supplier.uniqueIdentifier,
@@ -226,6 +318,7 @@ let SupplierService = class SupplierService {
             updatedAt: supplier.updatedAt,
             deletedAt: supplier.deletedAt || undefined,
             riskCount: riskCount,
+            contractStatus: contractStatus,
         };
     }
     async generateUniqueIdentifier() {

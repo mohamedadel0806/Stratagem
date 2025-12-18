@@ -136,42 +136,21 @@ export function KRIForm({ open, onOpenChange, kriId, initialData, onSuccess }: K
 
   const createMutation = useMutation({
     mutationFn: (data: Partial<KRI>) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-form.tsx:138',message:'Mutation started',data:{kriName:data.name,isActive:data.is_active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return krisApi.create(data)
     },
     onSuccess: (response) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-form.tsx:140',message:'Mutation success - before invalidation',data:{kriId:response.id,kriName:response.name,isActive:response.is_active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       queryClient.invalidateQueries({ queryKey: ['kris'] })
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-form.tsx:141',message:'After invalidateQueries kris',data:{kriId:response.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       queryClient.invalidateQueries({ queryKey: ['kri'] })
       queryClient.invalidateQueries({ queryKey: ['risks'] })
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-form.tsx:142',message:'After invalidateQueries kri',data:{kriId:response.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       toast({
         title: 'Success',
         description: 'KRI created successfully',
       })
       form.reset()
       onOpenChange(false)
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-form.tsx:148',message:'Before onSuccess callback',data:{kriId:response.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       onSuccess?.()
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-form.tsx:149',message:'After onSuccess callback',data:{kriId:response.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
     },
     onError: (error: any) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'kri-form.tsx:150',message:'Mutation error',data:{error:error?.response?.data?.message||error?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to create KRI',

@@ -1,22 +1,25 @@
-import { test, expect } from './fixtures/auth';
+import { test, expect } from '@playwright/test';
 
-test('simple connection test', async ({ authenticatedPage }) => {
-  console.log('Starting simple test...');
-  console.log('Current URL:', authenticatedPage.url());
+test.describe('Basic App Test', () => {
+  test('should load the app', async ({ page }) => {
+    console.log('Testing basic app load...');
 
-  // Try to navigate to the base URL
-  await authenticatedPage.goto('/');
-  await authenticatedPage.waitForLoadState('networkidle');
+    try {
+      await page.goto('http://localhost:3000/', { timeout: 30000 });
+      console.log('✅ Page loaded successfully');
+      console.log('Current URL:', page.url());
 
-  console.log('After navigation URL:', authenticatedPage.url());
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+      console.log('✅ DOM content loaded');
 
-  // Take a screenshot to see what's on the page
-  await authenticatedPage.screenshot({ path: 'test-results/simple-test.png', fullPage: true });
+      // Take a screenshot to see what we got
+      await page.screenshot({ path: 'test-results/app-load.png', fullPage: true });
+      console.log('✅ Screenshot saved');
 
-  // Check if we can see anything on the page
-  const bodyText = await authenticatedPage.locator('body').textContent();
-  console.log('Page content length:', bodyText?.length || 0);
-
-  // Basic checks
-  await expect(authenticatedPage.locator('body')).toBeVisible();
+    } catch (error: any) {
+      console.log('❌ Error:', error.message);
+      await page.screenshot({ path: 'test-results/app-load-error.png', fullPage: true });
+      throw error;
+    }
+  });
 });

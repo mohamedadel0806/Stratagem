@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'next-i18next';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,22 +17,26 @@ const languages = [
 ];
 
 export function LanguageSwitcher() {
-  const { i18n } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const [currentLocale, setCurrentLocale] = useState('en');
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Extract locale from pathname
+    const pathSegments = pathname.split('/').filter(Boolean);
+    const locale = pathSegments[0] || 'en';
+    setCurrentLocale(locale);
+  }, [pathname]);
 
   const handleLanguageChange = (locale: string) => {
     // Simplified locale switching for App Router
-    const newPath = pathname.replace(`/${i18n.language}`, `/${locale}`);
+    const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
     router.push(newPath);
   };
 
-  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
+  const currentLanguage = languages.find(lang => lang.code === currentLocale) || languages[0];
 
   // Render placeholder during SSR to avoid hydration mismatch
   if (!mounted) {
@@ -58,7 +61,7 @@ export function LanguageSwitcher() {
           <DropdownMenuItem
             key={language.code}
             onClick={() => handleLanguageChange(language.code)}
-            className={i18n.language === language.code ? 'bg-accent' : ''}
+            className={currentLocale === language.code ? 'bg-accent' : ''}
           >
             <span className="mr-2">{language.flag}</span>
             {language.name}

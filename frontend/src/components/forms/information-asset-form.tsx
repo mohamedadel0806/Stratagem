@@ -24,6 +24,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+const COMPLIANCE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'ISO 27001', label: 'ISO 27001' },
+  { value: 'SOC 2', label: 'SOC 2' },
+  { value: 'PCI DSS', label: 'PCI DSS' },
+  { value: 'HIPAA', label: 'HIPAA' },
+  { value: 'GDPR', label: 'GDPR' },
+  { value: 'NIST CSF', label: 'NIST CSF' },
+  { value: 'ISO 22301', label: 'ISO 22301 (BCM)' },
+  { value: 'SOX', label: 'SOX' },
+];
+
 const informationAssetSchema = z.object({
   assetIdentifier: z.string().optional(),
   assetName: z.string().min(1, 'Asset name is required'),
@@ -481,6 +492,53 @@ export function InformationAssetForm({ asset, onSuccess, onCancel }: Information
                 />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <FormLabel>Compliance Requirements</FormLabel>
+              <FormDescription>
+                Select the frameworks, regulations, or standards this information asset must comply with.
+              </FormDescription>
+              <FormField
+                control={form.control}
+                name="complianceRequirements"
+                render={({ field }) => {
+                  const selectedValues = field.value || [];
+                  const toggleValue = (checked: boolean, value: string) => {
+                    const current = Array.isArray(selectedValues) ? selectedValues : [];
+                    if (checked) {
+                      if (!current.includes(value)) {
+                        field.onChange([...current, value]);
+                      }
+                    } else {
+                      field.onChange(current.filter((v) => v !== value));
+                    }
+                  };
+
+                  return (
+                    <div className="grid grid-cols-2 gap-2">
+                      {COMPLIANCE_OPTIONS.map((option) => (
+                        <FormItem
+                          key={option.value}
+                          className="flex flex-row items-start space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={selectedValues.includes(option.value)}
+                              onCheckedChange={(checked) =>
+                                toggleValue(Boolean(checked), option.value)
+                              }
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal text-sm">
+                            {option.label}
+                          </FormLabel>
+                        </FormItem>
+                      ))}
+                    </div>
+                  );
+                }}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="ownership" className="space-y-4">
@@ -499,7 +557,24 @@ export function InformationAssetForm({ asset, onSuccess, onCancel }: Information
                     <FormItem>
                       <FormLabel>Owner</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          const stringVal = typeof value === 'string' ? value : String(value || '');
+                          field.onChange(stringVal);
+                          // Auto-populate business unit from owner profile if available
+                          const selectedUser = users.find((user) => user.id === stringVal);
+                          const ownerBusinessUnitId = selectedUser?.businessUnitId;
+                          const currentBusinessUnit = form.getValues('businessUnit') as any;
+                          const currentBusinessUnitId =
+                            typeof currentBusinessUnit === 'string'
+                              ? currentBusinessUnit
+                              : (currentBusinessUnit?.id as string | undefined);
+                          if (ownerBusinessUnitId && !currentBusinessUnitId) {
+                            form.setValue('businessUnit', ownerBusinessUnitId, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            });
+                          }
+                        }}
                         value={stringValue || undefined}
                         disabled={isLoadingUsers}
                       >

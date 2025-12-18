@@ -26,6 +26,7 @@ export declare class SupplierResponseDto {
     contractValue?: number;
     currency?: string;
     autoRenewal?: boolean;
+    contractStatus?: 'active' | 'expired' | 'pending_renewal' | 'no_contract';
     primaryContact?: {
         name: string;
         title: string;

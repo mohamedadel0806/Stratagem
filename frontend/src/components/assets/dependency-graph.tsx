@@ -42,8 +42,12 @@ import {
   Download,
   Filter,
   X,
+  AlertTriangle,
+  Target,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 type AssetType = 'physical' | 'information' | 'application' | 'software' | 'supplier';
 
@@ -87,20 +91,17 @@ const relationshipLabels: Record<string, string> = {
 
 // Custom node component
 function AssetNode({ data, selected }: NodeProps) {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dependency-graph.tsx:89',message:'AssetNode render - assetType value',data:{assetType:data.assetType,assetTypeType:typeof data.assetType,isObject:typeof data.assetType === 'object' && data.assetType !== null,keys:typeof data.assetType === 'object' && data.assetType !== null ? Object.keys(data.assetType) : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   const assetTypeStr = typeof data.assetType === 'string' 
     ? data.assetType 
     : (typeof data.assetType === 'object' && data.assetType !== null && 'name' in data.assetType)
       ? (data.assetType as any).name || (data.assetType as any).code || 'unknown'
       : String(data.assetType || 'unknown');
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dependency-graph.tsx:95',message:'AssetNode render - assetType converted',data:{original:data.assetType,converted:assetTypeStr},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   const config = assetTypeConfig[assetTypeStr] || assetTypeConfig.physical;
   const Icon = config.icon;
   const isCenter = data.isCenter;
+  const isImpacted = data.isImpacted || false;
+  const isSPOF = data.isSPOF || false;
+  const impactDepth = data.impactDepth || 0;
 
   return (
     <div
@@ -108,10 +109,13 @@ function AssetNode({ data, selected }: NodeProps) {
         px-4 py-3 rounded-lg border-2 shadow-md transition-all min-w-[180px] max-w-[220px]
         ${selected ? 'ring-2 ring-offset-2 ring-primary' : ''}
         ${isCenter ? 'ring-2 ring-offset-2 ring-amber-400' : ''}
+        ${isImpacted ? 'ring-2 ring-offset-2 ring-red-500 opacity-90' : ''}
+        ${isSPOF ? 'ring-2 ring-offset-2 ring-purple-500' : ''}
       `}
       style={{ 
-        backgroundColor: config.bgColor,
-        borderColor: config.color,
+        backgroundColor: isImpacted ? (isSPOF ? '#fef3c7' : '#fee2e2') : config.bgColor,
+        borderColor: isSPOF ? '#a855f7' : (isImpacted ? '#ef4444' : config.color),
+        opacity: isImpacted && !isCenter ? 0.85 : 1,
       }}
     >
       <Handle type="target" position={Position.Top} className="!bg-gray-400 !w-3 !h-3" />
@@ -120,17 +124,22 @@ function AssetNode({ data, selected }: NodeProps) {
       <div className="flex items-center gap-2 mb-1">
         <div 
           className="p-1.5 rounded"
-          style={{ backgroundColor: config.color }}
+          style={{ backgroundColor: isSPOF ? '#a855f7' : (isImpacted ? '#ef4444' : config.color) }}
         >
           <Icon className="h-4 w-4 text-white" />
         </div>
         <Badge 
           variant="secondary" 
           className="text-[10px] px-1.5 py-0"
-          style={{ backgroundColor: config.color, color: 'white' }}
+          style={{ backgroundColor: isSPOF ? '#a855f7' : (isImpacted ? '#ef4444' : config.color), color: 'white' }}
         >
           {assetTypeStr}
         </Badge>
+        {isSPOF && (
+          <Badge variant="destructive" className="text-[9px] px-1 py-0">
+            SPOF
+          </Badge>
+        )}
       </div>
       
       <p className="font-medium text-sm truncate" title={data.label}>
@@ -144,6 +153,14 @@ function AssetNode({ data, selected }: NodeProps) {
         <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: config.color }}>
           <span className="text-xs font-medium" style={{ color: config.color }}>
             Current Asset
+          </span>
+        </div>
+      )}
+      
+      {isImpacted && !isCenter && impactDepth > 0 && (
+        <div className="mt-1 pt-1 border-t border-dashed border-red-300">
+          <span className="text-[10px] text-red-600 font-medium">
+            Impact Level {impactDepth}
           </span>
         </div>
       )}
@@ -162,6 +179,8 @@ export function DependencyGraph({ assetType, assetId, assetName }: DependencyGra
   const [filterAssetType, setFilterAssetType] = useState<string>('all');
   const [filterRelationship, setFilterRelationship] = useState<string>('all');
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [impactMode, setImpactMode] = useState<boolean>(false);
+  const [showSPOF, setShowSPOF] = useState<boolean>(false);
 
   // Fetch outgoing dependencies
   const { data: outgoingDeps, isLoading: isLoadingOutgoing } = useQuery({
@@ -177,14 +196,49 @@ export function DependencyGraph({ assetType, assetId, assetName }: DependencyGra
     enabled: !!assetId,
   });
 
-  const isLoading = isLoadingOutgoing || isLoadingIncoming;
+  // Fetch dependency chain for impact analysis
+  const { data: dependencyChain, isLoading: isLoadingChain } = useQuery({
+    queryKey: ['asset-dependency-chain', assetType, assetId],
+    queryFn: () => assetsApi.getDependencyChain(assetType, assetId),
+    enabled: !!assetId && impactMode,
+  });
+
+  const isLoading = isLoadingOutgoing || isLoadingIncoming || isLoadingChain;
 
   // Build graph data when dependencies are loaded
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading && !impactMode) return;
+    if (isLoading && impactMode && isLoadingChain) return;
 
     const nodeMap = new Map<string, Node>();
     let edgeList: Edge[] = [];
+    const impactedNodeIds = new Set<string>();
+    const spofNodeIds = new Set<string>();
+    const impactDepthMap = new Map<string, number>();
+
+    // If impact mode is enabled, mark impacted nodes
+    if (impactMode && dependencyChain) {
+      dependencyChain.chain.forEach((item) => {
+        const nodeKey = `${item.assetType}-${item.assetId}`;
+        impactedNodeIds.add(nodeKey);
+        impactDepthMap.set(nodeKey, item.depth);
+      });
+    }
+
+    // Calculate SPOF nodes (nodes with many incoming dependencies)
+    if (showSPOF && incomingDeps) {
+      const incomingCountMap = new Map<string, number>();
+      incomingDeps.forEach((dep) => {
+        const sourceKey = `${dep.sourceAssetType}-${dep.sourceAssetId}`;
+        incomingCountMap.set(sourceKey, (incomingCountMap.get(sourceKey) || 0) + 1);
+      });
+      incomingCountMap.forEach((count, key) => {
+        if (count >= 3) {
+          // SPOF threshold: 3+ incoming dependencies
+          spofNodeIds.add(key);
+        }
+      });
+    }
 
     // Add center node (current asset)
     const centerNodeId = `${assetType}-${assetId}`;
@@ -197,6 +251,9 @@ export function DependencyGraph({ assetType, assetId, assetName }: DependencyGra
         assetType,
         identifier: assetId.substring(0, 8) + '...',
         isCenter: true,
+        isImpacted: false,
+        isSPOF: spofNodeIds.has(centerNodeId),
+        impactDepth: 0,
       },
     });
 
@@ -222,6 +279,9 @@ export function DependencyGraph({ assetType, assetId, assetName }: DependencyGra
               identifier: dep.targetAssetIdentifier,
               assetId: dep.targetAssetId,
               isCenter: false,
+              isImpacted: impactedNodeIds.has(targetNodeId),
+              isSPOF: spofNodeIds.has(targetNodeId),
+              impactDepth: impactDepthMap.get(targetNodeId) || 0,
             },
           });
         }
@@ -271,6 +331,9 @@ export function DependencyGraph({ assetType, assetId, assetName }: DependencyGra
               identifier: dep.sourceAssetIdentifier,
               assetId: dep.sourceAssetId,
               isCenter: false,
+              isImpacted: impactedNodeIds.has(sourceNodeId),
+              isSPOF: spofNodeIds.has(sourceNodeId),
+              impactDepth: impactDepthMap.get(sourceNodeId) || 0,
             },
           });
         }
@@ -331,7 +394,7 @@ export function DependencyGraph({ assetType, assetId, assetName }: DependencyGra
 
     setNodes(filteredNodes);
     setEdges(filteredEdges);
-  }, [outgoingDeps, incomingDeps, isLoading, assetType, assetId, assetName, filterAssetType, filterRelationship, setNodes, setEdges]);
+  }, [outgoingDeps, incomingDeps, isLoading, assetType, assetId, assetName, filterAssetType, filterRelationship, impactMode, dependencyChain, showSPOF, isLoadingChain, setNodes, setEdges]);
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     if (node.data.isCenter) return;
@@ -421,6 +484,44 @@ export function DependencyGraph({ assetType, assetId, assetName }: DependencyGra
               {edges.length} visible
             </Badge>
           </div>
+        </div>
+        {/* Impact Mode and SPOF Controls */}
+        <div className="flex items-center gap-4 mt-3 p-3 bg-muted/50 rounded-lg border">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="impact-mode"
+              checked={impactMode}
+              onCheckedChange={setImpactMode}
+            />
+            <Label htmlFor="impact-mode" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5" />
+              Impact Analysis
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="spof-mode"
+              checked={showSPOF}
+              onCheckedChange={setShowSPOF}
+            />
+            <Label htmlFor="spof-mode" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Show SPOF
+            </Label>
+          </div>
+          {impactMode && dependencyChain && (
+            <Badge variant="outline" className="text-xs">
+              {dependencyChain.totalCount} impacted assets (max depth: {dependencyChain.maxDepthReached})
+            </Badge>
+          )}
+          {showSPOF && incomingDeps && (
+            <Badge variant="outline" className="text-xs">
+              {Array.from(new Set(incomingDeps.map(d => `${d.sourceAssetType}-${d.sourceAssetId}`))).filter(id => {
+                const count = incomingDeps.filter(d => `${d.sourceAssetType}-${d.sourceAssetId}` === id).length;
+                return count >= 3;
+              }).length} SPOF detected
+            </Badge>
+          )}
         </div>
         {/* Filters and Export */}
         <div className="flex items-center gap-2 mt-3">
@@ -524,6 +625,20 @@ export function DependencyGraph({ assetType, assetId, assetName }: DependencyGra
                     <div className="w-6 h-0.5 bg-slate-500 border-dashed border-t-2" />
                     <span>Incoming</span>
                   </div>
+                  {impactMode && (
+                    <>
+                      <div className="flex items-center gap-2 text-xs text-red-600 mt-1">
+                        <div className="w-4 h-4 rounded border-2 border-red-500 bg-red-100" />
+                        <span>Impacted</span>
+                      </div>
+                    </>
+                  )}
+                  {showSPOF && (
+                    <div className="flex items-center gap-2 text-xs text-purple-600 mt-1">
+                      <div className="w-4 h-4 rounded border-2 border-purple-500 bg-purple-100" />
+                      <span>SPOF</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </Panel>

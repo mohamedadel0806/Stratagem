@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Eye, Search } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Pagination } from '@/components/ui/pagination';
 import {
   Select,
@@ -36,13 +36,62 @@ interface AssetResult {
   updatedAt: string;
 }
 
-export default function AllAssetsPage() {
+function AllAssetsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<AssetType>('all');
   const [criticalityFilter, setCriticalityFilter] = useState<string>('');
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
+  const [recentSearches, setRecentSearches] = useState<
+    { q: string; type: AssetType; criticality?: string }[]
+  >([]);
+  const [showRecent, setShowRecent] = useState(false);
+  const [suggestions, setSuggestions] = useState<AssetResult[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  // Read query parameter from URL on mount
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) {
+      setSearch(q);
+    }
+  }, [searchParams]);
+
+  // Load recent searches from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('allAssetsRecentSearches');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setRecentSearches(parsed.slice(0, 5));
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  const saveRecentSearch = (q: string, type: AssetType, criticality?: string) => {
+    if (typeof window === 'undefined') return;
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    const entry = { q: trimmed, type, criticality: criticality || undefined };
+    const existing = recentSearches.filter(
+      (r) => !(r.q === entry.q && r.type === entry.type && (r.criticality || '') === (entry.criticality || '')),
+    );
+    const updated = [entry, ...existing].slice(0, 5);
+    setRecentSearches(updated);
+    try {
+      window.localStorage.setItem('allAssetsRecentSearches', JSON.stringify(updated));
+    } catch {
+      // Ignore localStorage errors
+    }
+  };
 
   // Build query params
   const queryParams = useMemo(() => {
@@ -75,6 +124,38 @@ export default function AllAssetsPage() {
     staleTime: 30000,
     gcTime: 5 * 60 * 1000,
   });
+
+  // Debounced suggestions for global search
+  useEffect(() => {
+    if (!search.trim()) {
+      setSuggestions([]);
+      setSuggestError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      setIsSuggesting(true);
+      setSuggestError(null);
+      try {
+        const params: any = { q: search.trim(), page: 1, limit: 5 };
+        if (typeFilter && typeFilter !== 'all') params.type = typeFilter;
+        if (criticalityFilter && criticalityFilter !== 'all') params.criticality = criticalityFilter;
+        const result = await assetsApi.searchAssets(params);
+        setSuggestions(result.data || []);
+      } catch (err: any) {
+        console.error('Error fetching asset search suggestions:', err);
+        setSuggestError('Failed to load suggestions');
+      } finally {
+        setIsSuggesting(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [search, typeFilter, criticalityFilter]);
 
   const getTypeColor = (type: AssetType) => {
     const colors: Record<string, string> = {
@@ -139,6 +220,28 @@ export default function AllAssetsPage() {
     downloadCSV(csv, `all-assets-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  // Group assets by type
+  const groupedAssets = useMemo(() => {
+    if (!data?.data) return {};
+    
+    const grouped: Record<AssetType, AssetResult[]> = {
+      physical: [],
+      information: [],
+      application: [],
+      software: [],
+      supplier: [],
+      all: [],
+    };
+
+    data.data.forEach((asset) => {
+      if (asset.type in grouped) {
+        grouped[asset.type as AssetType].push(asset);
+      }
+    });
+
+    return grouped;
+  }, [data?.data]);
+
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
   return (
@@ -169,9 +272,81 @@ export default function AllAssetsPage() {
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
+                  setShowRecent(true);
+                }}
+                onFocus={() => {
+                  if (recentSearches.length > 0 && !search) {
+                    setShowRecent(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding to allow click
+                  setTimeout(() => setShowRecent(false), 150);
                 }}
                 className="pl-10"
               />
+              {/* Recent searches dropdown */}
+              {showRecent && recentSearches.length > 0 && !search && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                  <div className="px-2 py-1 text-xs text-muted-foreground">Recent searches</div>
+                  {recentSearches.map((item, idx) => (
+                    <button
+                      key={`${item.q}-${item.type}-${idx}`}
+                      type="button"
+                      className="w-full px-3 py-1.5 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        setSearch(item.q);
+                        setTypeFilter(item.type);
+                        setCriticalityFilter(item.criticality || '');
+                        setPage(1);
+                        setShowRecent(false);
+                      }}
+                    >
+                      <span className="font-medium">{item.q}</span>
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        ({item.type}{item.criticality ? `, ${item.criticality}` : ''})
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Suggestions dropdown */}
+              {search.trim() && suggestions.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                  <div className="px-2 py-1 text-xs text-muted-foreground flex items-center justify-between">
+                    <span>Suggestions</span>
+                    {isSuggesting && <span className="text-[10px]">Loading…</span>}
+                  </div>
+                  {suggestions.map((s) => (
+                    <button
+                      key={`${s.type}-${s.id}`}
+                      type="button"
+                      className="w-full px-3 py-1.5 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        setSearch(s.name || s.identifier);
+                        saveRecentSearch(s.name || s.identifier, s.type, s.criticality);
+                        setPage(1);
+                      }}
+                    >
+                      <span className="font-medium">{s.name}</span>
+                      {s.identifier && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({s.identifier})
+                        </span>
+                      )}
+                      <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Badge className={getTypeColor(s.type)}>{getTypeLabel(s.type)}</Badge>
+                        {s.criticality && (
+                          <Badge className={getCriticalityColor(s.criticality)}>{s.criticality}</Badge>
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                  {suggestError && (
+                    <div className="px-3 py-1 text-xs text-destructive border-t">{suggestError}</div>
+                  )}
+                </div>
+              )}
             </div>
             <Select
               value={typeFilter}
@@ -249,92 +424,110 @@ export default function AllAssetsPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Type
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Identifier
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Criticality
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Owner
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Business Unit
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Risks
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {data.data.map((asset) => (
-                        <tr key={asset.id} className="hover:bg-muted/50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge className={getTypeColor(asset.type)}>
-                              {getTypeLabel(asset.type)}
+            <div className="space-y-6">
+              {(['physical', 'information', 'application', 'software', 'supplier'] as AssetType[]).map((type) => {
+                const assets = groupedAssets[type] || [];
+                if (assets.length === 0) return null;
+
+                return (
+                  <Card key={type}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Badge className={getTypeColor(type)}>
+                              {getTypeLabel(type)}
                             </Badge>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-medium">{asset.name}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-muted-foreground">{asset.identifier}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {asset.criticality && (
-                              <Badge className={getCriticalityColor(asset.criticality)}>
-                                {asset.criticality}
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-muted-foreground">
-                              {asset.owner || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-muted-foreground">
-                              {asset.businessUnit || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <AssetRiskBadgeCompact 
-                              assetId={asset.id} 
-                              assetType={asset.type as RiskAssetType} 
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewAsset(asset)}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                            <span className="text-lg font-semibold">
+                              {getTypeLabel(type)} Assets
+                            </span>
+                            <span className="text-sm text-muted-foreground font-normal">
+                              ({assets.length})
+                            </span>
+                          </CardTitle>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Name
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Identifier
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Criticality
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Owner
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Business Unit
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Risks
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {assets.map((asset) => (
+                              <tr key={asset.id} className="hover:bg-muted/50">
+                                <td className="px-6 py-4">
+                                  <div className="text-sm font-medium">{asset.name}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-muted-foreground">{asset.identifier}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  {asset.criticality && (
+                                    <Badge className={getCriticalityColor(asset.criticality)}>
+                                      {asset.criticality}
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-muted-foreground">
+                                    {asset.owner || 'N/A'}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-muted-foreground">
+                                    {asset.businessUnit || 'N/A'}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <AssetRiskBadgeCompact 
+                                    assetId={asset.id} 
+                                    assetType={asset.type as RiskAssetType} 
+                                  />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleViewAsset(asset)}
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
 
           {/* Pagination */}
@@ -352,6 +545,30 @@ export default function AllAssetsPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function AllAssetsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">All Assets</h1>
+            <p className="text-muted-foreground mt-1">
+              View and manage all assets across all types in one place
+            </p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <AllAssetsPageContent />
+    </Suspense>
   );
 }
 

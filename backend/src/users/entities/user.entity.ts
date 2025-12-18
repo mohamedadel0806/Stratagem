@@ -80,4 +80,14 @@ export class User {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  /**
+   * Optional reference to the user's primary business unit.
+   * This enables auto-populating asset business unit when an owner is selected.
+   *
+   * NOTE: Make sure there is a corresponding `business_unit_id` column
+   * in the `users` table (via migration) before relying on this in production.
+   */
+  @Column({ type: 'uuid', nullable: true, name: 'business_unit_id' })
+  businessUnitId: string | null;
 }

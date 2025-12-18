@@ -42,6 +42,7 @@ var EntityType;
     EntityType["POLICY"] = "policy";
     EntityType["COMPLIANCE_REQUIREMENT"] = "compliance_requirement";
     EntityType["TASK"] = "task";
+    EntityType["SOP"] = "sop";
 })(EntityType || (exports.EntityType = EntityType = {}));
 let Workflow = class Workflow {
 };

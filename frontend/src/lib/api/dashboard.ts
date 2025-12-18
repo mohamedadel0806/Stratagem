@@ -58,6 +58,13 @@ export interface AssetStats {
   assetsWithOutdatedSecurityTests?: AssetWithOutdatedSecurityTest[];
 }
 
+export interface SupplierCriticality {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
 export interface DashboardOverview {
   summary: {
     totalRisks: number;
@@ -68,6 +75,7 @@ export interface DashboardOverview {
     compliantRequirements?: number;
   };
   assetStats?: AssetStats;
+  supplierCriticality?: SupplierCriticality;
 }
 
 export const dashboardApi = {

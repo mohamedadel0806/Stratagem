@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IntegrationConfig = exports.AuthenticationType = exports.IntegrationStatus = exports.IntegrationType = void 0;
+exports.IntegrationConfig = exports.ConflictResolutionStrategy = exports.AuthenticationType = exports.IntegrationStatus = exports.IntegrationType = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("../../users/entities/user.entity");
 var IntegrationType;
@@ -32,6 +32,12 @@ var AuthenticationType;
     AuthenticationType["BASIC_AUTH"] = "basic_auth";
     AuthenticationType["OAUTH2"] = "oauth2";
 })(AuthenticationType || (exports.AuthenticationType = AuthenticationType = {}));
+var ConflictResolutionStrategy;
+(function (ConflictResolutionStrategy) {
+    ConflictResolutionStrategy["SKIP"] = "skip";
+    ConflictResolutionStrategy["OVERWRITE"] = "overwrite";
+    ConflictResolutionStrategy["MERGE"] = "merge";
+})(ConflictResolutionStrategy || (exports.ConflictResolutionStrategy = ConflictResolutionStrategy = {}));
 let IntegrationConfig = class IntegrationConfig {
 };
 exports.IntegrationConfig = IntegrationConfig;
@@ -114,6 +120,15 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'created_by_id' }),
     __metadata("design:type", user_entity_1.User)
 ], IntegrationConfig.prototype, "createdBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: ConflictResolutionStrategy,
+        default: ConflictResolutionStrategy.SKIP,
+        nullable: true,
+    }),
+    __metadata("design:type", String)
+], IntegrationConfig.prototype, "conflictResolutionStrategy", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
     __metadata("design:type", String)

@@ -49,3 +49,4 @@ test.describe('Risk Analysis Page', () => {
     console.log('✅ Custom Reports tab tested');
   });
 });
+

@@ -41,7 +41,7 @@ export class GovernanceDashboardService {
     private controlAssetMappingRepository: Repository<ControlAssetMapping>,
   ) {}
 
-  async getDashboard(): Promise<GovernanceDashboardDto> {
+  async getDashboard(startDate?: string, endDate?: string): Promise<GovernanceDashboardDto> {
     const [
       summary,
       controlStats,

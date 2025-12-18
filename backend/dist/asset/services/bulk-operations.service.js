@@ -37,34 +37,42 @@ let BulkOperationsService = class BulkOperationsService {
             dto.criticalityLevel !== undefined ||
             dto.complianceTags !== undefined ||
             dto.businessUnit !== undefined ||
-            dto.department !== undefined;
+            dto.department !== undefined ||
+            dto.versionNumber !== undefined ||
+            dto.patchLevel !== undefined;
         if (!hasUpdates) {
             throw new common_1.BadRequestException('At least one field must be provided for update');
         }
         const errors = [];
         let successful = 0;
+        const rollbackData = [];
         const repository = this.getRepository(assetType);
         const assets = await repository.find({
             where: { id: (0, typeorm_2.In)(dto.assetIds) },
         });
         for (const asset of assets) {
             try {
+                const originalData = {};
                 const updateData = {};
                 if (dto.ownerId !== undefined) {
                     if (assetType === 'information') {
+                        originalData.informationOwnerId = asset.informationOwnerId;
                         updateData.informationOwnerId = dto.ownerId;
                     }
                     else {
+                        originalData.ownerId = asset.ownerId;
                         updateData.ownerId = dto.ownerId;
                     }
                 }
                 if (dto.criticalityLevel !== undefined) {
                     if (assetType === 'physical' || assetType === 'application' || assetType === 'supplier') {
+                        originalData.criticalityLevel = asset.criticalityLevel;
                         updateData.criticalityLevel = dto.criticalityLevel;
                     }
                 }
                 if (dto.complianceTags !== undefined) {
                     if (assetType === 'physical' || assetType === 'application' || assetType === 'information') {
+                        originalData.complianceRequirements = asset.complianceRequirements;
                         updateData.complianceRequirements = dto.complianceTags;
                     }
                 }
@@ -72,13 +80,27 @@ let BulkOperationsService = class BulkOperationsService {
                 }
                 if (dto.department !== undefined) {
                     if (assetType === 'physical') {
+                        originalData.department = asset.department;
                         updateData.department = dto.department;
+                    }
+                }
+                if (dto.versionNumber !== undefined) {
+                    if (assetType === 'application' || assetType === 'software') {
+                        originalData.versionNumber = asset.versionNumber;
+                        updateData.versionNumber = dto.versionNumber;
+                    }
+                }
+                if (dto.patchLevel !== undefined) {
+                    if (assetType === 'application' || assetType === 'software') {
+                        originalData.patchLevel = asset.patchLevel;
+                        updateData.patchLevel = dto.patchLevel;
                     }
                 }
                 if (assetType === 'physical' || assetType === 'application' || assetType === 'software') {
                     updateData.updatedBy = userId;
                 }
                 await repository.update(asset.id, updateData);
+                rollbackData.push({ assetId: asset.id, originalData });
                 successful++;
             }
             catch (error) {
@@ -88,10 +110,39 @@ let BulkOperationsService = class BulkOperationsService {
                 });
             }
         }
+        if (errors.length > 0 && dto.rollbackOnError) {
+            console.warn(`Bulk update encountered errors for ${assetType} assets; initiating rollback`, {
+                assetType,
+                totalRequested: dto.assetIds.length,
+                successfulBeforeRollback: successful,
+                failed: errors.length,
+            });
+            for (const rollback of rollbackData) {
+                try {
+                    await repository.update(rollback.assetId, rollback.originalData);
+                }
+                catch (rollbackError) {
+                    console.error(`Failed to rollback asset ${rollback.assetId}:`, rollbackError);
+                }
+            }
+            return {
+                successful: 0,
+                failed: dto.assetIds.length,
+                errors: [
+                    ...errors,
+                    ...rollbackData.map((r) => ({
+                        assetId: r.assetId,
+                        error: 'Rolled back due to other failures',
+                    })),
+                ],
+                rolledBack: true,
+            };
+        }
         return {
             successful,
             failed: errors.length,
             errors,
+            rolledBack: false,
         };
     }
     async bulkDelete(assetType, assetIds) {

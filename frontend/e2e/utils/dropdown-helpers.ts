@@ -138,3 +138,4 @@ export async function verifyDropdownEmptyState(
   // Close dropdown
   await page.keyboard.press('Escape');
 }
+

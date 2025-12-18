@@ -161,18 +161,26 @@ export function AssetImportWizard({ assetType = 'physical', onSuccess, onCancel 
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [fileType, setFileType] = useState<'csv' | 'excel'>('csv');
+  const [selectedSheet, setSelectedSheet] = useState<string | undefined>(undefined);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   const previewMutation = useMutation({
-    mutationFn: (file: File) => {
-      console.log('[Import Wizard] Preview mutation called', { assetType, fileType, fileName: file.name });
-      return assetsApi.previewImportByType(assetType, file, fileType);
+    mutationFn: (params: { file: File; sheetName?: string }) => {
+      const { file, sheetName } = params;
+      console.log('[Import Wizard] Preview mutation called', {
+        assetType,
+        fileType,
+        fileName: file.name,
+        sheetName,
+      });
+      return assetsApi.previewImportByType(assetType, file, fileType, sheetName);
     },
     onSuccess: (data) => {
       console.log('[Import Wizard] Preview success', { headers: data.headers, totalRows: data.totalRows });
       setPreview(data);
+      setSelectedSheet(data.selectedSheet);
       // Auto-map common column names
       const autoMapping: Record<string, string> = {};
       const fields = ASSET_FIELDS[assetType];
@@ -266,8 +274,10 @@ export function AssetImportWizard({ assetType = 'physical', onSuccess, onCancel 
     }
 
     setFile(selectedFile);
-    setFileType(isExcel ? 'excel' : 'csv');
-    previewMutation.mutate(selectedFile);
+    const nextFileType: 'csv' | 'excel' = isExcel ? 'excel' : 'csv';
+    setFileType(nextFileType);
+    setSelectedSheet(undefined);
+    previewMutation.mutate({ file: selectedFile });
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -327,6 +337,7 @@ export function AssetImportWizard({ assetType = 'physical', onSuccess, onCancel 
       setStep('upload');
       setFile(null);
       setPreview(null);
+      setSelectedSheet(undefined);
       setFieldMapping({});
     } else if (step === 'preview') {
       setStep('map');
@@ -509,6 +520,32 @@ export function AssetImportWizard({ assetType = 'physical', onSuccess, onCancel 
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {fileType === 'excel' && preview.sheets && preview.sheets.length > 1 && (
+                <div className="flex items-center gap-4 mb-4">
+                  <Label className="w-48 text-right">Worksheet</Label>
+                  <Select
+                    value={selectedSheet || preview.selectedSheet || preview.sheets[0]}
+                    onValueChange={(value) => {
+                      setSelectedSheet(value);
+                      if (file) {
+                        // Re-run preview for the newly selected sheet
+                        previewMutation.mutate({ file, sheetName: value });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select worksheet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {preview.sheets.map((sheet) => (
+                        <SelectItem key={sheet} value={sheet}>
+                          {sheet}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {preview.headers.map((header) => (
                 <div key={header} className="flex items-center gap-4">
                   <Label className="w-48 text-right">{header}</Label>

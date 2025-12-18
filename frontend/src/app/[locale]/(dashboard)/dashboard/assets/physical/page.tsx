@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assetsApi, PhysicalAsset, PhysicalAssetQueryParams } from '@/lib/api/assets';
+import { usersApi, User } from '@/lib/api/users';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +37,19 @@ export default function PhysicalAssetsPage() {
     limit: 20,
   });
   const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => usersApi.getAll(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const getUserDisplayName = (user: User): string => {
+    if (user.firstName || user.lastName) {
+      return [user.firstName, user.lastName].filter(Boolean).join(' ');
+    }
+    return user.email;
+  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['physical-assets', filters],
@@ -301,6 +315,22 @@ export default function PhysicalAssetsPage() {
                   hasDependencies: value === '' ? undefined : value === 'true' 
                 }),
               },
+              {
+                key: 'ownerId',
+                label: 'Owner',
+                value: filters.ownerId || '',
+                options: [
+                  { value: '', label: 'All owners' },
+                  ...users.map((user) => ({
+                    value: user.id,
+                    label: getUserDisplayName(user),
+                  })),
+                ],
+                onChange: (value) =>
+                  handleFilterChange({
+                    ownerId: value || undefined,
+                  }),
+              },
             ]}
             onClear={() => setFilters({ page: 1, limit: 20 })}
             storageKey="physical-assets"
@@ -315,6 +345,7 @@ export default function PhysicalAssetsPage() {
                 hasDependencies: presetFilters.hasDependencies !== undefined 
                   ? presetFilters.hasDependencies === 'true' || presetFilters.hasDependencies === true
                   : undefined,
+                ownerId: (presetFilters.ownerId as string) || undefined,
               });
             }}
           />

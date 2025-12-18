@@ -569,3 +569,4 @@ test.describe('Treatment Form', () => {
     console.log('✅ Treatment form cancelled and dialog closed correctly');
   });
 });
+

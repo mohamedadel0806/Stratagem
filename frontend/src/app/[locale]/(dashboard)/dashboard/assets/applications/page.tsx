@@ -5,8 +5,10 @@ import { assetsApi } from '@/lib/api/assets';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Eye, Edit, Trash2, Upload, AlertTriangle, Shield, CheckCircle2, XCircle, Clock, CheckSquare, Square } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkOperationsBar } from '@/components/assets/bulk-operations-bar-enhanced';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { DataTableFilters } from '@/components/filters/data-table-filters';
@@ -29,6 +31,7 @@ export default function BusinessApplicationsPage() {
     page: 1,
     limit: 20,
   });
+  const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['business-applications', filters],
@@ -60,6 +63,57 @@ export default function BusinessApplicationsPage() {
     if (confirm('Are you sure you want to delete this application?')) {
       deleteMutation.mutate(id);
     }
+  };
+
+  // Bulk selection handlers
+  const toggleAssetSelection = useCallback((assetId: string) => {
+    setSelectedAssets((prev) => {
+      const next = new Set(prev);
+      if (next.has(assetId)) {
+        next.delete(assetId);
+      } else {
+        next.add(assetId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!data?.data) return;
+    if (selectedAssets.size === data.data.length) {
+      setSelectedAssets(new Set());
+    } else {
+      setSelectedAssets(new Set(data.data.map((a: any) => a.id)));
+    }
+  }, [data?.data, selectedAssets.size]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedAssets(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(async (ids: string[]) => {
+    await Promise.all(ids.map((id) => assetsApi.deleteBusinessApplication(id)));
+    queryClient.invalidateQueries({ queryKey: ['business-applications'] });
+    clearSelection();
+  }, [queryClient, clearSelection]);
+
+  const getSecurityTestStatus = (app: any) => {
+    if (!app.lastSecurityTestDate) {
+      return { status: 'no-test', label: 'No Test', icon: Clock, variant: 'secondary' as const };
+    }
+    const testDate = new Date(app.lastSecurityTestDate);
+    const daysSince = Math.floor((Date.now() - testDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysSince > 365) {
+      return { status: 'overdue', label: 'Overdue', icon: AlertTriangle, variant: 'destructive' as const };
+    }
+    
+    const severity = app.securityTestResults?.severity?.toLowerCase() || '';
+    if (severity === 'critical' || severity === 'high' || severity === 'failed') {
+      return { status: 'failed', label: 'Failed', icon: XCircle, variant: 'destructive' as const };
+    }
+    
+    return { status: 'passed', label: 'Passed', icon: CheckCircle2, variant: 'default' as const };
   };
 
   if (isLoading) {
@@ -155,25 +209,175 @@ export default function BusinessApplicationsPage() {
             ],
             onChange: (value) => setFilters({ ...filters, criticalityLevel: value, page: 1 }),
           },
+          {
+            key: 'missingVersion',
+            label: 'Version Status',
+            value: filters.missingVersion ? 'true' : '',
+            options: [
+              { value: '', label: 'All' },
+              { value: 'true', label: 'Missing Version' },
+            ],
+            onChange: (value) => setFilters({ ...filters, missingVersion: value === 'true', page: 1 }),
+          },
+          {
+            key: 'missingPatch',
+            label: 'Patch Status',
+            value: filters.missingPatch ? 'true' : '',
+            options: [
+              { value: '', label: 'All' },
+              { value: 'true', label: 'Missing Patch' },
+            ],
+            onChange: (value) => setFilters({ ...filters, missingPatch: value === 'true', page: 1 }),
+          },
+          {
+            key: 'securityTestStatus',
+            label: 'Security Test Status',
+            value: filters.securityTestStatus || '',
+            options: [
+              { value: '', label: 'All' },
+              { value: 'no-test', label: 'No Test' },
+              { value: 'overdue', label: 'Overdue' },
+              { value: 'failed', label: 'Failed' },
+              { value: 'passed', label: 'Passed' },
+            ],
+            onChange: (value) => setFilters({ ...filters, securityTestStatus: value, page: 1 }),
+          },
         ]}
       />
 
+      {data?.data && data.data.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{data.data.length}</div>
+              <p className="text-xs text-muted-foreground">Total Applications</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">
+                {data.data.filter((app: any) => app.versionNumber).length}
+              </div>
+              <p className="text-xs text-muted-foreground">With Version</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">
+                {data.data.filter((app: any) => app.patchLevel).length}
+              </div>
+              <p className="text-xs text-muted-foreground">With Patch Level</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-destructive">
+                {data.data.filter((app: any) => !app.versionNumber || !app.patchLevel).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Outdated (Missing Info)</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {selectedAssets.size > 0 && (
+        <BulkOperationsBar
+          selectedCount={selectedAssets.size}
+          selectedItems={data?.data.filter((a: any) => selectedAssets.has(a.id)) || []}
+          onClearSelection={clearSelection}
+          onDelete={handleBulkDelete}
+          onUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ['business-applications'] });
+            clearSelection();
+          }}
+          assetType="application"
+        />
+      )}
+
       {data?.data && data.data.length > 0 ? (
         <>
+          <div className="flex items-center gap-2 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+            >
+              {selectedAssets.size === data.data.length ? (
+                <>
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Deselect All
+                </>
+              ) : (
+                <>
+                  <Square className="h-4 w-4 mr-2" />
+                  Select All
+                </>
+              )}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {selectedAssets.size} of {data.data.length} selected
+            </span>
+          </div>
           <div
             className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
             data-testid="assets-business-app-list"
           >
             {data.data.map((app: any) => (
-              <Card key={app.id}>
+              <Card key={app.id} className={selectedAssets.has(app.id) ? 'ring-2 ring-primary' : ''}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{app.applicationName}</CardTitle>
-                      <CardDescription>{app.applicationIdentifier}</CardDescription>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <Checkbox
+                          checked={selectedAssets.has(app.id)}
+                          onCheckedChange={() => toggleAssetSelection(app.id)}
+                          className="mr-1"
+                        />
+                        <CardTitle className="text-lg">{app.applicationName}</CardTitle>
+                        {(!app.versionNumber || !app.patchLevel) && (
+                          <Badge variant="destructive" className="flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Outdated
+                          </Badge>
+                        )}
+                        {(() => {
+                          const testStatus = getSecurityTestStatus(app);
+                          if (testStatus.status !== 'no-test') {
+                            const Icon = testStatus.icon;
+                            return (
+                              <Badge variant={testStatus.variant} className="flex items-center gap-1">
+                                <Icon className="h-3 w-3" />
+                                {testStatus.label}
+                              </Badge>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                      <CardDescription>{app.uniqueIdentifier}</CardDescription>
+                      <div className="flex items-center gap-2 mt-2">
+                        {app.versionNumber ? (
+                          <Badge variant="outline" className="font-mono">
+                            v{app.versionNumber}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            No Version
+                          </Badge>
+                        )}
+                        {app.patchLevel ? (
+                          <Badge variant="outline" className="font-mono">
+                            Patch {app.patchLevel}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            No Patch
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-2">
-                      <Badge variant="outline">{app.status}</Badge>
+                      {app.status && <Badge variant="outline">{app.status}</Badge>}
                       <AssetRiskBadge 
                         assetId={app.id} 
                         assetType="application" 
@@ -192,11 +396,6 @@ export default function BusinessApplicationsPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </div>
-                    {app.version && (
-                      <div>
-                        <span className="font-medium">Version:</span> {app.version}
-                      </div>
-                    )}
                     {app.vendor && (
                       <div>
                         <span className="font-medium">Vendor:</span> {app.vendor}

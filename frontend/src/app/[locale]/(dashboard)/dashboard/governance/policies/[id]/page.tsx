@@ -13,9 +13,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PolicyForm } from '@/components/governance/policy-form';
 import { ApprovalSection } from '@/components/governance/approval-section';
+import { PolicyWorkflowSection } from '@/components/governance/policy-workflow-section';
 import { ControlObjectivesSection } from '@/components/governance/control-objectives-section';
 import { PolicyVersionComparison } from '@/components/governance/policy-version-comparison';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { PolicyPublishDialog } from '@/components/governance/policy-publish-dialog';
 
 const statusLabels: Record<PolicyStatus, string> = {
   [PolicyStatus.DRAFT]: 'Draft',
@@ -41,6 +43,7 @@ export default function PolicyDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isPublishOpen, setIsPublishOpen] = useState(false);
   const policyId = params.id as string;
 
   const { data: policy, isLoading } = useQuery({
@@ -147,6 +150,15 @@ export default function PolicyDetailPage() {
               {submitForApprovalMutation.isPending ? 'Submitting...' : 'Submit for Approval'}
             </Button>
           )}
+          {(policy.status === PolicyStatus.APPROVED || policy.status === PolicyStatus.IN_REVIEW) && (
+            <Button
+              onClick={() => setIsPublishOpen(true)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Publish
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setIsEditOpen(true)}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
@@ -170,6 +182,7 @@ export default function PolicyDetailPage() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="approvals">Approvals</TabsTrigger>
           <TabsTrigger value="control-objectives">Control Objectives</TabsTrigger>
           <TabsTrigger value="versions">Version Comparison</TabsTrigger>
@@ -327,8 +340,12 @@ export default function PolicyDetailPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="workflows" className="space-y-4">
+          <PolicyWorkflowSection policyId={policy.id} />
+        </TabsContent>
+
         <TabsContent value="approvals" className="space-y-4">
-          <ApprovalSection policyId={policy.id} />
+          <ApprovalSection entityType="policy" entityId={policy.id} />
         </TabsContent>
 
         <TabsContent value="control-objectives" className="space-y-4">
@@ -365,6 +382,17 @@ export default function PolicyDetailPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {policy && (
+        <PolicyPublishDialog
+          policy={policy}
+          open={isPublishOpen}
+          onOpenChange={setIsPublishOpen}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['policy', policyId] });
+          }}
+        />
+      )}
     </div>
   );
 }

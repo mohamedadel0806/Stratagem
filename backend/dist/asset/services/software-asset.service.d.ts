@@ -24,5 +24,38 @@ export declare class SoftwareAssetService {
     private getRiskCountForAsset;
     private getRiskCountsForAssets;
     private toResponseDto;
+    getInventoryReport(groupBy?: 'type' | 'vendor' | 'none'): Promise<{
+        summary: {
+            totalSoftware: number;
+            totalInstallations: number;
+            unlicensedCount: number;
+            expiredLicenseCount: number;
+        };
+        grouped: Record<string, {
+            softwareName: string;
+            version: string;
+            patchLevel: string;
+            vendor: string;
+            softwareType: string;
+            installationCount: number;
+            licenseCount: number | null;
+            licenseType: string | null;
+            licenseExpiry: Date | null;
+            licenseStatus: 'licensed' | 'unlicensed' | 'expired' | 'unknown';
+            businessUnits: string[];
+            locations: string[];
+        }[]>;
+        unlicensed: Array<{
+            softwareName: string;
+            version: string;
+            patchLevel: string;
+            vendor: string;
+            softwareType: string;
+            installationCount: number;
+            businessUnits: string[];
+            reason: 'no_license' | 'expired_license' | 'installation_exceeds_license';
+        }>;
+    }>;
+    private getLicenseStatus;
     private generateUniqueIdentifier;
 }
