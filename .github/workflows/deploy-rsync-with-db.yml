@@ -11,6 +11,7 @@ on:
 jobs:
   deploy-rsync-with-db:
     runs-on: ubuntu-latest
+    environment: Ubuntu-server
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -72,6 +72,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    environment: Ubuntu-server
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
