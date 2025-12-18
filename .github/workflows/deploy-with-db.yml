@@ -43,7 +43,7 @@ jobs:
 
           # Transfer code
           rsync -avz --progress \
-            -e "ssh -i ${{ secrets.SSH_PRIVATE_KEY }}" \
+            -e "ssh -o StrictHostKeyChecking=no" \
             --exclude 'node_modules' \
             --exclude '.next' \
             --exclude 'dist' \
@@ -53,10 +53,10 @@ jobs:
             ./backend/ ./frontend/ ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
 
           # Transfer database export
-          scp -r "$EXPORT_PATH" ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/database-import/
+          scp -o StrictHostKeyChecking=no -r "$EXPORT_PATH" ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/database-import/
 
           # Transfer config
-          scp docker-compose.prod.yml infrastructure/caddy/Caddyfile scripts/ ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
+          scp -o StrictHostKeyChecking=no docker-compose.prod.yml infrastructure/caddy/Caddyfile scripts/ ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
 
       - name: Execute Restore and Deploy on Server
         uses: appleboy/ssh-action@master

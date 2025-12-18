@@ -23,7 +23,7 @@ jobs:
       - name: Transfer Files via Rsync
         run: |
           rsync -avz --progress \
-            -e "ssh -i ${{ secrets.SSH_PRIVATE_KEY }}" \
+            -e "ssh -o StrictHostKeyChecking=no" \
             --exclude 'node_modules' \
             --exclude '.next' \
             --exclude 'dist' \
@@ -33,6 +33,7 @@ jobs:
             ./backend/ ./frontend/ ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
 
           rsync -avz --progress \
+            -e "ssh -o StrictHostKeyChecking=no" \
             docker-compose.prod.yml \
             infrastructure/caddy/Caddyfile \
             scripts/ \

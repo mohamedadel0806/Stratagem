@@ -88,7 +88,7 @@ jobs:
 
       - name: Transfer Config Files
         run: |
-          scp docker-compose.prod.yml infrastructure/caddy/Caddyfile scripts/* ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
+          scp -o StrictHostKeyChecking=no docker-compose.prod.yml infrastructure/caddy/Caddyfile scripts/* ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/
 
       - name: Deploy on Server
         uses: appleboy/ssh-action@master
