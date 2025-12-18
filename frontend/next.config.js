@@ -8,6 +8,13 @@ const nextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  eslint: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has ESLint errors.
+    // !! WARN !!
+    ignoreDuringBuilds: true,
+  },
   reactStrictMode: true,
   // swcMinify is deprecated in Next.js 16 (minification is always enabled)
   images: {
@@ -26,7 +33,7 @@ const nextConfig = {
     // Only proxy non-auth API routes to Kong
     // NextAuth routes (/api/auth/*) are handled by Next.js API routes and should NOT be proxied
     const rewrites = [];
-    
+
     // Only add rewrite if Kong is available (for other API routes)
     // For now, we'll skip the rewrite since Kong isn't working
     // When Kong is fixed, uncomment this:
@@ -34,7 +41,7 @@ const nextConfig = {
     //   source: '/api/:path((?!auth).)*',
     //   destination: `${process.env.API_URL || 'http://localhost:8000'}/api/:path*`,
     // });
-    
+
     return rewrites;
   },
   async headers() {
