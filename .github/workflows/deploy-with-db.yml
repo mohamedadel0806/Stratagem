@@ -12,6 +12,9 @@ jobs:
   deploy-with-db:
     runs-on: ubuntu-latest
     environment: Ubuntu-server
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -93,6 +96,7 @@ jobs:
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d grc_platform < "$EXPORT_DIR/postgres_grc_platform.sql"
 
             # Login and Pull
+            docker logout ghcr.io || true
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose -f docker-compose.prod.yml pull
 

@@ -36,7 +36,7 @@ jobs:
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
+          images: ${{ env.REGISTRY }}/mohamedadel0806/stratagem-backend
           tags: |
             type=raw,value=latest
             type=ref,event=branch
@@ -56,7 +56,7 @@ jobs:
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
+          images: ${{ env.REGISTRY }}/mohamedadel0806/stratagem-frontend
           tags: |
             type=raw,value=latest
             type=ref,event=branch
@@ -116,6 +116,7 @@ jobs:
             cd /opt/stratagem
             
             # Login to GHCR on the server
+            docker logout ghcr.io || true
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             # Stop and remove existing containers including orphans from old configs
