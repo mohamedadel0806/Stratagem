@@ -1,7 +1,7 @@
 services:
   # Frontend - Next.js Application
   frontend:
-    image: ghcr.io/mohamedadel0806/stratagem/frontend:latest
+    image: ghcr.io/mohamedadel0806/stratagem-frontend:latest
     environment:
       - NODE_ENV=production
       - NEXTAUTH_URL=${FRONTEND_URL}
@@ -21,7 +21,7 @@ services:
 
   # Backend - NestJS Services
   backend:
-    image: ghcr.io/mohamedadel0806/stratagem/backend:latest
+    image: ghcr.io/mohamedadel0806/stratagem-backend:latest
     environment:
       - NODE_ENV=production
       - PORT=3001
