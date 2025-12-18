@@ -1,11 +1,30 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { governanceApi, GovernancePermission, GovernanceModule, GovernanceAction, CreateGovernancePermissionData } from '@/lib/api/governance';
+import {
+  governanceApi,
+  GovernancePermission,
+  GovernanceModule,
+  GovernanceAction,
+  CreateGovernancePermissionData,
+  UserPermissionTestResult,
+  AssignRoleData
+} from '@/lib/api/governance';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Shield, Users, TestTube, UserPlus, X, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Shield,
+  Users,
+  TestTube,
+  UserPlus,
+  X,
+  CheckCircle2,
+  XCircle,
+  Loader2
+} from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,8 +34,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usersApi, User } from '@/lib/api/users';
-import { governanceApi, UserPermissionTestResult, AssignRoleData } from '@/lib/api/governance';
-import { Loader2 } from 'lucide-react';
 
 const moduleLabels: Record<GovernanceModule, string> = {
   [GovernanceModule.INFLUENCERS]: 'Influencers',
