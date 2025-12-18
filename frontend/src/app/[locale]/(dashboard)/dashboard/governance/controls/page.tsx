@@ -20,6 +20,7 @@ import { DataTableFilters } from '@/components/filters/data-table-filters';
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UnifiedControlForm } from '@/components/governance/unified-control-form';
+import { BulkAssetControlAssignment } from '@/components/governance/bulk-asset-control-assignment';
 
 const controlTypeLabels: Record<ControlType, string> = {
   [ControlType.PREVENTIVE]: 'Preventive',
@@ -126,10 +127,13 @@ export default function UnifiedControlsPage() {
           <h1 className="text-3xl font-bold">Unified Controls</h1>
           <p className="text-muted-foreground">Manage unified control library with multi-framework mapping</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Control
-        </Button>
+        <div className="flex items-center gap-2">
+          <BulkAssetControlAssignment />
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Control
+          </Button>
+        </div>
       </div>
 
       <Card>

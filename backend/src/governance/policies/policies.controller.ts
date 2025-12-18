@@ -21,13 +21,15 @@ import { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PoliciesService } from './policies.service';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { PolicyQueryDto } from './dto/policy-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
-@Controller('api/v1/governance/policies')
+@ApiTags('governance')
+@Controller('governance/policies')
 @UseGuards(JwtAuthGuard)
 export class PoliciesController {
   constructor(private readonly policiesService: PoliciesService) {}
@@ -43,7 +45,57 @@ export class PoliciesController {
     return this.policiesService.findAll(queryDto);
   }
 
+  // Specific routes must come before :id route to avoid route conflicts
+  @Get('statistics/publication')
+  @ApiOperation({ summary: 'Get policy publication statistics' })
+  @ApiResponse({ status: 200, description: 'Publication statistics' })
+  async getPublicationStatistics() {
+    const stats = await this.policiesService.getPublicationStatistics();
+    return stats;
+  }
+
+  @Get('reviews/due')
+  @ApiOperation({ summary: 'Get policies due for review' })
+  @ApiResponse({ status: 200, description: 'List of policies due for review' })
+  async getPoliciesDueForReview(@Query('days') days?: number) {
+    const daysParam = days ? parseInt(days.toString(), 10) : 0;
+    const policies = await this.policiesService.getPoliciesDueForReview(daysParam);
+    return { data: policies };
+  }
+
+  @Get('reviews/statistics')
+  @ApiOperation({ summary: 'Get policy review statistics' })
+  @ApiResponse({ status: 200, description: 'Review statistics' })
+  async getReviewStatistics() {
+    const stats = await this.policiesService.getReviewStatistics();
+    return { data: stats };
+  }
+
+  @Get('reviews/pending')
+  @ApiOperation({ summary: 'Get policies pending review' })
+  @ApiResponse({ status: 200, description: 'List of policies pending review' })
+  async getPendingReviews(@Query('daysAhead') daysAhead?: number) {
+    const days = daysAhead ? parseInt(daysAhead.toString(), 10) : 90;
+    const policies = await this.policiesService.getPendingReviews(days);
+    return { data: policies };
+  }
+
+  @Get('assigned/my')
+  @ApiOperation({ summary: 'Get policies assigned to current user' })
+  @ApiResponse({ status: 200, description: 'List of assigned policies' })
+  async getMyAssignedPolicies(@Request() req) {
+    const user = req.user;
+    const policies = await this.policiesService.getAssignedPolicies(
+      user.id,
+      user.role,
+      // user.business_unit_id if available
+    );
+    return { data: policies };
+  }
+
   @Get(':id')
+  @ApiOperation({ summary: 'Get a policy by ID' })
+  @ApiResponse({ status: 200, description: 'Policy details' })
   findOne(@Param('id') id: string) {
     return this.policiesService.findOne(id);
   }
@@ -159,6 +211,97 @@ export class PoliciesController {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
     res.sendFile(path.resolve(filePath));
+  }
+
+  @Get(':id/workflows')
+  async getWorkflowExecutions(@Param('id') id: string) {
+    const executions = await this.policiesService.getWorkflowExecutions(id);
+    return { data: executions };
+  }
+
+  @Get(':id/workflows/pending-approvals')
+  async getPendingApprovals(@Param('id') id: string, @Request() req) {
+    const approvals = await this.policiesService.getPendingApprovals(id, req.user.id);
+    return { data: approvals };
+  }
+
+  @Post(':id/publish')
+  @HttpCode(HttpStatus.OK)
+  async publish(
+    @Param('id') id: string,
+    @Body() body: {
+      assign_to_user_ids?: string[];
+      assign_to_role_ids?: string[];
+      assign_to_business_unit_ids?: string[];
+      notification_message?: string;
+    },
+    @Request() req,
+  ) {
+    const policy = await this.policiesService.publish(
+      id,
+      req.user.id,
+      body.assign_to_user_ids,
+      body.assign_to_role_ids,
+      body.assign_to_business_unit_ids,
+      body.notification_message,
+    );
+    return { data: policy };
+  }
+
+
+  @Post(':id/reviews')
+  @ApiOperation({ summary: 'Initiate a policy review' })
+  @ApiResponse({ status: 201, description: 'Review initiated successfully' })
+  async initiateReview(
+    @Param('id') id: string,
+    @Body() body: { review_date: string },
+    @Request() req,
+  ) {
+    const reviewDate = new Date(body.review_date);
+    const review = await this.policiesService.initiateReview(id, reviewDate, req.user.id);
+    return { data: review };
+  }
+
+  @Get(':id/reviews')
+  @ApiOperation({ summary: 'Get review history for a policy' })
+  @ApiResponse({ status: 200, description: 'Review history' })
+  async getReviewHistory(@Param('id') id: string) {
+    const reviews = await this.policiesService.getReviewHistory(id);
+    return { data: reviews };
+  }
+
+  @Get(':id/reviews/active')
+  @ApiOperation({ summary: 'Get active review for a policy' })
+  @ApiResponse({ status: 200, description: 'Active review' })
+  async getActiveReview(@Param('id') id: string) {
+    const review = await this.policiesService.getActiveReview(id);
+    return { data: review };
+  }
+
+  @Patch('reviews/:reviewId/complete')
+  @ApiOperation({ summary: 'Complete a policy review' })
+  @ApiResponse({ status: 200, description: 'Review completed successfully' })
+  async completeReview(
+    @Param('reviewId') reviewId: string,
+    @Body() body: {
+      outcome: string;
+      notes?: string;
+      review_summary?: string;
+      recommended_changes?: string;
+      next_review_date?: string;
+    },
+    @Request() req,
+  ) {
+    const review = await this.policiesService.completeReview(
+      reviewId,
+      body.outcome as any,
+      req.user.id,
+      body.notes,
+      body.review_summary,
+      body.recommended_changes,
+      body.next_review_date ? new Date(body.next_review_date) : undefined,
+    );
+    return { data: review };
   }
 }
 

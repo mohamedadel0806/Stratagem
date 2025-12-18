@@ -15,6 +15,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UnifiedControlsService } from './unified-controls.service';
 import { ControlAssetMappingService } from './services/control-asset-mapping.service';
+import { FrameworkControlMappingService } from './services/framework-control-mapping.service';
 import { CreateUnifiedControlDto } from './dto/create-unified-control.dto';
 import { UnifiedControlQueryDto } from './dto/unified-control-query.dto';
 import { CreateControlAssetMappingDto, BulkCreateControlAssetMappingDto } from './dto/create-control-asset-mapping.dto';
@@ -32,6 +33,7 @@ export class UnifiedControlsController {
   constructor(
     private readonly unifiedControlsService: UnifiedControlsService,
     private readonly controlAssetMappingService: ControlAssetMappingService,
+    private readonly frameworkControlMappingService: FrameworkControlMappingService,
     private readonly riskControlLinkService: RiskControlLinkService,
   ) {}
 
@@ -194,6 +196,69 @@ export class UnifiedControlsController {
   @ApiResponse({ status: 200, description: 'Control effectiveness data' })
   getRiskEffectiveness(@Param('id') controlId: string) {
     return this.riskControlLinkService.getControlEffectivenessForControl(controlId);
+  }
+
+  // Framework-Control Mapping Endpoints
+  @Get(':id/framework-mappings')
+  @ApiOperation({ summary: 'Get framework mappings for a control' })
+  @ApiResponse({ status: 200, description: 'Framework mappings retrieved successfully' })
+  getFrameworkMappings(@Param('id') id: string) {
+    return this.frameworkControlMappingService.getMappingsForControl(id);
+  }
+
+  @Post(':id/framework-mappings')
+  @ApiOperation({ summary: 'Map a control to a framework requirement' })
+  @ApiResponse({ status: 201, description: 'Mapping created successfully' })
+  createFrameworkMapping(
+    @Param('id') controlId: string,
+    @Body() body: { requirement_id: string; coverage_level: string; mapping_notes?: string },
+    @Request() req,
+  ) {
+    return this.frameworkControlMappingService.createMapping(
+      controlId,
+      body.requirement_id,
+      body.coverage_level as any,
+      body.mapping_notes,
+      req.user.id,
+    );
+  }
+
+  @Post(':id/framework-mappings/bulk')
+  @ApiOperation({ summary: 'Bulk map a control to multiple framework requirements' })
+  @ApiResponse({ status: 201, description: 'Mappings created successfully' })
+  bulkCreateFrameworkMappings(
+    @Param('id') controlId: string,
+    @Body() body: { requirement_ids: string[]; coverage_level: string; mapping_notes?: string },
+    @Request() req,
+  ) {
+    return this.frameworkControlMappingService.bulkCreateMappings(
+      controlId,
+      body.requirement_ids,
+      body.coverage_level as any,
+      body.mapping_notes,
+      req.user.id,
+    );
+  }
+
+  @Patch('framework-mappings/:mappingId')
+  @ApiOperation({ summary: 'Update a framework-control mapping' })
+  @ApiResponse({ status: 200, description: 'Mapping updated successfully' })
+  updateFrameworkMapping(
+    @Param('mappingId') mappingId: string,
+    @Body() body: { coverage_level?: string; mapping_notes?: string },
+  ) {
+    return this.frameworkControlMappingService.updateMapping(
+      mappingId,
+      body.coverage_level as any,
+      body.mapping_notes,
+    );
+  }
+
+  @Delete('framework-mappings/:mappingId')
+  @ApiOperation({ summary: 'Delete a framework-control mapping' })
+  @ApiResponse({ status: 200, description: 'Mapping deleted successfully' })
+  deleteFrameworkMapping(@Param('mappingId') mappingId: string) {
+    return this.frameworkControlMappingService.deleteMapping(mappingId);
   }
 }
 

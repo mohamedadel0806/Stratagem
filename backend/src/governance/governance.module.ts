@@ -17,8 +17,10 @@ import { ControlAssetMapping } from './unified-controls/entities/control-asset-m
 import { UnifiedControlsController } from './unified-controls/unified-controls.controller';
 import { UnifiedControlsService } from './unified-controls/unified-controls.service';
 import { ControlAssetMappingService } from './unified-controls/services/control-asset-mapping.service';
+import { FrameworkControlMappingService } from './unified-controls/services/framework-control-mapping.service';
 import { Assessment } from './assessments/entities/assessment.entity';
 import { AssessmentResult } from './assessments/entities/assessment-result.entity';
+import { WorkflowExecution } from '../workflow/entities/workflow-execution.entity';
 import { AssessmentsController } from './assessments/assessments.controller';
 import { AssessmentsService } from './assessments/assessments.service';
 import { Evidence } from './evidence/entities/evidence.entity';
@@ -42,6 +44,30 @@ import { RemediationTrackingController } from './controllers/remediation-trackin
 import { GovernanceQueuesModule } from './queues/governance-queues.module';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { RiskModule } from '../risk/risk.module';
+import { Standard } from './standards/entities/standard.entity';
+import { StandardsController } from './standards/standards.controller';
+import { StandardsService } from './standards/standards.service';
+import { SOP } from './sops/entities/sop.entity';
+import { SOPAssignment } from './sops/entities/sop-assignment.entity';
+import { SOPsController } from './sops/sops.controller';
+import { SOPsService } from './sops/sops.service';
+import { FrameworkRequirement } from './unified-controls/entities/framework-requirement.entity';
+import { FrameworkControlMapping } from './unified-controls/entities/framework-control-mapping.entity';
+import { ComplianceScorecardService } from './services/compliance-scorecard.service';
+import { ComplianceFramework } from '../common/entities/compliance-framework.entity';
+import { ComplianceScorecardController } from './controllers/compliance-scorecard.controller';
+import { PolicyAssignment } from './policies/entities/policy-assignment.entity';
+import { User } from '../users/entities/user.entity';
+import { BusinessUnit } from '../common/entities/business-unit.entity';
+import { GovernancePermission } from './permissions/entities/governance-permission.entity';
+import { GovernanceRoleAssignment } from './permissions/entities/governance-role-assignment.entity';
+import { GovernancePermissionsService } from './permissions/governance-permissions.service';
+import { GovernancePermissionsController } from './permissions/governance-permissions.controller';
+import { GovernancePermissionsGuard } from './permissions/guards/governance-permissions.guard';
+import { PolicyException } from './policy-exceptions/entities/policy-exception.entity';
+import { PolicyExceptionsService } from './policy-exceptions/policy-exceptions.service';
+import { PolicyExceptionsController } from './policy-exceptions/policy-exceptions.controller';
+import { PolicyReview } from './policies/entities/policy-review.entity';
 
 @Module({
   imports: [
@@ -59,6 +85,20 @@ import { RiskModule } from '../risk/risk.module';
       Finding,
       GovernanceMetricSnapshot,
       RemediationTracker,
+      Standard,
+      SOP,
+      SOPAssignment,
+      FrameworkRequirement,
+      FrameworkControlMapping,
+      ComplianceFramework,
+      WorkflowExecution,
+      PolicyAssignment,
+      User,
+      BusinessUnit,
+      GovernancePermission,
+      GovernanceRoleAssignment,
+      PolicyException,
+      PolicyReview,
     ]),
     MulterModule.register({
       dest: './uploads',
@@ -79,6 +119,11 @@ import { RiskModule } from '../risk/risk.module';
     GovernanceDashboardController,
     GovernanceReportingController,
     RemediationTrackingController,
+    StandardsController,
+    SOPsController,
+    ComplianceScorecardController,
+    GovernancePermissionsController,
+    PolicyExceptionsController,
   ],
   providers: [
     InfluencersService,
@@ -86,6 +131,7 @@ import { RiskModule } from '../risk/risk.module';
     ControlObjectivesService,
     UnifiedControlsService,
     ControlAssetMappingService,
+    FrameworkControlMappingService,
     AssessmentsService,
     EvidenceService,
     FindingsService,
@@ -95,6 +141,12 @@ import { RiskModule } from '../risk/risk.module';
     GovernanceTrendService,
     GovernanceScheduleService,
     RemediationTrackingService,
+    StandardsService,
+    SOPsService,
+    ComplianceScorecardService,
+    GovernancePermissionsService,
+    GovernancePermissionsGuard,
+    PolicyExceptionsService,
   ],
   exports: [
     InfluencersService,
@@ -102,6 +154,7 @@ import { RiskModule } from '../risk/risk.module';
     ControlObjectivesService,
     UnifiedControlsService,
     ControlAssetMappingService,
+    FrameworkControlMappingService,
     AssessmentsService,
     EvidenceService,
     FindingsService,
@@ -111,6 +164,12 @@ import { RiskModule } from '../risk/risk.module';
     GovernanceTrendService,
     GovernanceScheduleService,
     RemediationTrackingService,
+    StandardsService,
+    SOPsService,
+    ComplianceScorecardService,
+    GovernancePermissionsService,
+    GovernancePermissionsGuard,
+    PolicyExceptionsService,
   ],
 })
 export class GovernanceModule {}

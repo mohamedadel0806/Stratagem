@@ -16,6 +16,7 @@ import { LinkedAssetsList } from '@/components/governance/linked-assets-list';
 import { AssetBrowserDialog } from '@/components/governance/asset-browser-dialog';
 import { controlAssetMappingApi } from '@/lib/api/governance';
 import { ControlLinkedRisks } from '@/components/risks/control-linked-risks';
+import { ControlFrameworkMapping } from '@/components/governance/control-framework-mapping';
 
 const controlTypeLabels: Record<ControlType, string> = {
   [ControlType.PREVENTIVE]: 'Preventive',
@@ -153,6 +154,7 @@ export default function UnifiedControlDetailPage() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="frameworks">Frameworks</TabsTrigger>
           <TabsTrigger value="assets">Linked Assets</TabsTrigger>
           <TabsTrigger value="risks">Risks</TabsTrigger>
         </TabsList>
@@ -291,6 +293,10 @@ export default function UnifiedControlDetailPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="frameworks" className="space-y-4">
+          <ControlFrameworkMapping controlId={controlId} />
         </TabsContent>
 
         <TabsContent value="assets" className="space-y-4">

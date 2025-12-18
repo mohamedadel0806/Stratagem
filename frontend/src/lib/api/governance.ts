@@ -208,6 +208,7 @@ export interface ControlObjective {
   id: string;
   objective_identifier: string;
   policy_id: string;
+  policy?: Policy;
   statement: string;
   rationale?: string;
   domain?: string;
@@ -659,6 +660,435 @@ export interface FindingQueryParams {
   sort?: string;
 }
 
+// Standard Types
+export enum StandardStatus {
+  DRAFT = 'draft',
+  IN_REVIEW = 'in_review',
+  APPROVED = 'approved',
+  PUBLISHED = 'published',
+  ARCHIVED = 'archived',
+}
+
+export interface Standard {
+  id: string;
+  standard_identifier: string;
+  title: string;
+  policy_id?: string;
+  policy?: Policy;
+  control_objective_id?: string;
+  control_objective?: ControlObjective;
+  description?: string;
+  content?: string;
+  scope?: string;
+  applicability?: string;
+  compliance_measurement_criteria?: string;
+  version?: string;
+  status: StandardStatus;
+  owner_id?: string;
+  owner?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  control_objectives?: ControlObjective[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateStandardData {
+  standard_identifier: string;
+  title: string;
+  policy_id?: string;
+  control_objective_id?: string;
+  description?: string;
+  content?: string;
+  scope?: string;
+  applicability?: string;
+  compliance_measurement_criteria?: string;
+  version?: string;
+  status?: StandardStatus;
+  owner_id?: string;
+  control_objective_ids?: string[];
+}
+
+export interface UpdateStandardData extends Partial<CreateStandardData> {}
+
+export interface StandardQueryParams {
+  page?: number;
+  limit?: number;
+  status?: StandardStatus;
+  policy_id?: string;
+  control_objective_id?: string;
+  owner_id?: string;
+  search?: string;
+  sort?: string;
+}
+
+export interface StandardListResponse {
+  data: Standard[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// SOP Types
+export enum SOPStatus {
+  DRAFT = 'draft',
+  IN_REVIEW = 'in_review',
+  APPROVED = 'approved',
+  PUBLISHED = 'published',
+  ARCHIVED = 'archived',
+}
+
+export enum SOPCategory {
+  OPERATIONAL = 'operational',
+  SECURITY = 'security',
+  COMPLIANCE = 'compliance',
+  THIRD_PARTY = 'third_party',
+}
+
+export interface SOP {
+  id: string;
+  sop_identifier: string;
+  title: string;
+  category?: SOPCategory;
+  subcategory?: string;
+  purpose?: string;
+  scope?: string;
+  content?: string;
+  version?: string;
+  version_number: number;
+  status: SOPStatus;
+  owner_id?: string;
+  owner?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  review_frequency?: string;
+  next_review_date?: string;
+  approval_date?: string;
+  published_date?: string;
+  linked_policies?: string[];
+  linked_standards?: string[];
+  tags?: string[];
+  controls?: UnifiedControl[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSOPData {
+  sop_identifier: string;
+  title: string;
+  category?: SOPCategory;
+  subcategory?: string;
+  purpose?: string;
+  scope?: string;
+  content?: string;
+  version?: string;
+  status?: SOPStatus;
+  owner_id?: string;
+  review_frequency?: string;
+  next_review_date?: string;
+  linked_policies?: string[];
+  linked_standards?: string[];
+  control_ids?: string[];
+  tags?: string[];
+}
+
+export interface UpdateSOPData extends Partial<CreateSOPData> {}
+
+export interface SOPQueryParams {
+  page?: number;
+  limit?: number;
+  status?: SOPStatus;
+  category?: SOPCategory;
+  owner_id?: string;
+  search?: string;
+  sort?: string;
+}
+
+export interface SOPListResponse {
+  data: SOP[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// Compliance Scorecard Types
+export enum ComplianceStatus {
+  MET = 'met',
+  NOT_MET = 'not_met',
+  PARTIALLY_MET = 'partially_met',
+  NOT_APPLICABLE = 'not_applicable',
+}
+
+export interface DomainBreakdown {
+  domain: string;
+  totalRequirements: number;
+  met: number;
+  notMet: number;
+  partiallyMet: number;
+  notApplicable: number;
+  compliancePercentage: number;
+}
+
+export interface FrameworkScorecard {
+  frameworkId: string;
+  frameworkName: string;
+  frameworkCode: string;
+  overallCompliance: number;
+  totalRequirements: number;
+  metRequirements: number;
+  notMetRequirements: number;
+  partiallyMetRequirements: number;
+  notApplicableRequirements: number;
+  breakdownByDomain: DomainBreakdown[];
+  controlImplementationStatus: {
+    implemented: number;
+    inProgress: number;
+    planned: number;
+    notImplemented: number;
+  };
+  assessmentResults: {
+    completed: number;
+    inProgress: number;
+    averageScore: number;
+  };
+  gaps: {
+    total: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  trend?: {
+    previousPeriod: number;
+    change: number;
+    trend: 'improving' | 'declining' | 'stable';
+  };
+}
+
+export interface ComplianceScorecardResponse {
+  generatedAt: string;
+  frameworks: FrameworkScorecard[];
+  overallCompliance: number;
+  summary: {
+    totalFrameworks: number;
+    totalRequirements: number;
+    totalMet: number;
+    totalNotMet: number;
+    averageCompliance: number;
+  };
+}
+
+// Governance Permissions Types
+export enum GovernanceModule {
+  INFLUENCERS = 'influencers',
+  POLICIES = 'policies',
+  STANDARDS = 'standards',
+  CONTROLS = 'controls',
+  ASSESSMENTS = 'assessments',
+  EVIDENCE = 'evidence',
+  FINDINGS = 'findings',
+  SOPS = 'sops',
+  REPORTING = 'reporting',
+  ADMIN = 'admin',
+}
+
+export enum GovernanceAction {
+  CREATE = 'create',
+  READ = 'read',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  PUBLISH = 'publish',
+  APPROVE = 'approve',
+  ASSIGN = 'assign',
+  EXPORT = 'export',
+  CONFIGURE = 'configure',
+}
+
+export interface GovernancePermission {
+  id: string;
+  role: string;
+  module: GovernanceModule;
+  action: GovernanceAction;
+  resource_type?: string;
+  conditions?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateGovernancePermissionData {
+  role: string;
+  module: GovernanceModule;
+  action: GovernanceAction;
+  resource_type?: string;
+  conditions?: Record<string, any>;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  business_unit_id?: string;
+}
+
+export interface BusinessUnit {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+}
+
+export interface GovernanceRoleAssignment {
+  id: string;
+  user_id: string;
+  user?: User;
+  role: string;
+  business_unit_id?: string;
+  business_unit?: BusinessUnit;
+  assigned_by?: string;
+  assigner?: User;
+  assigned_at: string;
+  expires_at?: string;
+  created_at: string;
+}
+
+export interface AssignRoleData {
+  user_id: string;
+  role: string;
+  business_unit_id?: string;
+  expires_at?: string;
+}
+
+export interface BulkAssignRoleData {
+  user_ids: string[];
+  role: string;
+  business_unit_id?: string;
+  expires_at?: string;
+}
+
+export interface UserPermissionTestResult {
+  userId: string;
+  roles: string[];
+  permissions: Array<{
+    module: GovernanceModule;
+    action: GovernanceAction;
+    allowed: boolean;
+    reason?: string;
+  }>;
+}
+
+// Policy Exceptions Types
+export enum ExceptionStatus {
+  REQUESTED = 'requested',
+  UNDER_REVIEW = 'under_review',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  EXPIRED = 'expired',
+  REVOKED = 'revoked',
+}
+
+export enum ExceptionType {
+  POLICY = 'policy',
+  STANDARD = 'standard',
+  CONTROL = 'control',
+  BASELINE = 'baseline',
+}
+
+export interface PolicyException {
+  id: string;
+  exception_identifier: string;
+  exception_type?: ExceptionType;
+  entity_id: string;
+  entity_type?: string;
+  requested_by?: string;
+  requester?: User;
+  requesting_business_unit_id?: string;
+  requesting_business_unit?: BusinessUnit;
+  request_date: string;
+  business_justification: string;
+  compensating_controls?: string;
+  risk_assessment?: string;
+  start_date?: string;
+  end_date?: string;
+  auto_expire: boolean;
+  status: ExceptionStatus;
+  approved_by?: string;
+  approver?: User;
+  approval_date?: string;
+  approval_conditions?: string;
+  rejection_reason?: string;
+  last_review_date?: string;
+  next_review_date?: string;
+  supporting_documents?: Record<string, any>;
+  created_at: string;
+  updated_by?: string;
+  updater?: User;
+  updated_at: string;
+}
+
+export interface CreatePolicyExceptionData {
+  exception_identifier?: string;
+  exception_type?: ExceptionType;
+  entity_id: string;
+  entity_type?: string;
+  requesting_business_unit_id?: string;
+  business_justification: string;
+  compensating_controls?: string;
+  risk_assessment?: string;
+  start_date?: string;
+  end_date?: string;
+  auto_expire?: boolean;
+  next_review_date?: string;
+  supporting_documents?: Record<string, any>;
+}
+
+export interface UpdatePolicyExceptionData {
+  exception_type?: ExceptionType;
+  business_justification?: string;
+  compensating_controls?: string;
+  risk_assessment?: string;
+  start_date?: string;
+  end_date?: string;
+  auto_expire?: boolean;
+  status?: ExceptionStatus;
+  rejection_reason?: string;
+  approval_conditions?: string;
+  next_review_date?: string;
+  supporting_documents?: Record<string, any>;
+}
+
+export interface PolicyExceptionQueryParams {
+  page?: number;
+  limit?: number;
+  status?: ExceptionStatus;
+  exception_type?: ExceptionType;
+  entity_id?: string;
+  entity_type?: string;
+  requested_by?: string;
+  requesting_business_unit_id?: string;
+  search?: string;
+}
+
+export interface PolicyExceptionListResponse {
+  data: PolicyException[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 // Governance API Client
 export const governanceApi = {
   // Influencers
@@ -717,6 +1147,188 @@ export const governanceApi = {
     await apiClient.delete(`/api/v1/governance/policies/${id}`);
   },
 
+  getPolicyWorkflows: async (id: string): Promise<{ data: any[] }> => {
+    const response = await apiClient.get(`/api/v1/governance/policies/${id}/workflows`);
+    return response.data;
+  },
+
+  getPolicyPendingApprovals: async (id: string): Promise<{ data: any[] }> => {
+    const response = await apiClient.get(`/api/v1/governance/policies/${id}/workflows/pending-approvals`);
+    return response.data;
+  },
+
+  publishPolicy: async (
+    id: string,
+    assignToUserIds?: string[],
+    assignToRoleIds?: string[],
+    assignToBusinessUnitIds?: string[],
+    notificationMessage?: string,
+  ): Promise<{ data: Policy }> => {
+    const response = await apiClient.post(`/api/v1/governance/policies/${id}/publish`, {
+      assign_to_user_ids: assignToUserIds,
+      assign_to_role_ids: assignToRoleIds,
+      assign_to_business_unit_ids: assignToBusinessUnitIds,
+      notification_message: notificationMessage,
+    });
+    return response.data;
+  },
+
+  getMyAssignedPolicies: async (): Promise<PolicyListResponse> => {
+    const response = await apiClient.get('/api/v1/governance/policies/assigned/my');
+    return response.data;
+  },
+
+  // Policy Review API
+  getPendingPolicyReviews: async (daysAhead?: number): Promise<{ data: Policy[] }> => {
+    const params = daysAhead ? { daysAhead: daysAhead.toString() } : {};
+    const response = await apiClient.get('/api/v1/governance/policies/reviews/pending', { params });
+    return response.data;
+  },
+
+  getPoliciesDueForReview: async (days?: number): Promise<{ data: Policy[] }> => {
+    const params = days !== undefined ? { days: days.toString() } : {};
+    const response = await apiClient.get('/api/v1/governance/policies/reviews/due', { params });
+    return response.data;
+  },
+
+  getPolicyReviewStatistics: async (): Promise<{
+    data: {
+      pending: number;
+      overdue: number;
+      dueIn30Days: number;
+      dueIn60Days: number;
+      dueIn90Days: number;
+    };
+  }> => {
+    const response = await apiClient.get('/api/v1/governance/policies/reviews/statistics');
+    return response.data;
+  },
+
+  initiatePolicyReview: async (policyId: string, reviewDate: string): Promise<{ data: any }> => {
+    const response = await apiClient.post(`/api/v1/governance/policies/${policyId}/reviews`, {
+      review_date: reviewDate,
+    });
+    return response.data;
+  },
+
+  getPolicyReviewHistory: async (policyId: string): Promise<{ data: any[] }> => {
+    const response = await apiClient.get(`/api/v1/governance/policies/${policyId}/reviews`);
+    return response.data;
+  },
+
+  getActivePolicyReview: async (policyId: string): Promise<{ data: any | null }> => {
+    const response = await apiClient.get(`/api/v1/governance/policies/${policyId}/reviews/active`);
+    return response.data;
+  },
+
+  completePolicyReview: async (
+    reviewId: string,
+    data: {
+      outcome: string;
+      notes?: string;
+      review_summary?: string;
+      recommended_changes?: string;
+      next_review_date?: string;
+    },
+  ): Promise<{ data: any }> => {
+    const response = await apiClient.patch(`/api/v1/governance/policies/reviews/${reviewId}/complete`, data);
+    return response.data;
+  },
+
+  getPolicyPublicationStatistics: async (): Promise<{
+    totalPublished: number;
+    publishedThisMonth: number;
+    publishedThisYear: number;
+    assignmentsCount: number;
+    acknowledgedCount: number;
+    acknowledgmentRate: number;
+  }> => {
+    const response = await apiClient.get('/api/v1/governance/policies/statistics/publication');
+    return response.data;
+  },
+
+  // Governance Permissions API
+  getGovernancePermissions: async (role?: string): Promise<{ data: GovernancePermission[] }> => {
+    const params = role ? { role } : {};
+    const response = await apiClient.get('/api/v1/governance/permissions', { params });
+    return response.data;
+  },
+
+  createGovernancePermission: async (data: CreateGovernancePermissionData): Promise<{ data: GovernancePermission }> => {
+    const response = await apiClient.post('/api/v1/governance/permissions', data);
+    return response.data;
+  },
+
+  deleteGovernancePermission: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/permissions/${id}`);
+  },
+
+  assignRole: async (data: AssignRoleData): Promise<{ data: GovernanceRoleAssignment }> => {
+    const response = await apiClient.post('/api/v1/governance/permissions/assign-role', data);
+    return response.data;
+  },
+
+  bulkAssignRole: async (data: BulkAssignRoleData): Promise<{ data: GovernanceRoleAssignment[] }> => {
+    const response = await apiClient.post('/api/v1/governance/permissions/bulk-assign-role', data);
+    return response.data;
+  },
+
+  getUserRoleAssignments: async (userId: string): Promise<{ data: GovernanceRoleAssignment[] }> => {
+    const response = await apiClient.get(`/api/v1/governance/permissions/user/${userId}/assignments`);
+    return response.data;
+  },
+
+  removeRoleAssignment: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/permissions/assignments/${id}`);
+  },
+
+  testUserPermissions: async (userId: string): Promise<{ data: UserPermissionTestResult }> => {
+    const response = await apiClient.get(`/api/v1/governance/permissions/test/${userId}`);
+    return response.data;
+  },
+
+  checkPermission: async (module: string, action: string, resourceType?: string): Promise<{ hasPermission: boolean }> => {
+    const params: Record<string, string> = { module, action };
+    if (resourceType) params.resourceType = resourceType;
+    const response = await apiClient.get('/api/v1/governance/permissions/check', { params });
+    return response.data;
+  },
+
+  // Policy Exceptions API
+  getPolicyExceptions: async (params?: PolicyExceptionQueryParams): Promise<PolicyExceptionListResponse> => {
+    const response = await apiClient.get('/api/v1/governance/policy-exceptions', { params });
+    return response.data;
+  },
+
+  getPolicyException: async (id: string): Promise<{ data: PolicyException }> => {
+    const response = await apiClient.get(`/api/v1/governance/policy-exceptions/${id}`);
+    return response.data;
+  },
+
+  createPolicyException: async (data: CreatePolicyExceptionData): Promise<{ data: PolicyException }> => {
+    const response = await apiClient.post('/api/v1/governance/policy-exceptions', data);
+    return response.data;
+  },
+
+  updatePolicyException: async (id: string, data: UpdatePolicyExceptionData): Promise<{ data: PolicyException }> => {
+    const response = await apiClient.put(`/api/v1/governance/policy-exceptions/${id}`, data);
+    return response.data;
+  },
+
+  deletePolicyException: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/policy-exceptions/${id}`);
+  },
+
+  approvePolicyException: async (id: string, conditions?: string): Promise<{ data: PolicyException }> => {
+    const response = await apiClient.post(`/api/v1/governance/policy-exceptions/${id}/approve`, { conditions });
+    return response.data;
+  },
+
+  rejectPolicyException: async (id: string, reason: string): Promise<{ data: PolicyException }> => {
+    const response = await apiClient.post(`/api/v1/governance/policy-exceptions/${id}/reject`, { reason });
+    return response.data;
+  },
+
   // Control Objectives
   getControlObjectives: async (policyId?: string): Promise<ControlObjective[]> => {
     const response = await apiClient.get('/api/v1/governance/control-objectives', {
@@ -727,6 +1339,13 @@ export const governanceApi = {
 
   getControlObjective: async (id: string): Promise<ControlObjective> => {
     const response = await apiClient.get(`/api/v1/governance/control-objectives/${id}`);
+    return response.data;
+  },
+
+  getControlObjectivesByPolicy: async (policyId: string): Promise<ControlObjective[]> => {
+    const response = await apiClient.get('/api/v1/governance/control-objectives', {
+      params: { policy_id: policyId },
+    });
     return response.data;
   },
 
@@ -1145,7 +1764,29 @@ export interface RemediationDashboard {
 
 // Governance Dashboard API
 export const governanceDashboardApi = {
-  getDashboard: async (): Promise<GovernanceDashboard> => {
+  getDashboard: async (startDate?: string, endDate?: string): Promise<GovernanceDashboard> => {
+    const params: Record<string, string> = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    
+    const queryParams = new URLSearchParams(params);
+    const url = `/api/v1/governance/dashboard${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await apiClient.get<GovernanceDashboard>(url);
+    return response.data;
+  },
+  
+  exportDashboard: async (startDate?: string, endDate?: string): Promise<Blob> => {
+    const params: Record<string, string> = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    
+    const queryParams = new URLSearchParams(params);
+    const url = `/api/v1/governance/dashboard/export${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await apiClient.get(url, { responseType: 'blob' });
+    return response.data;
+  },
+  
+  getDashboardOld: async (): Promise<GovernanceDashboard> => {
     const response = await apiClient.get<GovernanceDashboard>('/api/v1/governance/dashboard');
     return response.data;
   },
@@ -1155,10 +1796,51 @@ export const governanceDashboardApi = {
   },
 };
 
+export interface CreateRemediationTrackerData {
+  remediation_priority: RemediationPriority;
+  sla_due_date: string;
+  remediation_steps?: string;
+  assigned_to_id?: string;
+}
+
+export interface UpdateRemediationTrackerData {
+  remediation_priority?: RemediationPriority;
+  sla_due_date?: string;
+  remediation_steps?: string;
+  assigned_to_id?: string;
+  progress_percent?: number;
+  progress_notes?: string;
+}
+
+export interface CompleteRemediationData {
+  completion_notes: string;
+  completion_evidence?: Record<string, any>;
+}
+
 // Remediation Tracking API
 export const remediationTrackingApi = {
   getDashboard: async (): Promise<RemediationDashboard> => {
     const response = await apiClient.get<RemediationDashboard>('/api/v1/governance/remediation/dashboard');
+    return response.data;
+  },
+
+  createTracker: async (findingId: string, data: CreateRemediationTrackerData): Promise<{ data: RemediationTracker }> => {
+    const response = await apiClient.post(`/api/v1/governance/remediation/finding/${findingId}`, data);
+    return response.data;
+  },
+
+  updateTracker: async (trackerId: string, data: UpdateRemediationTrackerData): Promise<{ data: RemediationTracker }> => {
+    const response = await apiClient.put(`/api/v1/governance/remediation/${trackerId}`, data);
+    return response.data;
+  },
+
+  completeRemediation: async (trackerId: string, data: CompleteRemediationData): Promise<{ data: RemediationTracker }> => {
+    const response = await apiClient.patch(`/api/v1/governance/remediation/${trackerId}/complete`, data);
+    return response.data;
+  },
+
+  getTrackersByFinding: async (findingId: string): Promise<{ data: RemediationTracker[] }> => {
+    const response = await apiClient.get(`/api/v1/governance/remediation/finding/${findingId}/trackers`);
     return response.data;
   },
 };
@@ -1559,5 +2241,164 @@ export const controlAssetMappingApi = {
     await apiClient.delete(
       `/api/v1/governance/unified-controls/assets/${assetType}/${assetId}/controls/${controlId}`,
     );
+  },
+
+  // Standards API
+  getStandards: async (params?: StandardQueryParams): Promise<StandardListResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.policy_id) queryParams.append('policy_id', params.policy_id);
+    if (params?.control_objective_id) queryParams.append('control_objective_id', params.control_objective_id);
+    if (params?.owner_id) queryParams.append('owner_id', params.owner_id);
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.sort) queryParams.append('sort', params.sort);
+
+    const url = `/api/v1/governance/standards${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await apiClient.get<StandardListResponse>(url);
+    return response.data;
+  },
+
+  getStandard: async (id: string): Promise<Standard> => {
+    const response = await apiClient.get<Standard>(`/api/v1/governance/standards/${id}`);
+    return response.data;
+  },
+
+  createStandard: async (data: CreateStandardData): Promise<Standard> => {
+    const response = await apiClient.post<Standard>('/api/v1/governance/standards', data);
+    return response.data;
+  },
+
+  updateStandard: async (id: string, data: UpdateStandardData): Promise<Standard> => {
+    const response = await apiClient.patch<Standard>(`/api/v1/governance/standards/${id}`, data);
+    return response.data;
+  },
+
+  deleteStandard: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/standards/${id}`);
+  },
+
+  // SOPs API
+  getSOPs: async (params?: SOPQueryParams): Promise<SOPListResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.owner_id) queryParams.append('owner_id', params.owner_id);
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.sort) queryParams.append('sort', params.sort);
+
+    const url = `/api/v1/governance/sops${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await apiClient.get<SOPListResponse>(url);
+    return response.data;
+  },
+
+  getSOP: async (id: string): Promise<SOP> => {
+    const response = await apiClient.get<SOP>(`/api/v1/governance/sops/${id}`);
+    return response.data;
+  },
+
+  createSOP: async (data: CreateSOPData): Promise<SOP> => {
+    const response = await apiClient.post<SOP>('/api/v1/governance/sops', data);
+    return response.data;
+  },
+
+  updateSOP: async (id: string, data: UpdateSOPData): Promise<SOP> => {
+    const response = await apiClient.patch<SOP>(`/api/v1/governance/sops/${id}`, data);
+    return response.data;
+  },
+
+  deleteSOP: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/sops/${id}`);
+  },
+
+  publishSOP: async (
+    id: string,
+    assignToUserIds?: string[],
+    assignToRoleIds?: string[],
+  ): Promise<SOP> => {
+    const response = await apiClient.post<SOP>(`/api/v1/governance/sops/${id}/publish`, {
+      assign_to_user_ids: assignToUserIds,
+      assign_to_role_ids: assignToRoleIds,
+    });
+    return response.data;
+  },
+
+  getMyAssignedSOPs: async (params?: SOPQueryParams): Promise<SOPListResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.sort) queryParams.append('sort', params.sort);
+
+    const url = `/api/v1/governance/sops/my-assigned${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await apiClient.get<SOPListResponse>(url);
+    return response.data;
+  },
+
+  getSOPPublicationStatistics: async (): Promise<{
+    totalPublished: number;
+    publishedThisMonth: number;
+    publishedThisYear: number;
+    assignmentsCount: number;
+    acknowledgedCount: number;
+    acknowledgmentRate: number;
+  }> => {
+    const response = await apiClient.get('/api/v1/governance/sops/statistics/publication');
+    return response.data;
+  },
+
+  // Compliance Scorecard API
+  getComplianceScorecard: async (frameworkIds?: string[]): Promise<ComplianceScorecardResponse> => {
+    const params: Record<string, string> = {};
+    if (frameworkIds && frameworkIds.length > 0) {
+      params.frameworkIds = frameworkIds.join(',');
+    }
+    
+    const queryParams = new URLSearchParams(params);
+    const url = `/api/v1/governance/scorecard${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await apiClient.get<ComplianceScorecardResponse>(url);
+    return response.data;
+  },
+
+  // Framework-Control Mapping API
+  getControlFrameworkMappings: async (controlId: string): Promise<any[]> => {
+    const response = await apiClient.get(`/api/v1/governance/unified-controls/${controlId}/framework-mappings`);
+    return response.data;
+  },
+
+  createControlFrameworkMapping: async (
+    controlId: string,
+    data: { requirement_id: string; coverage_level: string; mapping_notes?: string },
+  ): Promise<any> => {
+    const response = await apiClient.post(`/api/v1/governance/unified-controls/${controlId}/framework-mappings`, data);
+    return response.data;
+  },
+
+  bulkCreateControlFrameworkMappings: async (
+    controlId: string,
+    data: { requirement_ids: string[]; coverage_level: string; mapping_notes?: string },
+  ): Promise<any> => {
+    const response = await apiClient.post(
+      `/api/v1/governance/unified-controls/${controlId}/framework-mappings/bulk`,
+      data,
+    );
+    return response.data;
+  },
+
+  updateControlFrameworkMapping: async (
+    mappingId: string,
+    data: { coverage_level?: string; mapping_notes?: string },
+  ): Promise<any> => {
+    const response = await apiClient.patch(`/api/v1/governance/unified-controls/framework-mappings/${mappingId}`, data);
+    return response.data;
+  },
+
+  deleteControlFrameworkMapping: async (mappingId: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/unified-controls/framework-mappings/${mappingId}`);
   },
 };

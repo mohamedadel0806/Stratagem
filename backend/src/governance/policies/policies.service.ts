@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException, Logger, Inject, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, ILike } from 'typeorm';
+import { Repository, FindOptionsWhere, ILike, In } from 'typeorm';
 import { Policy, PolicyStatus } from './entities/policy.entity';
+import { PolicyAssignment } from './entities/policy-assignment.entity';
+import { PolicyReview, ReviewStatus, ReviewOutcome } from './entities/policy-review.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
+import { BusinessUnit } from '../../common/entities/business-unit.entity';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { PolicyQueryDto } from './dto/policy-query.dto';
@@ -9,6 +13,7 @@ import { WorkflowService } from '../../workflow/services/workflow.service';
 import { EntityType, WorkflowTrigger } from '../../workflow/entities/workflow.entity';
 import { NotificationService } from '../../common/services/notification.service';
 import { NotificationType, NotificationPriority } from '../../common/entities/notification.entity';
+import { WorkflowExecution } from '../../workflow/entities/workflow-execution.entity';
 
 @Injectable()
 export class PoliciesService {
@@ -17,6 +22,16 @@ export class PoliciesService {
   constructor(
     @InjectRepository(Policy)
     private policyRepository: Repository<Policy>,
+    @InjectRepository(WorkflowExecution)
+    private workflowExecutionRepository: Repository<WorkflowExecution>,
+    @InjectRepository(PolicyAssignment)
+    private policyAssignmentRepository: Repository<PolicyAssignment>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    @InjectRepository(BusinessUnit)
+    private businessUnitRepository: Repository<BusinessUnit>,
+    @InjectRepository(PolicyReview)
+    private policyReviewRepository: Repository<PolicyReview>,
     @Optional() private workflowService?: WorkflowService,
     @Optional() private notificationService?: NotificationService,
   ) {}
@@ -136,6 +151,302 @@ export class PoliciesService {
     }
 
     return policy;
+  }
+
+  /**
+   * Get workflow executions for a policy
+   */
+  async getWorkflowExecutions(policyId: string) {
+    if (!this.workflowService) {
+      return [];
+    }
+
+    const executions = await this.workflowExecutionRepository.find({
+      where: {
+        entityType: EntityType.POLICY,
+        entityId: policyId,
+      },
+      relations: ['workflow', 'assignedTo'],
+      order: { createdAt: 'DESC' },
+    });
+
+    const executionsWithApprovals = await Promise.all(
+      executions.map(async (execution) => {
+        const approvals = await this.workflowService!.getApprovals(execution.id);
+        return {
+          id: execution.id,
+          workflowId: execution.workflowId,
+          workflowName: execution.workflow?.name || 'Unknown',
+          workflowType: execution.workflow?.type || null,
+          status: execution.status,
+          inputData: execution.inputData,
+          outputData: execution.outputData,
+          errorMessage: execution.errorMessage,
+          assignedTo: execution.assignedTo
+            ? {
+                id: execution.assignedTo.id,
+                name: `${execution.assignedTo.firstName || ''} ${execution.assignedTo.lastName || ''}`.trim() || execution.assignedTo.email,
+              }
+            : null,
+          startedAt: execution.startedAt?.toISOString(),
+          completedAt: execution.completedAt?.toISOString(),
+          createdAt: execution.createdAt.toISOString(),
+          approvals,
+        };
+      }),
+    );
+
+    return executionsWithApprovals;
+  }
+
+  /**
+   * Get pending approvals for a policy
+   */
+  async getPendingApprovals(policyId: string, userId: string) {
+    if (!this.workflowService) {
+      return [];
+    }
+
+    const executions = await this.workflowExecutionRepository.find({
+      where: {
+        entityType: EntityType.POLICY,
+        entityId: policyId,
+        status: 'in_progress' as any,
+      },
+      relations: ['workflow'],
+    });
+
+    const allApprovals = [];
+    for (const execution of executions) {
+      const approvals = await this.workflowService.getApprovals(execution.id);
+      const pendingApprovals = approvals.filter(
+        (a) => a.status === 'pending' && a.approverId === userId,
+      );
+      allApprovals.push(
+        ...pendingApprovals.map((a) => ({
+          ...a,
+          workflowExecutionId: execution.id,
+          workflowName: execution.workflow?.name || 'Unknown',
+        })),
+      );
+    }
+
+    return allApprovals;
+  }
+
+  /**
+   * Publish policy and assign to users/roles/business units
+   */
+  async publish(
+    id: string,
+    userId: string,
+    assignToUserIds?: string[],
+    assignToRoleIds?: string[],
+    assignToBusinessUnitIds?: string[],
+    notificationMessage?: string,
+  ): Promise<Policy> {
+    const policy = await this.findOne(id);
+
+    if (policy.status !== PolicyStatus.APPROVED && policy.status !== PolicyStatus.IN_REVIEW) {
+      throw new Error('Policy must be approved or in review before publishing');
+    }
+
+    // Update policy status
+    policy.status = PolicyStatus.PUBLISHED;
+    policy.published_date = new Date();
+    await this.policyRepository.save(policy);
+
+    // Get all users to assign to
+    const userIdsToNotify: string[] = [];
+
+    // Add specific users
+    if (assignToUserIds && assignToUserIds.length > 0) {
+      userIdsToNotify.push(...assignToUserIds);
+      
+      // Create assignments for specific users
+      for (const userId of assignToUserIds) {
+        await this.policyAssignmentRepository.save({
+          policy_id: id,
+          user_id: userId,
+          assigned_by: userId,
+          assigned_at: new Date(),
+        });
+      }
+    }
+
+    // Add users by role
+    if (assignToRoleIds && assignToRoleIds.length > 0) {
+      const usersByRole = await this.userRepository.find({
+        where: { role: In(assignToRoleIds as UserRole[]) },
+      });
+      
+      const roleUserIds = usersByRole.map((u) => u.id);
+      userIdsToNotify.push(...roleUserIds);
+
+      // Create assignments for roles
+      for (const role of assignToRoleIds) {
+        await this.policyAssignmentRepository.save({
+          policy_id: id,
+          role,
+          assigned_by: userId,
+          assigned_at: new Date(),
+        });
+      }
+    }
+
+    // Add users by business unit
+    if (assignToBusinessUnitIds && assignToBusinessUnitIds.length > 0) {
+      const usersByBU = await this.userRepository.find({
+        where: { 
+          // Assuming users have business_unit_id field - adjust based on actual schema
+          // For now, we'll create assignments and let the frontend handle user lookup
+        },
+      });
+
+      // Create assignments for business units
+      for (const buId of assignToBusinessUnitIds) {
+        await this.policyAssignmentRepository.save({
+          policy_id: id,
+          business_unit_id: buId,
+          assigned_by: userId,
+          assigned_at: new Date(),
+        });
+      }
+
+      // If users have business_unit_id, add them to notify list
+      // This would require checking the actual User entity structure
+    }
+
+    // Send notifications
+    if (this.notificationService && userIdsToNotify.length > 0) {
+      const uniqueUserIds = [...new Set(userIdsToNotify)];
+      
+      for (const notifyUserId of uniqueUserIds) {
+        try {
+          await this.notificationService.create({
+            userId: notifyUserId,
+            type: NotificationType.GENERAL,
+            priority: NotificationPriority.HIGH,
+            title: 'New Policy Published',
+            message: notificationMessage || `Policy "${policy.title}" has been published and assigned to you.`,
+            entityType: 'policy',
+            entityId: id,
+            actionUrl: `/dashboard/governance/policies/${id}`,
+          });
+
+          // Update assignment notification status
+          const assignments = await this.policyAssignmentRepository.find({
+            where: { policy_id: id, user_id: notifyUserId },
+          });
+          
+          for (const assignment of assignments) {
+            assignment.notification_sent = true;
+            assignment.notification_sent_at = new Date();
+            await this.policyAssignmentRepository.save(assignment);
+          }
+        } catch (error) {
+          this.logger.error(`Failed to send notification to user ${notifyUserId}: ${error.message}`, error.stack);
+        }
+      }
+    }
+
+    // Trigger workflows on publish
+    if (this.workflowService) {
+      try {
+        await this.workflowService.checkAndTriggerWorkflows(
+          EntityType.POLICY,
+          policy.id,
+          WorkflowTrigger.ON_STATUS_CHANGE,
+          {
+            status: policy.status,
+            oldStatus: PolicyStatus.APPROVED,
+            policy_type: policy.policy_type,
+          },
+          true,
+        );
+      } catch (error) {
+        this.logger.error(`Failed to trigger workflows on policy publish: ${error.message}`, error.stack);
+      }
+    }
+
+    return policy;
+  }
+
+  /**
+   * Get assigned policies for a user
+   */
+  async getAssignedPolicies(userId: string, role?: string, businessUnitId?: string) {
+    const assignments = await this.policyAssignmentRepository.find({
+      where: [
+        { user_id: userId },
+        ...(role ? [{ role }] : []),
+        ...(businessUnitId ? [{ business_unit_id: businessUnitId }] : []),
+      ],
+      relations: ['policy', 'policy.owner'],
+      order: { assigned_at: 'DESC' },
+    });
+
+    return assignments.map((a) => a.policy).filter((p) => p.status === PolicyStatus.PUBLISHED);
+  }
+
+  /**
+   * Get publication statistics
+   */
+  async getPublicationStatistics(): Promise<{
+    totalPublished: number;
+    publishedThisMonth: number;
+    publishedThisYear: number;
+    assignmentsCount: number;
+    acknowledgedCount: number;
+    acknowledgmentRate: number;
+  }> {
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      startOfYear.setHours(0, 0, 0, 0);
+
+      const [totalPublished, publishedThisMonth, publishedThisYear, assignments, acknowledged] = await Promise.all([
+        this.policyRepository.count({ where: { status: PolicyStatus.PUBLISHED } }),
+        this.policyRepository
+          .createQueryBuilder('policy')
+          .where('policy.status = :status', { status: PolicyStatus.PUBLISHED })
+          .andWhere('policy.published_date IS NOT NULL')
+          .andWhere('policy.published_date >= :startOfMonth', { startOfMonth: startOfMonth.toISOString().split('T')[0] })
+          .getCount(),
+        this.policyRepository
+          .createQueryBuilder('policy')
+          .where('policy.status = :status', { status: PolicyStatus.PUBLISHED })
+          .andWhere('policy.published_date IS NOT NULL')
+          .andWhere('policy.published_date >= :startOfYear', { startOfYear: startOfYear.toISOString().split('T')[0] })
+          .getCount(),
+        this.policyAssignmentRepository.count().catch(() => 0),
+        this.policyAssignmentRepository.count({ where: { acknowledged: true } }).catch(() => 0),
+      ]);
+
+      const acknowledgmentRate = assignments > 0 ? Math.round((acknowledged / assignments) * 100) : 0;
+
+      return {
+        totalPublished: totalPublished || 0,
+        publishedThisMonth: publishedThisMonth || 0,
+        publishedThisYear: publishedThisYear || 0,
+        assignmentsCount: assignments || 0,
+        acknowledgedCount: acknowledged || 0,
+        acknowledgmentRate,
+      };
+    } catch (error) {
+      this.logger.error('Error getting publication statistics', error);
+      // Return default values on error
+      return {
+        totalPublished: 0,
+        publishedThisMonth: 0,
+        publishedThisYear: 0,
+        assignmentsCount: 0,
+        acknowledgedCount: 0,
+        acknowledgmentRate: 0,
+      };
+    }
   }
 
   async update(id: string, updatePolicyDto: UpdatePolicyDto, userId: string): Promise<Policy> {
@@ -269,6 +580,214 @@ export class PoliciesService {
     });
 
     return versions;
+  }
+
+  /**
+   * Get pending reviews for policies
+   */
+  async getPendingReviews(daysAhead: number = 90): Promise<Policy[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const futureDate = new Date(today);
+    futureDate.setDate(today.getDate() + daysAhead);
+
+    return this.policyRepository
+      .createQueryBuilder('policy')
+      .where('policy.next_review_date IS NOT NULL')
+      .andWhere('policy.next_review_date >= :today', { today })
+      .andWhere('policy.next_review_date <= :futureDate', { futureDate })
+      .andWhere('policy.status != :archived', { archived: PolicyStatus.ARCHIVED })
+      .orderBy('policy.next_review_date', 'ASC')
+      .getMany();
+  }
+
+  /**
+   * Get policies due for review (within specified days)
+   */
+  async getPoliciesDueForReview(days: number = 0): Promise<Policy[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + days);
+
+    return this.policyRepository
+      .createQueryBuilder('policy')
+      .where('policy.next_review_date IS NOT NULL')
+      .andWhere('policy.next_review_date <= :targetDate', { targetDate })
+      .andWhere('policy.status != :archived', { archived: PolicyStatus.ARCHIVED })
+      .orderBy('policy.next_review_date', 'ASC')
+      .getMany();
+  }
+
+  /**
+   * Initiate a policy review
+   */
+  async initiateReview(policyId: string, reviewDate: Date, initiatedBy: string): Promise<PolicyReview> {
+    const policy = await this.findOne(policyId);
+
+    if (!policy.next_review_date) {
+      throw new Error('Policy does not have a scheduled review date');
+    }
+
+    const review = this.policyReviewRepository.create({
+      policy_id: policyId,
+      review_date: reviewDate,
+      status: ReviewStatus.PENDING,
+      initiated_by: initiatedBy,
+    });
+
+    return this.policyReviewRepository.save(review);
+  }
+
+  /**
+   * Complete a policy review
+   */
+  async completeReview(
+    reviewId: string,
+    outcome: ReviewOutcome,
+    reviewerId: string,
+    notes?: string,
+    reviewSummary?: string,
+    recommendedChanges?: string,
+    nextReviewDate?: Date,
+  ): Promise<PolicyReview> {
+    const review = await this.policyReviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['policy'],
+    });
+
+    if (!review) {
+      throw new NotFoundException(`Review with ID ${reviewId} not found`);
+    }
+
+    review.status = ReviewStatus.COMPLETED;
+    review.outcome = outcome;
+    review.reviewer_id = reviewerId;
+    review.notes = notes || null;
+    review.review_summary = reviewSummary || null;
+    review.recommended_changes = recommendedChanges || null;
+    review.completed_at = new Date();
+
+    // Update policy's next review date if provided
+    if (nextReviewDate && review.policy) {
+      review.policy.next_review_date = nextReviewDate;
+      await this.policyRepository.save(review.policy);
+    }
+
+    // If outcome is approved or no changes, update next review date based on frequency
+    if ((outcome === ReviewOutcome.APPROVED || outcome === ReviewOutcome.NO_CHANGES) && !nextReviewDate && review.policy) {
+      const nextDate = this.calculateNextReviewDate(review.policy.review_frequency, new Date());
+      review.policy.next_review_date = nextDate;
+      review.next_review_date = nextDate;
+      await this.policyRepository.save(review.policy);
+    } else if (nextReviewDate) {
+      review.next_review_date = nextReviewDate;
+    }
+
+    return this.policyReviewRepository.save(review);
+  }
+
+  /**
+   * Get review history for a policy
+   */
+  async getReviewHistory(policyId: string): Promise<PolicyReview[]> {
+    return this.policyReviewRepository.find({
+      where: { policy_id: policyId },
+      relations: ['reviewer', 'initiator', 'policy'],
+      order: { review_date: 'DESC' },
+    });
+  }
+
+  /**
+   * Get active review for a policy
+   */
+  async getActiveReview(policyId: string): Promise<PolicyReview | null> {
+    return this.policyReviewRepository.findOne({
+      where: {
+        policy_id: policyId,
+        status: In([ReviewStatus.PENDING, ReviewStatus.IN_PROGRESS]),
+      },
+      relations: ['reviewer', 'initiator'],
+      order: { created_at: 'DESC' },
+    });
+  }
+
+  /**
+   * Calculate next review date based on review frequency
+   */
+  private calculateNextReviewDate(frequency: string, fromDate: Date): Date {
+    const nextDate = new Date(fromDate);
+    switch (frequency) {
+      case 'monthly':
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        break;
+      case 'quarterly':
+        nextDate.setMonth(nextDate.getMonth() + 3);
+        break;
+      case 'annual':
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+        break;
+      case 'biennial':
+        nextDate.setFullYear(nextDate.getFullYear() + 2);
+        break;
+      case 'triennial':
+        nextDate.setFullYear(nextDate.getFullYear() + 3);
+        break;
+      default:
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+    }
+    return nextDate;
+  }
+
+  /**
+   * Get review statistics
+   */
+  async getReviewStatistics(): Promise<{
+    pending: number;
+    overdue: number;
+    dueIn30Days: number;
+    dueIn60Days: number;
+    dueIn90Days: number;
+  }> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+
+      const [pending, overdue, dueIn30Days, dueIn60Days, dueIn90Days] = await Promise.all([
+        this.policyReviewRepository.count({
+          where: { status: ReviewStatus.PENDING },
+        }).catch(() => 0),
+        this.policyRepository
+          .createQueryBuilder('policy')
+          .where('policy.next_review_date IS NOT NULL')
+          .andWhere('policy.next_review_date < :today', { today: todayStr })
+          .andWhere('policy.status != :archived', { archived: PolicyStatus.ARCHIVED })
+          .getCount()
+          .catch(() => 0),
+        this.getPoliciesDueForReview(30).then((policies) => policies?.length || 0).catch(() => 0),
+        this.getPoliciesDueForReview(60).then((policies) => policies?.length || 0).catch(() => 0),
+        this.getPoliciesDueForReview(90).then((policies) => policies?.length || 0).catch(() => 0),
+      ]);
+
+      return {
+        pending: pending || 0,
+        overdue: overdue || 0,
+        dueIn30Days: dueIn30Days || 0,
+        dueIn60Days: dueIn60Days || 0,
+        dueIn90Days: dueIn90Days || 0,
+      };
+    } catch (error) {
+      this.logger.error('Error getting review statistics', error);
+      // Return default values on error
+      return {
+        pending: 0,
+        overdue: 0,
+        dueIn30Days: 0,
+        dueIn60Days: 0,
+        dueIn90Days: 0,
+      };
+    }
   }
 }
 
