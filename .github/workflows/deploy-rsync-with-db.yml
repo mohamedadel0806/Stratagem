@@ -1,4 +1,4 @@
-name: Deploy with DB (Rsync ARM64 Build)
+name: Option B - Deploy with Full DB Restore (Rsync)
 
 on:
   workflow_dispatch:

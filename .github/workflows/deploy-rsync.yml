@@ -1,4 +1,4 @@
-name: Deploy to Production (Legacy Rsync)
+name: Deploy to Production (Rsync)
 
 on:
   workflow_dispatch:

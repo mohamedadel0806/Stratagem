@@ -1,4 +1,4 @@
-name: Deploy with Full Database Restore
+name: Option A - Deploy with Full DB Restore (GHCR)
 
 on:
   workflow_dispatch:
