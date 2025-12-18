@@ -91,6 +91,7 @@ jobs:
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             NEXT_PUBLIC_USE_KONG=${{ vars.NEXT_PUBLIC_USE_KONG }}
             NEXT_PUBLIC_KONG_URL=${{ vars.NEXT_PUBLIC_KONG_URL }}
+            BUILD_ID=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

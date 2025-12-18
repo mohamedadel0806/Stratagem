@@ -35,6 +35,7 @@ ARG NEXT_PUBLIC_USE_KONG
 ARG NEXT_PUBLIC_KONG_URL
 ARG NEXTAUTH_URL
 ARG NEXTAUTH_SECRET
+ARG BUILD_ID
 
 # Set as environment variables for Next.js build
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
@@ -45,6 +46,8 @@ ENV NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
 
 # Set dummy URL for build time safety
 ENV API_URL=http://build-time-dummy-url.com/api
+# Use build ID to force build step if needed
+RUN echo "Building with Build ID: ${BUILD_ID}"
 
 RUN npm --version
 RUN \
