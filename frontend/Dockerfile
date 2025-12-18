@@ -1,7 +1,5 @@
 # Multi-stage build for Next.js application
-FROM node:24-alpine AS base
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
+FROM node:22-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -45,11 +43,10 @@ ENV NEXT_PUBLIC_KONG_URL=${NEXT_PUBLIC_KONG_URL}
 ENV NEXTAUTH_URL=${NEXTAUTH_URL}
 ENV NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
 
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
-# ENV NEXT_TELEMETRY_DISABLED 1
+# Set dummy URL for build time safety
+ENV API_URL=http://build-time-dummy-url.com/api
 
+RUN npm --version
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
   elif [ -f package-lock.json ]; then npm run build; \

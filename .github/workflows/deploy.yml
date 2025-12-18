@@ -86,6 +86,8 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
             NEXTAUTH_URL=${{ vars.FRONTEND_URL }}
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
+            NEXT_PUBLIC_USE_KONG=${{ vars.NEXT_PUBLIC_USE_KONG }}
+            NEXT_PUBLIC_KONG_URL=${{ vars.NEXT_PUBLIC_KONG_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

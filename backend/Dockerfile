@@ -1,6 +1,5 @@
 # Multi-stage build for NestJS application
-FROM node:24-alpine AS base
-RUN apk add --no-cache libc6-compat
+FROM node:22-slim AS base
 
 # Install dependencies
 FROM base AS deps
@@ -34,8 +33,8 @@ CMD ["node", "dist/main.js"]
 
 # Development stage
 FROM base AS development
-# Install Python and build tools for bcrypt
-RUN apk add --no-cache python3 make g++
+# Install Python and build tools for bcrypt (using apt-get for Debian)
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
