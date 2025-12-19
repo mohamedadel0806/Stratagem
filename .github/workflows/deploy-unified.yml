@@ -227,6 +227,9 @@ jobs:
             echo "🔨 Rebuilding frontend with environment variables from .env..."
             docker compose -f docker-compose.prod.yml build --no-cache frontend
 
+            # Ensure external network exists
+            docker network create grc-network || true
+
             # Start all services
             docker compose -f docker-compose.prod.yml up -d
             
