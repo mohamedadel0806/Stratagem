@@ -23,8 +23,11 @@ ENV/
 backups/
 database-export/
 
-# Environment files
-.env.*
+# Environment files (except .env.production which we need to commit)
+.env
+.env.local
+.env.development
+.env.test
 .envrc
 
 # Docker
