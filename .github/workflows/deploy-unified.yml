@@ -232,7 +232,13 @@ jobs:
             docker network create grc-network || true
 
             # Start all services
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Update System Caddy Configuration
+            echo "🔄 Updating Caddy configuration..."
+            sudo cp infrastructure/caddy/Caddyfile /etc/caddy/Caddyfile
+            sudo systemctl reload caddy || sudo systemctl restart caddy
+            echo "✅ Caddy updated and reloaded."
             
             # Run migrations
             echo "🔄 Running database migrations..."
