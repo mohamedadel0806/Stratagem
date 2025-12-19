@@ -65,8 +65,8 @@ ENV NODE_ENV production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd -g 1001 -r nodejs
+RUN useradd -u 1001 -r -g nodejs -s /bin/false nextjs
 
 # Set the correct permission for prerender cache
 RUN mkdir -p .next
