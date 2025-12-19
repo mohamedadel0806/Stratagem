@@ -122,10 +122,12 @@ jobs:
       - name: Adding Known Hosts
         run: ssh-keyscan -H ${{ vars.REMOTE_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Transfer Config Files
+      - name: Transfer Config Files and Environment
         run: |
+          # Transfer .env file (will be used for building frontend on server)
           rsync -avz --progress \
             -e "ssh -o StrictHostKeyChecking=no" \
+            .env \
             docker-compose.prod.yml \
             infrastructure/caddy/Caddyfile \
             infrastructure/kong/kong.yml \
@@ -162,6 +164,11 @@ jobs:
           script: |
             set -e
             cd /opt/stratagem
+            
+            # Load environment variables from .env
+            if [ -f .env ]; then 
+              export $(cat .env | grep -v '^#' | xargs)
+            fi
             
             # Login to GHCR
             docker logout ghcr.io || true
@@ -201,8 +208,12 @@ jobs:
               echo "✅ Database restored successfully!"
             fi
 
-            # Pull latest images
-            docker compose -f docker-compose.prod.yml pull
+            # Pull backend image (already built correctly)
+            docker compose -f docker-compose.prod.yml pull backend
+
+            # Rebuild frontend locally with .env variables
+            echo "🔨 Rebuilding frontend with environment variables from .env..."
+            docker compose -f docker-compose.prod.yml build --no-cache frontend
 
             # Start all services
             docker compose -f docker-compose.prod.yml up -d
