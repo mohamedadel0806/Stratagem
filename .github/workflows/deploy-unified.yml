@@ -124,10 +124,15 @@ jobs:
 
       - name: Transfer Config Files and Environment
         run: |
-          # Transfer .env file (will be used for building frontend on server)
+          # Transfer .env.production as .env (will be used for building frontend on server)
           rsync -avz --progress \
             -e "ssh -o StrictHostKeyChecking=no" \
-            .env \
+            .env.production \
+            ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/.env
+          
+          # Transfer other config files
+          rsync -avz --progress \
+            -e "ssh -o StrictHostKeyChecking=no" \
             docker-compose.prod.yml \
             infrastructure/caddy/Caddyfile \
             infrastructure/kong/kong.yml \
