@@ -31,6 +31,11 @@ grc-staging.newmehub.com {
     handle /api/* {
         reverse_proxy localhost:8000
     }
+
+    # Route Docker Logs to Dozzle
+    handle /docker-logs* {
+        reverse_proxy localhost:8080
+    }
     
     # Route everything else to frontend
     handle {
