@@ -130,9 +130,16 @@ jobs:
             .env.production \
             ${{ vars.REMOTE_USER }}@${{ vars.REMOTE_HOST }}:/opt/stratagem/.env
           
-          # Transfer other config files
+          # Transfer other config files AND source code
+          # We need to sync frontend/backend code because we are building on the server now
           rsync -avz --progress \
             -e "ssh -o StrictHostKeyChecking=no" \
+            --exclude 'node_modules' \
+            --exclude '.next' \
+            --exclude 'dist' \
+            --exclude '.git' \
+            frontend \
+            backend \
             docker-compose.prod.yml \
             infrastructure/caddy/Caddyfile \
             infrastructure/kong/kong.yml \
