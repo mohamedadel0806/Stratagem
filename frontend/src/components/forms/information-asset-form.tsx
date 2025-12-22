@@ -23,6 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FormValidationSummary, extractServerErrors } from './form-validation-summary';
 
 const COMPLIANCE_OPTIONS: { value: string; label: string }[] = [
   { value: 'ISO 27001', label: 'ISO 27001' },
@@ -71,6 +72,7 @@ interface InformationAssetFormProps {
 export function InformationAssetForm({ asset, onSuccess, onCancel }: InformationAssetFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [serverErrors, setServerErrors] = useState<string[]>([]);
 
   // Normalize asset data to ensure IDs are strings, not objects
   const normalizedAsset = useMemo(() => {
@@ -216,6 +218,8 @@ export function InformationAssetForm({ asset, onSuccess, onCancel }: Information
   const createMutation = useMutation({
     mutationFn: (data: InformationAssetFormValues) => assetsApi.createInformationAsset(data),
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['information-assets'] });
       toast({
         title: 'Success',
@@ -224,9 +228,12 @@ export function InformationAssetForm({ asset, onSuccess, onCancel }: Information
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error?.message || 'Failed to create information asset';
+      setServerErrors(extractServerErrors(error, errorMessage));
+      
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to create information asset',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
@@ -238,6 +245,8 @@ export function InformationAssetForm({ asset, onSuccess, onCancel }: Information
       return assetsApi.updateInformationAsset(asset.id, data);
     },
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['information-assets'] });
       queryClient.invalidateQueries({ queryKey: ['information-asset', asset?.id] });
       toast({
@@ -247,15 +256,33 @@ export function InformationAssetForm({ asset, onSuccess, onCancel }: Information
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error?.message || 'Failed to update information asset';
+      
+      // Collect server errors for display
+      const errors: string[] = [];
+      if (error?.response?.data?.message) {
+        errors.push(error.response.data.message);
+      }
+      // Handle validation errors from backend (can be array or object)
+      if (error?.response?.data?.details?.errors) {
+        errors.push(...(Array.isArray(error.response.data.details.errors) 
+          ? error.response.data.details.errors 
+          : [error.response.data.details.errors]));
+      }
+      setServerErrors(errors.length > 0 ? errors : [errorMessage]);
+      
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to update information asset',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
   });
 
   const onSubmit = (values: InformationAssetFormValues) => {
+    // Clear previous server errors
+    setServerErrors([]);
+    
     // Clean up empty strings for UUID fields
     const cleanedData: InformationAssetFormValues = {
       ...values,
@@ -271,9 +298,43 @@ export function InformationAssetForm({ asset, onSuccess, onCancel }: Information
     }
   };
 
+  // Helper to get field display name
+  const getFieldDisplayName = (fieldName: string): string => {
+    const fieldMap: Record<string, string> = {
+      assetIdentifier: 'Asset Identifier',
+      assetName: 'Asset Name',
+      informationType: 'Information Type',
+      description: 'Description',
+      dataClassification: 'Data Classification',
+      classificationDate: 'Classification Date',
+      reclassificationDate: 'Reclassification Date',
+      ownerId: 'Owner',
+      custodianId: 'Custodian',
+      businessUnit: 'Business Unit',
+      department: 'Department',
+      criticalityLevel: 'Criticality Level',
+      complianceRequirements: 'Compliance Requirements',
+      containsPII: 'Contains PII',
+      containsPHI: 'Contains PHI',
+      containsFinancialData: 'Contains Financial Data',
+      containsIntellectualProperty: 'Contains Intellectual Property',
+      storageLocation: 'Storage Location',
+      storageType: 'Storage Type',
+      retentionPolicy: 'Retention Policy',
+      retentionExpiryDate: 'Retention Expiry Date',
+      notes: 'Notes',
+    };
+    return fieldMap[fieldName] || fieldName;
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormValidationSummary
+          formErrors={form.formState.errors}
+          serverErrors={serverErrors}
+          fieldNameMapper={getFieldDisplayName}
+        />
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>

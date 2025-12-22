@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const influencer_entity_1 = require("../influencers/entities/influencer.entity");
 const policy_entity_1 = require("../policies/entities/policy.entity");
+const policy_assignment_entity_1 = require("../policies/entities/policy-assignment.entity");
 const unified_control_entity_1 = require("../unified-controls/entities/unified-control.entity");
 const assessment_entity_1 = require("../assessments/entities/assessment.entity");
 const finding_entity_1 = require("../findings/entities/finding.entity");
@@ -33,12 +34,14 @@ function getStringify() {
     }
 }
 let GovernanceReportingService = class GovernanceReportingService {
-    constructor(influencerRepository, policyRepository, unifiedControlRepository, assessmentRepository, findingRepository) {
+    constructor(influencerRepository, policyRepository, assignmentRepository, unifiedControlRepository, assessmentRepository, findingRepository, entityManager) {
         this.influencerRepository = influencerRepository;
         this.policyRepository = policyRepository;
+        this.assignmentRepository = assignmentRepository;
         this.unifiedControlRepository = unifiedControlRepository;
         this.assessmentRepository = assessmentRepository;
         this.findingRepository = findingRepository;
+        this.entityManager = entityManager;
     }
     async generateReport(query) {
         switch (query.type) {
@@ -54,9 +57,134 @@ let GovernanceReportingService = class GovernanceReportingService {
                 return this.generateFindingsReport(query);
             case report_query_dto_1.ReportType.CONTROL_STATUS:
                 return this.generateControlStatusReport(query);
+            case report_query_dto_1.ReportType.EXECUTIVE_GOVERNANCE:
+                return this.generateExecutiveGovernanceReport(query);
             default:
                 throw new Error(`Unknown report type: ${query.type}`);
         }
+    }
+    async generateExecutiveGovernanceReport(query) {
+        try {
+            const summary = await this.getSummaryMetricsForReport();
+            const controlStats = await this.getControlStatsForReport();
+            const policyStats = await this.getPolicyStatsForReport();
+            const findingStats = await this.getFindingStatsForReport();
+            const rows = [
+                { 'Category': 'EXECUTIVE SUMMARY', 'Metric': 'Generated At', 'Value': new Date().toISOString() },
+                { 'Category': 'EXECUTIVE SUMMARY', 'Metric': 'Total Influencers', 'Value': summary.totalInfluencers },
+                { 'Category': 'EXECUTIVE SUMMARY', 'Metric': 'Total Policies', 'Value': summary.totalPolicies },
+                { 'Category': 'EXECUTIVE SUMMARY', 'Metric': 'Policy Publication Rate', 'Value': `${Math.round((summary.publishedPolicies / (summary.totalPolicies || 1)) * 100)}%` },
+                { 'Category': 'EXECUTIVE SUMMARY', 'Metric': 'Total Unified Controls', 'Value': summary.totalControls },
+                { 'Category': 'EXECUTIVE SUMMARY', 'Metric': 'Control Implementation Rate', 'Value': `${Math.round((summary.implementedControls / (summary.totalControls || 1)) * 100)}%` },
+                { 'Category': 'EXECUTIVE SUMMARY', 'Metric': 'Open Findings', 'Value': summary.openFindings },
+                { 'Category': 'EXECUTIVE SUMMARY', 'Metric': 'Critical Gaps', 'Value': summary.criticalFindings },
+                { 'Category': 'POLICIES', 'Metric': 'Published', 'Value': policyStats.byStatus.published },
+                { 'Category': 'POLICIES', 'Metric': 'In Review', 'Value': policyStats.byStatus.inReview },
+                { 'Category': 'POLICIES', 'Metric': 'Draft', 'Value': policyStats.byStatus.draft },
+                { 'Category': 'POLICIES', 'Metric': 'Pending Review', 'Value': policyStats.pendingReview },
+                { 'Category': 'CONTROLS', 'Metric': 'Active', 'Value': controlStats.byStatus.active },
+                { 'Category': 'CONTROLS', 'Metric': 'Implemented', 'Value': controlStats.byImplementation.implemented },
+                { 'Category': 'CONTROLS', 'Metric': 'In Progress', 'Value': controlStats.byImplementation.inProgress },
+                { 'Category': 'CONTROLS', 'Metric': 'Planned', 'Value': controlStats.byImplementation.planned },
+                { 'Category': 'FINDINGS', 'Metric': 'Total Open', 'Value': findingStats.byStatus.open },
+                { 'Category': 'FINDINGS', 'Metric': 'Critical Severity', 'Value': findingStats.bySeverity.critical },
+                { 'Category': 'FINDINGS', 'Metric': 'High Severity', 'Value': findingStats.bySeverity.high },
+                { 'Category': 'FINDINGS', 'Metric': 'Overdue Remediation', 'Value': findingStats.overdueRemediation },
+            ];
+            return this.exportToCsv(rows, 'executive_governance_report', query.format);
+        }
+        catch (error) {
+            const errorRows = [{ Error: `Failed to generate executive report: ${error.message}` }];
+            return this.exportToCsv(errorRows, 'executive_report_error', query.format);
+        }
+    }
+    async getSummaryMetricsForReport() {
+        return {
+            totalInfluencers: await this.influencerRepository.count({ where: { deleted_at: (0, typeorm_2.IsNull)() } }),
+            publishedPolicies: await this.policyRepository.count({ where: { status: policy_entity_1.PolicyStatus.PUBLISHED, deleted_at: (0, typeorm_2.IsNull)() } }),
+            totalPolicies: await this.policyRepository.count({ where: { deleted_at: (0, typeorm_2.IsNull)() } }),
+            totalControls: await this.unifiedControlRepository.count({ where: { deleted_at: (0, typeorm_2.IsNull)() } }),
+            implementedControls: await this.unifiedControlRepository.count({ where: { implementation_status: unified_control_entity_1.ImplementationStatus.IMPLEMENTED, deleted_at: (0, typeorm_2.IsNull)() } }),
+            openFindings: await this.findingRepository.count({ where: { status: finding_entity_1.FindingStatus.OPEN, deleted_at: (0, typeorm_2.IsNull)() } }),
+            criticalFindings: await this.findingRepository.count({ where: { severity: finding_entity_1.FindingSeverity.CRITICAL, deleted_at: (0, typeorm_2.IsNull)() } }),
+        };
+    }
+    async getControlStatsForReport() {
+        return {
+            byStatus: {
+                active: await this.unifiedControlRepository.count({ where: { status: unified_control_entity_1.ControlStatus.ACTIVE, deleted_at: (0, typeorm_2.IsNull)() } }),
+            },
+            byImplementation: {
+                implemented: await this.unifiedControlRepository.count({ where: { implementation_status: unified_control_entity_1.ImplementationStatus.IMPLEMENTED, deleted_at: (0, typeorm_2.IsNull)() } }),
+                inProgress: await this.unifiedControlRepository.count({ where: { implementation_status: unified_control_entity_1.ImplementationStatus.IN_PROGRESS, deleted_at: (0, typeorm_2.IsNull)() } }),
+                planned: await this.unifiedControlRepository.count({ where: { implementation_status: unified_control_entity_1.ImplementationStatus.PLANNED, deleted_at: (0, typeorm_2.IsNull)() } }),
+            }
+        };
+    }
+    async getPolicyStatsForReport() {
+        return {
+            byStatus: {
+                published: await this.policyRepository.count({ where: { status: policy_entity_1.PolicyStatus.PUBLISHED, deleted_at: (0, typeorm_2.IsNull)() } }),
+                inReview: await this.policyRepository.count({ where: { status: policy_entity_1.PolicyStatus.IN_REVIEW, deleted_at: (0, typeorm_2.IsNull)() } }),
+                draft: await this.policyRepository.count({ where: { status: policy_entity_1.PolicyStatus.DRAFT, deleted_at: (0, typeorm_2.IsNull)() } }),
+            },
+            pendingReview: await this.policyRepository.count({ where: { next_review_date: (0, typeorm_2.LessThanOrEqual)(new Date()), deleted_at: (0, typeorm_2.IsNull)() } }),
+        };
+    }
+    async getFindingStatsForReport() {
+        return {
+            byStatus: {
+                open: await this.findingRepository.count({ where: { status: finding_entity_1.FindingStatus.OPEN, deleted_at: (0, typeorm_2.IsNull)() } }),
+            },
+            bySeverity: {
+                critical: await this.findingRepository.count({ where: { severity: finding_entity_1.FindingSeverity.CRITICAL, deleted_at: (0, typeorm_2.IsNull)() } }),
+                high: await this.findingRepository.count({ where: { severity: finding_entity_1.FindingSeverity.HIGH, deleted_at: (0, typeorm_2.IsNull)() } }),
+            },
+            overdueRemediation: await this.findingRepository.createQueryBuilder('f')
+                .where('f.remediation_due_date < :now', { now: new Date() })
+                .andWhere('f.status IN (:...s)', { statuses: [finding_entity_1.FindingStatus.OPEN, finding_entity_1.FindingStatus.IN_PROGRESS] })
+                .getCount(),
+        };
+    }
+    async getPolicyComplianceStats() {
+        const policies = await this.policyRepository.find({
+            where: { status: policy_entity_1.PolicyStatus.PUBLISHED, deleted_at: (0, typeorm_2.IsNull)() },
+        });
+        const stats = await Promise.all(policies.map(async (policy) => {
+            const totalAssignments = await this.assignmentRepository.count({
+                where: { policy_id: policy.id },
+            });
+            const acknowledged = await this.assignmentRepository.count({
+                where: { policy_id: policy.id, acknowledged: true },
+            });
+            return {
+                id: policy.id,
+                title: policy.title,
+                totalAssignments,
+                acknowledged,
+                rate: totalAssignments > 0 ? Math.round((acknowledged / totalAssignments) * 100) : 0,
+            };
+        }));
+        const buStats = await this.entityManager.query(`
+      SELECT 
+        bu.name as department,
+        COUNT(pa.id) as total,
+        COUNT(CASE WHEN pa.acknowledged = true THEN 1 END) as acknowledged
+      FROM policy_assignments pa
+      LEFT JOIN users u ON pa.user_id = u.id
+      LEFT JOIN business_units bu ON u.business_unit_id = bu.id
+      WHERE bu.id IS NOT NULL
+      GROUP BY bu.name
+    `);
+        return {
+            byPolicy: stats,
+            byDepartment: buStats.map(s => ({
+                department: s.department,
+                total: parseInt(s.total),
+                acknowledged: parseInt(s.acknowledged),
+                rate: parseInt(s.total) > 0 ? Math.round((parseInt(s.acknowledged) / parseInt(s.total)) * 100) : 0
+            })),
+        };
     }
     async generatePolicyComplianceReport(query) {
         try {
@@ -611,13 +739,17 @@ exports.GovernanceReportingService = GovernanceReportingService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(influencer_entity_1.Influencer)),
     __param(1, (0, typeorm_1.InjectRepository)(policy_entity_1.Policy)),
-    __param(2, (0, typeorm_1.InjectRepository)(unified_control_entity_1.UnifiedControl)),
-    __param(3, (0, typeorm_1.InjectRepository)(assessment_entity_1.Assessment)),
-    __param(4, (0, typeorm_1.InjectRepository)(finding_entity_1.Finding)),
+    __param(2, (0, typeorm_1.InjectRepository)(policy_assignment_entity_1.PolicyAssignment)),
+    __param(3, (0, typeorm_1.InjectRepository)(unified_control_entity_1.UnifiedControl)),
+    __param(4, (0, typeorm_1.InjectRepository)(assessment_entity_1.Assessment)),
+    __param(5, (0, typeorm_1.InjectRepository)(finding_entity_1.Finding)),
+    __param(6, (0, typeorm_1.InjectEntityManager)()),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.EntityManager])
 ], GovernanceReportingService);
 //# sourceMappingURL=governance-reporting.service.js.map

@@ -125,6 +125,19 @@ __decorate([
     __metadata("design:type", Policy)
 ], Policy.prototype, "supersedes_policy", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true, name: 'parent_policy_id' }),
+    __metadata("design:type", String)
+], Policy.prototype, "parent_policy_id", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Policy, (policy) => policy.child_policies, { nullable: true, onDelete: 'SET NULL' }),
+    (0, typeorm_1.JoinColumn)({ name: 'parent_policy_id' }),
+    __metadata("design:type", Policy)
+], Policy.prototype, "parent_policy", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Policy, (policy) => policy.parent_policy),
+    __metadata("design:type", Array)
+], Policy.prototype, "child_policies", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'jsonb', nullable: true }),
     __metadata("design:type", Array)
 ], Policy.prototype, "attachments", void 0);
@@ -183,6 +196,7 @@ exports.Policy = Policy = __decorate([
     (0, typeorm_1.Index)(['policy_type']),
     (0, typeorm_1.Index)(['status']),
     (0, typeorm_1.Index)(['owner_id']),
-    (0, typeorm_1.Index)(['title', 'version_number'])
+    (0, typeorm_1.Index)(['title', 'version_number']),
+    (0, typeorm_1.Index)(['parent_policy_id'])
 ], Policy);
 //# sourceMappingURL=policy.entity.js.map

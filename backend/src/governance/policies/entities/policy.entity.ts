@@ -35,6 +35,7 @@ export enum ReviewFrequency {
 @Index(['status'])
 @Index(['owner_id'])
 @Index(['title', 'version_number'])
+@Index(['parent_policy_id'])
 export class Policy {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -107,6 +108,17 @@ export class Policy {
   @JoinColumn({ name: 'supersedes_policy_id' })
   supersedes_policy: Policy;
 
+  // Policy Hierarchy Support (Story 2.1)
+  @Column({ type: 'uuid', nullable: true, name: 'parent_policy_id' })
+  parent_policy_id: string;
+
+  @ManyToOne(() => Policy, (policy) => policy.child_policies, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'parent_policy_id' })
+  parent_policy: Policy;
+
+  @OneToMany(() => Policy, (policy) => policy.parent_policy)
+  child_policies: Policy[];
+
   @Column({ type: 'jsonb', nullable: true })
   attachments: Array<{ filename: string; path: string; upload_date: string; uploaded_by: string }>;
 
@@ -148,6 +160,8 @@ export class Policy {
   @DeleteDateColumn({ name: 'deleted_at' })
   deleted_at: Date;
 }
+
+
 
 
 

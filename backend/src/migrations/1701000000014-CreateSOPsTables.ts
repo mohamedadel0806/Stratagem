@@ -494,3 +494,5 @@ export class CreateSOPsTables1701000000014 implements MigrationInterface {
     await queryRunner.dropTable('sops', true);
   }
 }
+
+

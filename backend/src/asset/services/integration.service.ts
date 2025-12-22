@@ -3,9 +3,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IntegrationConfig, IntegrationType, IntegrationStatus, AuthenticationType, ConflictResolutionStrategy } from '../entities/integration-config.entity';
-import { IntegrationSyncLog, SyncStatus } from '../entities/integration-sync-log.entity';
 import { CreateIntegrationConfigDto } from '../dto/create-integration-config.dto';
 import { UpdateIntegrationConfigDto } from '../dto/update-integration-config.dto';
+import { LessThanOrEqual } from 'typeorm';
+import { SyncStatus, IntegrationSyncLog } from '../entities/integration-sync-log.entity';
 import { PhysicalAssetService } from './physical-asset.service';
 import { NotificationService } from '../../common/services/notification.service';
 import { NotificationPriority, NotificationType } from '../../common/entities/notification.entity';
@@ -444,8 +445,8 @@ export class IntegrationService {
     const dueConfigs = await this.integrationConfigRepository.find({
       where: {
         status: IntegrationStatus.ACTIVE,
-        nextSyncAt: { $lte: now } as any, // TypeORM-compatible operator depending on driver
-      } as any,
+        nextSyncAt: LessThanOrEqual(now),
+      },
     });
 
     if (!dueConfigs.length) {

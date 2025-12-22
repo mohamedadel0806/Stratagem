@@ -39,6 +39,8 @@ import { RemediationDashboardMetrics } from '@/components/governance/remediation
 import { RemediationGanttChart } from '@/components/governance/remediation-gantt-chart';
 import { AssetComplianceWidget } from '@/components/governance/asset-compliance-widget';
 import { GovernanceDashboardCustomizer, useDashboardWidgets, WidgetConfig } from '@/components/governance/governance-dashboard-customizer';
+import { MobilePostureSummary } from '@/components/governance/mobile-posture-summary';
+import { DashboardEmailSchedules } from '@/components/governance/dashboard-email-schedules';
 
 export default function GovernanceDashboardPage() {
   const params = useParams();
@@ -145,39 +147,50 @@ export default function GovernanceDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Governance Dashboard</h2>
-          <p className="text-muted-foreground">Overview of governance, compliance, and controls</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="start-date" className="text-sm">From:</Label>
-            <Input
-              id="start-date"
-              type="date"
-              value={dateRange.from ? dateRange.from.toISOString().split('T')[0] : ''}
-              onChange={(e) => setDateRange({ ...dateRange, from: e.target.value ? new Date(e.target.value) : undefined })}
-              className="w-40"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="end-date" className="text-sm">To:</Label>
-            <Input
-              id="end-date"
-              type="date"
-              value={dateRange.to ? dateRange.to.toISOString().split('T')[0] : ''}
-              onChange={(e) => setDateRange({ ...dateRange, to: e.target.value ? new Date(e.target.value) : undefined })}
-              className="w-40"
-            />
-          </div>
-          <GovernanceDashboardCustomizer widgets={widgets} onWidgetsChange={setWidgets} />
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
-        </div>
+      {/* Mobile Posture Summary - Only visible on mobile */}
+      <div className="md:hidden">
+        <MobilePostureSummary
+          dashboard={dashboard}
+          isLoading={isLoading}
+          onExport={handleExport}
+        />
       </div>
+
+      {/* Desktop Dashboard - Hidden on mobile */}
+      <div className="hidden md:flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Governance Dashboard</h2>
+            <p className="text-muted-foreground">Overview of governance, compliance, and controls</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="start-date" className="text-sm whitespace-nowrap">From:</Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={dateRange.from ? dateRange.from.toISOString().split('T')[0] : ''}
+                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value ? new Date(e.target.value) : undefined })}
+                className="w-40"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="end-date" className="text-sm whitespace-nowrap">To:</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={dateRange.to ? dateRange.to.toISOString().split('T')[0] : ''}
+                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value ? new Date(e.target.value) : undefined })}
+                className="w-40"
+              />
+            </div>
+            <GovernanceDashboardCustomizer widgets={widgets} onWidgetsChange={setWidgets} />
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export PDF
+            </Button>
+          </div>
+        </div>
 
       {/* Summary Stats Row */}
       {widgets.find((w) => w.key === 'summary-cards')?.visible && (
@@ -906,6 +919,9 @@ export default function GovernanceDashboardPage() {
         </Card>
       </div>
 
+      {/* Dashboard Email Schedules */}
+      <DashboardEmailSchedules />
+
       {/* Quick Actions */}
       <Card>
         <CardHeader>
@@ -953,9 +969,12 @@ export default function GovernanceDashboardPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
+
+
 
 
 

@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, ILike } from 'typeorm';
+import { Repository, FindOptionsWhere, ILike, In } from 'typeorm';
 import { Evidence } from './entities/evidence.entity';
 import { EvidenceLinkage, EvidenceLinkType } from './entities/evidence-linkage.entity';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
 import { NotificationService } from '../../common/services/notification.service';
 import { NotificationType, NotificationPriority } from '../../common/entities/notification.entity';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as fflate from 'fflate';
 
 @Injectable()
 export class EvidenceService {
@@ -203,6 +206,75 @@ export class EvidenceService {
     });
 
     return linkages.map((linkage) => linkage.evidence);
+  }
+
+  /**
+   * Generate an audit-ready evidence package (ZIP)
+   */
+  async generateEvidencePackage(options: {
+    evidenceIds?: string[];
+    controlId?: string;
+    assessmentId?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<{ data: Buffer; filename: string }> {
+    let evidenceItems: Evidence[] = [];
+
+    if (options.evidenceIds && options.evidenceIds.length > 0) {
+      evidenceItems = await this.evidenceRepository.find({
+        where: { id: In(options.evidenceIds) },
+        relations: ['linkages'],
+      });
+    } else if (options.controlId) {
+      evidenceItems = await this.getLinkedEvidence(EvidenceLinkType.CONTROL, options.controlId);
+    } else if (options.assessmentId) {
+      evidenceItems = await this.getLinkedEvidence(EvidenceLinkType.ASSESSMENT, options.assessmentId);
+    } else {
+      // Default: all approved evidence
+      evidenceItems = await this.evidenceRepository.find({
+        where: { status: 'approved' as any },
+      });
+    }
+
+    if (evidenceItems.length === 0) {
+      throw new NotFoundException('No evidence items found for the specified criteria');
+    }
+
+    const zipFiles: Record<string, Uint8Array> = {};
+    const manifest: any[] = [];
+
+    for (const item of evidenceItems) {
+      const filePath = path.resolve(process.cwd(), item.file_path.startsWith('/') ? item.file_path.substring(1) : item.file_path);
+      
+      if (fs.existsSync(filePath)) {
+        const fileData = fs.readFileSync(filePath);
+        const fileName = `${item.evidence_identifier}_${item.filename || 'file'}`;
+        zipFiles[fileName] = new Uint8Array(fileData);
+        
+        manifest.push({
+          id: item.id,
+          identifier: item.evidence_identifier,
+          title: item.title,
+          type: item.evidence_type,
+          filename: fileName,
+          collected_at: item.collection_date,
+          status: item.status,
+          description: item.description,
+        });
+      }
+    }
+
+    // Add manifest to ZIP
+    zipFiles['manifest.json'] = Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8');
+
+    // Create ZIP using fflate
+    const zipped = fflate.zipSync(zipFiles);
+    const filename = `evidence_package_${new Date().toISOString().split('T')[0]}.zip`;
+
+    return {
+      data: Buffer.from(zipped),
+      filename,
+    };
   }
 }
 

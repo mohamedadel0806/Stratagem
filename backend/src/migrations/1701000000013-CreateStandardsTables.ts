@@ -208,3 +208,5 @@ export class CreateStandardsTables1701000000013 implements MigrationInterface {
     await queryRunner.dropTable('standards', true);
   }
 }
+
+

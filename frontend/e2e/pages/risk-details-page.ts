@@ -54,21 +54,21 @@ export class RiskDetailsPage {
       this.WAIT_AFTER_SUBMIT = waitTimes.afterSubmit || this.WAIT_AFTER_SUBMIT;
     }
 
-    // Tab locators - using getByTestId with fallback to role/text
-    this.overviewTab = page.getByTestId('risk-details-tab-overview').or(page.locator('[role="tab"]:has-text("Overview")').first());
-    this.assessmentsTab = page.getByTestId('risk-details-tab-assessments').or(page.locator('[role="tab"]:has-text("Assessments")').first());
-    this.assetsTab = page.getByTestId('risk-details-tab-assets').or(page.locator('[role="tab"]:has-text("Assets")').first());
-    this.controlsTab = page.getByTestId('risk-details-tab-controls').or(page.locator('[role="tab"]:has-text("Controls")').first());
-    this.treatmentsTab = page.getByTestId('risk-details-tab-treatments').or(page.locator('[role="tab"]:has-text("Treatments")').first());
-    this.krisTab = page.getByTestId('risk-details-tab-kris').or(page.locator('[role="tab"]:has-text("KRIs")').first());
+    // Tab locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.overviewTab = page.getByTestId('risk-details-tab-overview');
+    this.assessmentsTab = page.getByTestId('risk-details-tab-assessments');
+    this.assetsTab = page.getByTestId('risk-details-tab-assets');
+    this.controlsTab = page.getByTestId('risk-details-tab-controls');
+    this.treatmentsTab = page.getByTestId('risk-details-tab-treatments');
+    this.krisTab = page.getByTestId('risk-details-tab-kris');
 
-    // Button locators - using getByTestId (recommended Playwright method)
-    this.editButton = page.getByTestId('risk-details-edit-button').or(page.locator('button:has-text("Edit")').first());
-    this.newAssessmentButton = page.getByTestId('risk-details-new-assessment-button').or(page.locator('button').filter({ hasText: /New Assessment/i }).first());
-    this.linkAssetButton = page.getByTestId('risk-details-link-asset-button').or(page.locator('button').filter({ hasText: /Link Asset/i }).first());
-    this.linkControlButton = page.getByTestId('risk-details-link-control-button').or(page.locator('button').filter({ hasText: /Link Control/i }).first());
-    this.newTreatmentButton = page.getByTestId('risk-details-new-treatment-button').or(page.locator('button').filter({ hasText: /New Treatment/i }).first());
-    this.linkKriButton = page.getByTestId('risk-details-link-kri-button').or(page.locator('button').filter({ hasText: /Link KRI/i }).first());
+    // Button locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.editButton = page.getByTestId('risk-details-edit-button');
+    this.newAssessmentButton = page.getByTestId('risk-details-new-assessment-button');
+    this.linkAssetButton = page.getByTestId('risk-details-link-asset-button');
+    this.linkControlButton = page.getByTestId('risk-details-link-control-button');
+    this.newTreatmentButton = page.getByTestId('risk-details-new-treatment-button');
+    this.linkKriButton = page.getByTestId('risk-details-link-kri-button');
 
     // Common elements
     this.dialog = page.locator('[role="dialog"]');
@@ -162,7 +162,8 @@ export class RiskDetailsPage {
         
         const fieldToUse = descriptionFieldAlt;
         await fieldToUse.clear();
-        await fieldToUse.fill(options.description);
+        // Use type() with delay for better React form handling (Playwright Advisory Guide compliant)
+        await fieldToUse.type(options.description, { delay: 30 });
         await this.page.waitForTimeout(this.WAIT_SMALL);
         console.log(`✅ Filled description field: ${options.description.substring(0, 50)}...`);
       }
@@ -192,7 +193,8 @@ export class RiskDetailsPage {
           this.page.locator('textarea').filter({ has: statusNotesLabel }).first()
         );
         await statusNotesField.clear();
-        await statusNotesField.fill(options.statusNotes);
+        // Use type() with delay for better React form handling (Playwright Advisory Guide compliant)
+        await statusNotesField.type(options.statusNotes, { delay: 30 });
         await this.page.waitForTimeout(this.WAIT_SMALL);
         console.log(`✅ Filled status notes field: ${options.statusNotes.substring(0, 50)}...`);
       } else {
@@ -406,7 +408,8 @@ export class RiskDetailsPage {
       const notesTextarea = this.page.locator('textarea[name*="notes"], textarea[name*="description"], textarea[name*="comment"]').first();
       const notesExists = await notesTextarea.isVisible({ timeout: 2000 }).catch(() => false);
       if (notesExists) {
-        await notesTextarea.fill(options.notes);
+        // Use type() with delay for better React form handling (Playwright Advisory Guide compliant)
+        await notesTextarea.type(options.notes, { delay: 30 });
         await this.page.waitForTimeout(this.WAIT_MEDIUM);
       }
     }
@@ -1166,6 +1169,7 @@ export class RiskDetailsPage {
         );
         const dueDateExists = await dueDateField.isVisible({ timeout: 3000 }).catch(() => false);
         if (dueDateExists) {
+          // Date fields can use fill() directly (no typing simulation needed)
           await dueDateField.fill(options.dueDate);
           await this.page.waitForTimeout(this.WAIT_MEDIUM);
           console.log(`✅ Filled due date: ${options.dueDate}`);
@@ -1185,6 +1189,7 @@ export class RiskDetailsPage {
           const futureDate = new Date();
           futureDate.setDate(futureDate.getDate() + 30);
           const dateString = futureDate.toISOString().split('T')[0];
+          // Date fields can use fill() directly (no typing simulation needed)
           await dueDateField.fill(dateString);
           await this.page.waitForTimeout(this.WAIT_MEDIUM);
           console.log(`✅ Filled due date: ${dateString}`);
@@ -1358,4 +1363,6 @@ export class RiskDetailsPage {
     console.log('✅ Assessment request submitted successfully');
   }
 }
+
+
 

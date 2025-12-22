@@ -95,9 +95,11 @@ export function AssetDependencies({ assetType, assetId }: AssetDependenciesProps
         description: 'Dependency created successfully',
       });
       setIsAddOpen(false);
+      // Reset all form fields
       setSearchQuery('');
       setSelectedTargetId('');
       setDescription('');
+      setRelationshipType('depends_on');
     },
     onError: (error: any) => {
       toast({
@@ -165,7 +167,7 @@ export function AssetDependencies({ assetType, assetId }: AssetDependenciesProps
     if (!selectedTargetId) {
       toast({
         title: 'Error',
-        description: 'Please select a target asset',
+        description: 'Please search for and select a target asset from the search results',
         variant: 'destructive',
       });
       return;
@@ -325,6 +327,7 @@ export function AssetDependencies({ assetType, assetId }: AssetDependenciesProps
                 setSelectedTargetType(value as AssetType);
                 setSearchQuery('');
                 setSelectedTargetId('');
+                setDescription('');
               }}>
                 <SelectTrigger>
                   <SelectValue />
@@ -350,12 +353,25 @@ export function AssetDependencies({ assetType, assetId }: AssetDependenciesProps
                   {searchResults.data.map((asset: any) => (
                     <div
                       key={asset.id}
-                      className={`p-2 cursor-pointer hover:bg-muted ${
-                        selectedTargetId === asset.id ? 'bg-muted' : ''
+                      role="button"
+                      tabIndex={0}
+                      data-testid={`asset-search-result-${asset.id}`}
+                      data-asset-id={asset.id}
+                      data-asset-type={asset.type}
+                      data-asset-name={asset.name}
+                      className={`p-2 cursor-pointer hover:bg-muted border focus:outline-none focus:ring-2 focus:ring-primary ${
+                        selectedTargetId === asset.id ? 'bg-muted border-primary' : 'border-transparent'
                       }`}
                       onClick={() => {
                         setSelectedTargetId(asset.id);
-                        setSearchQuery(asset.name);
+                        // Keep the current search query instead of replacing it with asset name
+                        // This prevents the search results from disappearing
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedTargetId(asset.id);
+                        }
                       }}
                     >
                       <div className="flex items-center gap-2">
@@ -366,9 +382,41 @@ export function AssetDependencies({ assetType, assetId }: AssetDependenciesProps
                         <span className="text-sm text-muted-foreground">
                           ({asset.identifier})
                         </span>
+                        {selectedTargetId === asset.id && (
+                          <span className="ml-auto text-primary">✓</span>
+                        )}
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              {selectedTargetId && searchResults?.data && (
+                <div className="mt-2 p-2 bg-muted rounded border">
+                  <span className="text-sm font-medium">Selected: </span>
+                  {(() => {
+                    const selectedAsset = searchResults.data.find((asset: any) => asset.id === selectedTargetId);
+                    return selectedAsset ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className={getTypeColor(selectedAsset.type)}>
+                          {getTypeLabel(selectedAsset.type)}
+                        </Badge>
+                        <span className="font-medium">{selectedAsset.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({selectedAsset.identifier})
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto h-6 w-6 p-0"
+                          onClick={() => {
+                            setSelectedTargetId('');
+                          }}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               )}
             </div>

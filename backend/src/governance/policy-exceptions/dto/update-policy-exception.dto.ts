@@ -20,3 +20,5 @@ export class UpdatePolicyExceptionDto extends PartialType(CreatePolicyExceptionD
   @IsString()
   approval_conditions?: string;
 }
+
+

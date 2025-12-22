@@ -26,12 +26,10 @@ export class RiskSettingsPage {
       this.WAIT_LARGE = waitTimes.large || this.WAIT_LARGE;
     }
 
-    // Button locators - using getByTestId (recommended Playwright method)
-    this.saveButton = this.page.getByTestId('risk-settings-save-button')
-      .or(this.page.getByRole('button', { name: /Save Changes/i }).first());
-    
-    this.resetButton = this.page.getByTestId('risk-settings-reset-button')
-      .or(this.page.getByRole('button', { name: /Reset/i }).first());
+    // Button locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.saveButton = this.page.getByTestId('risk-settings-save-button');
+
+    this.resetButton = this.page.getByTestId('risk-settings-reset-button');
   }
 
   /**
@@ -91,4 +89,6 @@ export class RiskSettingsPage {
     await this.page.waitForTimeout(this.WAIT_MEDIUM);
   }
 }
+
+
 

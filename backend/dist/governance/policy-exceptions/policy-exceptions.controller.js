@@ -23,6 +23,8 @@ const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../../auth/guards/roles.guard");
 const roles_decorator_1 = require("../../auth/decorators/roles.decorator");
 const user_entity_1 = require("../../users/entities/user.entity");
+const audit_decorator_1 = require("../../common/decorators/audit.decorator");
+const audit_log_entity_1 = require("../../common/entities/audit-log.entity");
 let PolicyExceptionsController = class PolicyExceptionsController {
     constructor(exceptionsService) {
         this.exceptionsService = exceptionsService;
@@ -55,6 +57,7 @@ __decorate([
     (0, common_1.Post)(),
     (0, swagger_1.ApiOperation)({ summary: 'Create a policy exception request' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Exception created successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.CREATE, 'PolicyException'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -83,6 +86,7 @@ __decorate([
     (0, common_1.Put)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update a policy exception' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Exception updated successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.UPDATE, 'PolicyException'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -95,6 +99,7 @@ __decorate([
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.SUPER_ADMIN, user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.COMPLIANCE_OFFICER),
     (0, swagger_1.ApiOperation)({ summary: 'Delete a policy exception' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Exception deleted successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.DELETE, 'PolicyException'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -105,6 +110,7 @@ __decorate([
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.SUPER_ADMIN, user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.COMPLIANCE_OFFICER),
     (0, swagger_1.ApiOperation)({ summary: 'Approve a policy exception' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Exception approved successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.APPROVE, 'PolicyException'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -117,6 +123,7 @@ __decorate([
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.SUPER_ADMIN, user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.COMPLIANCE_OFFICER),
     (0, swagger_1.ApiOperation)({ summary: 'Reject a policy exception' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Exception rejected successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.REJECT, 'PolicyException'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),

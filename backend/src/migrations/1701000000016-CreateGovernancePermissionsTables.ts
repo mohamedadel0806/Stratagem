@@ -200,3 +200,5 @@ export class CreateGovernancePermissionsTables1701000000016 implements Migration
     await queryRunner.dropTable('governance_permissions', true);
   }
 }
+
+

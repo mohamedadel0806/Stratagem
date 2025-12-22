@@ -17,6 +17,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { EvidenceService } from './evidence.service';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
@@ -26,8 +27,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
+@ApiTags('Governance - Evidence')
 @Controller('governance/evidence')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class EvidenceController {
   constructor(private readonly evidenceService: EvidenceService) { }
 
@@ -166,6 +169,19 @@ export class EvidenceController {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
     res.sendFile(path.resolve(filePath));
+  }
+
+  @Post('generate-package')
+  @ApiOperation({ summary: 'Generate an audit-ready evidence package' })
+  async generatePackage(
+    @Body() options: { evidenceIds?: string[]; controlId?: string; assessmentId?: string; startDate?: string; endDate?: string },
+    @Res() res: Response,
+  ) {
+    const packageInfo = await this.evidenceService.generateEvidencePackage(options);
+    
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${packageInfo.filename}"`);
+    res.send(packageInfo.data);
   }
 }
 

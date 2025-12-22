@@ -8,4 +8,7 @@ export declare class ControlObjectivesController {
     findOne(id: string): Promise<import("./entities/control-objective.entity").ControlObjective>;
     update(id: string, updateDto: Partial<CreateControlObjectiveDto>, req: any): Promise<import("./entities/control-objective.entity").ControlObjective>;
     remove(id: string): Promise<void>;
+    linkUnifiedControls(id: string, controlIds: string[]): Promise<import("./entities/control-objective.entity").ControlObjective>;
+    unlinkUnifiedControls(id: string, controlIds: string[]): Promise<import("./entities/control-objective.entity").ControlObjective>;
+    getUnifiedControls(id: string): Promise<import("../unified-controls/entities/unified-control.entity").UnifiedControl[]>;
 }

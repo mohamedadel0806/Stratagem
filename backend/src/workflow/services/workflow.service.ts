@@ -6,6 +6,7 @@ import { Queue } from 'bull';
 import { Workflow, WorkflowType, WorkflowTrigger, EntityType, WorkflowStatus } from '../entities/workflow.entity';
 import { WorkflowExecution, WorkflowExecutionStatus } from '../entities/workflow-execution.entity';
 import { WorkflowApproval, ApprovalStatus } from '../entities/workflow-approval.entity';
+import { WorkflowTriggerRulesService } from './workflow-trigger-rules.service';
 import { CreateWorkflowDto } from '../dto/create-workflow.dto';
 import { WorkflowResponseDto } from '../dto/workflow-response.dto';
 import { Policy } from '../../policy/entities/policy.entity';
@@ -38,6 +39,7 @@ export class WorkflowService {
     private taskRepository: Repository<Task>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private workflowRulesService: WorkflowTriggerRulesService,
     private notificationService: NotificationService,
     @Optional() @InjectQueue('governance:policy') private workflowQueue?: Queue<WorkflowExecutionJob>,
   ) {}
@@ -263,6 +265,7 @@ export class WorkflowService {
     entityData?: Record<string, any>,
     useQueue: boolean = true, // Option to use queue or execute synchronously
   ): Promise<void> {
+    // 1. Get explicit workflows for this trigger/type
     const workflows = await this.workflowRepository.find({
       where: {
         entityType,
@@ -271,8 +274,26 @@ export class WorkflowService {
       },
     });
 
-    for (const workflow of workflows) {
-      // Check if conditions match
+    // 2. Get matching workflows from dynamic rules
+    const matchingRuleWorkflowIds = await this.workflowRulesService.getMatchingWorkflows(
+      entityType,
+      trigger,
+      entityData || {},
+    );
+
+    if (matchingRuleWorkflowIds.length > 0) {
+      const ruleWorkflows = await this.workflowRepository.find({
+        where: { id: In(matchingRuleWorkflowIds), status: WorkflowStatus.ACTIVE },
+      });
+      workflows.push(...ruleWorkflows);
+    }
+
+    // Use a Set to avoid double-triggering the same workflow
+    const uniqueWorkflows = Array.from(new Set(workflows.map(w => w.id)))
+      .map(id => workflows.find(w => w.id === id)!);
+
+    for (const workflow of uniqueWorkflows) {
+      // Check if legacy conditions match (backward compatibility)
       if (this.checkConditions(workflow.conditions, entityData)) {
         if (useQueue && this.workflowQueue) {
           // Queue workflow for async execution

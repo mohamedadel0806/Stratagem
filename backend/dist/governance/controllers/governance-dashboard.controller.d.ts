@@ -8,6 +8,10 @@ export declare class GovernanceDashboardController {
     constructor(dashboardService: GovernanceDashboardService, trendService: GovernanceTrendService);
     getDashboard(startDate?: string, endDate?: string): Promise<GovernanceDashboardDto>;
     getDashboardTrends(): Promise<GovernanceTrendResponseDto>;
+    getEffectivenessTrends(controlId?: string, rangeDays?: number): Promise<{
+        date: any;
+        score: number;
+    }[]>;
     exportDashboard(startDate?: string, endDate?: string): Promise<{
         message: string;
         data: GovernanceDashboardDto;

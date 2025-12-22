@@ -27,17 +27,14 @@ export class RiskCategoriesPage {
       this.WAIT_LARGE = waitTimes.large || this.WAIT_LARGE;
     }
 
-    // Button locators - using getByTestId (recommended Playwright method)
-    this.newCategoryButton = this.page.getByTestId('risk-categories-new-button')
-      .or(this.page.getByRole('button', { name: /New Category/i }).first());
-    
-    // Search input - using getByTestId
-    this.searchInput = this.page.getByTestId('risk-categories-search-input')
-      .or(this.page.getByPlaceholder(/Search.*categor/i).first());
-    
-    // Categories list container
-    this.categoriesList = this.page.getByRole('main')
-      .or(this.page.locator('main').first());
+    // Button locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.newCategoryButton = this.page.getByTestId('risk-categories-new-button');
+
+    // Search input - using getByTestId only (Playwright Advisory Guide compliant)
+    this.searchInput = this.page.getByTestId('risk-categories-search-input');
+
+    // Categories list container - using getByTestId only (Playwright Advisory Guide compliant)
+    this.categoriesList = this.page.getByTestId('risk-categories-list');
   }
 
   /**
@@ -92,9 +89,12 @@ export class RiskCategoriesPage {
     const inputVisible = await this.searchInput.isVisible({ timeout: 3000 }).catch(() => false);
     if (inputVisible) {
       await this.searchInput.clear();
-      await this.searchInput.fill(query);
+      // Use type() with delay for better React form handling (Playwright Advisory Guide compliant)
+      await this.searchInput.type(query, { delay: 30 });
       await this.page.waitForTimeout(this.WAIT_MEDIUM); // Wait for search results
     }
   }
 }
+
+
 

@@ -1,5 +1,6 @@
 import { User } from '../../../users/entities/user.entity';
 import { Policy } from '../../policies/entities/policy.entity';
+import { UnifiedControl } from '../../unified-controls/entities/unified-control.entity';
 export declare enum ImplementationStatus {
     NOT_IMPLEMENTED = "not_implemented",
     PLANNED = "planned",
@@ -31,4 +32,5 @@ export declare class ControlObjective {
     updater: User;
     updated_at: Date;
     deleted_at: Date;
+    unified_controls: UnifiedControl[];
 }

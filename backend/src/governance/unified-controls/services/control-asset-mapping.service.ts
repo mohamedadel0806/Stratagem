@@ -7,6 +7,44 @@ import { CreateControlAssetMappingDto, BulkCreateControlAssetMappingDto } from '
 import { UpdateControlAssetMappingDto } from '../dto/update-control-asset-mapping.dto';
 import { ControlAssetMappingQueryDto } from '../dto/control-asset-mapping-query.dto';
 
+export interface AssetCompliancePosture {
+  assetId: string;
+  assetType: AssetType;
+  totalControls: number;
+  implementedControls: number;
+  partialControls: number;
+  notImplementedControls: number;
+  complianceScore: number;
+  controls: Array<{
+    controlId: string;
+    controlIdentifier: string;
+    title: string;
+    implementationStatus: ImplementationStatus;
+    effectivenessScore?: number;
+    lastTestDate?: Date;
+    implementationDate?: Date;
+  }>;
+}
+
+export interface AssetTypeComplianceOverview {
+  assetType: AssetType;
+  totalAssets: number;
+  assetsWithControls: number;
+  assetsWithoutControls: number;
+  averageComplianceScore: number;
+  complianceDistribution: {
+    excellent: number; // 90-100%
+    good: number; // 70-89%
+    fair: number; // 50-69%
+    poor: number; // 0-49%
+  };
+  topCompliantAssets: Array<{
+    assetId: string;
+    complianceScore: number;
+    totalControls: number;
+  }>;
+}
+
 @Injectable()
 export class ControlAssetMappingService {
   private readonly logger = new Logger(ControlAssetMappingService.name);
@@ -270,8 +308,394 @@ export class ControlAssetMappingService {
 
     return {
       created,
-      alreadyLinked: Array.from(existingControlIds),
+      alreadyLinked: controlIds.filter(id => existingControlIds.has(id)),
     };
+  }
+
+  /**
+   * Get asset compliance posture for a specific asset
+   */
+  async getAssetCompliancePosture(assetType: AssetType, assetId: string): Promise<AssetCompliancePosture> {
+    const mappings = await this.mappingRepository.find({
+      where: { asset_type: assetType, asset_id: assetId },
+      relations: ['unified_control'],
+      order: { mapped_at: 'DESC' },
+    });
+
+    const totalControls = mappings.length;
+    let implementedControls = 0;
+    let partialControls = 0;
+    let notImplementedControls = 0;
+
+    const controls = mappings.map(mapping => {
+      switch (mapping.implementation_status) {
+        case ImplementationStatus.IMPLEMENTED:
+          implementedControls++;
+          break;
+        case ImplementationStatus.IN_PROGRESS:
+          partialControls++;
+          break;
+        case ImplementationStatus.NOT_IMPLEMENTED:
+          notImplementedControls++;
+          break;
+      }
+
+      return {
+        controlId: mapping.unified_control.id,
+        controlIdentifier: mapping.unified_control.control_identifier,
+        title: mapping.unified_control.title,
+        implementationStatus: mapping.implementation_status,
+        effectivenessScore: mapping.effectiveness_score,
+        lastTestDate: mapping.last_test_date,
+        implementationDate: mapping.implementation_date,
+      };
+    });
+
+    // Calculate compliance score (implemented = 100%, partial = 50%, not implemented = 0%)
+    const complianceScore = totalControls > 0
+      ? Math.round(((implementedControls * 1.0 + partialControls * 0.5) / totalControls) * 100)
+      : 0;
+
+    return {
+      assetId,
+      assetType,
+      totalControls,
+      implementedControls,
+      partialControls,
+      notImplementedControls,
+      complianceScore,
+      controls,
+    };
+  }
+
+  /**
+   * Get compliance overview for all assets of a specific type
+   */
+  async getAssetTypeComplianceOverview(assetType: AssetType): Promise<AssetTypeComplianceOverview> {
+    // Get all unique asset IDs for this type
+    const assetMappings = await this.mappingRepository
+      .createQueryBuilder('mapping')
+      .select('DISTINCT mapping.asset_id', 'assetId')
+      .where('mapping.asset_type = :assetType', { assetType })
+      .getRawMany();
+
+    const assetIds = assetMappings.map(m => m.assetId);
+    const totalAssets = assetIds.length;
+
+    if (totalAssets === 0) {
+      return {
+        assetType,
+        totalAssets: 0,
+        assetsWithControls: 0,
+        assetsWithoutControls: 0,
+        averageComplianceScore: 0,
+        complianceDistribution: { excellent: 0, good: 0, fair: 0, poor: 0 },
+        topCompliantAssets: [],
+      };
+    }
+
+    // Calculate compliance for each asset
+    const assetCompliances = await Promise.all(
+      assetIds.map(assetId => this.getAssetCompliancePosture(assetType, assetId))
+    );
+
+    const assetsWithControls = assetCompliances.length;
+    const assetsWithoutControls = 0; // This would need to be calculated from asset service
+
+    const totalScore = assetCompliances.reduce((sum, asset) => sum + asset.complianceScore, 0);
+    const averageComplianceScore = Math.round(totalScore / assetsWithControls);
+
+    // Calculate distribution
+    const distribution = { excellent: 0, good: 0, fair: 0, poor: 0 };
+    assetCompliances.forEach(asset => {
+      if (asset.complianceScore >= 90) distribution.excellent++;
+      else if (asset.complianceScore >= 70) distribution.good++;
+      else if (asset.complianceScore >= 50) distribution.fair++;
+      else distribution.poor++;
+    });
+
+    // Get top 5 compliant assets
+    const topCompliantAssets = assetCompliances
+      .sort((a, b) => b.complianceScore - a.complianceScore)
+      .slice(0, 5)
+      .map(asset => ({
+        assetId: asset.assetId,
+        complianceScore: asset.complianceScore,
+        totalControls: asset.totalControls,
+      }));
+
+    return {
+      assetType,
+      totalAssets,
+      assetsWithControls,
+      assetsWithoutControls,
+      averageComplianceScore,
+      complianceDistribution: distribution,
+      topCompliantAssets,
+    };
+  }
+
+  /**
+   * Get control-asset matrix data
+   */
+  async getControlAssetMatrix(filters?: {
+    assetType?: AssetType;
+    controlDomain?: string;
+    implementationStatus?: ImplementationStatus;
+  }): Promise<{
+    controls: Array<{
+      id: string;
+      identifier: string;
+      title: string;
+      domain: string;
+      totalAssets: number;
+      implementedAssets: number;
+      partialAssets: number;
+      notImplementedAssets: number;
+    }>;
+    assets: Array<{
+      id: string;
+      type: AssetType;
+      complianceScore: number;
+      totalControls: number;
+    }>;
+    matrix: Array<{
+      controlId: string;
+      assetId: string;
+      implementationStatus: ImplementationStatus;
+      effectivenessScore?: number;
+    }>;
+  }> {
+    const { assetType, controlDomain, implementationStatus } = filters || {};
+
+    // Get controls with optional domain filter
+    let controlQuery = this.controlRepository.createQueryBuilder('control')
+      .select([
+        'control.id',
+        'control.control_identifier',
+        'control.title',
+        'control.domain',
+      ]);
+
+    if (controlDomain) {
+      controlQuery = controlQuery.where('control.domain = :domain', { domain: controlDomain });
+    }
+
+    const controls = await controlQuery.getMany();
+
+    // Get assets with optional type filter
+    let assetQuery = this.mappingRepository
+      .createQueryBuilder('mapping')
+      .select('DISTINCT mapping.asset_id', 'assetId')
+      .addSelect('mapping.asset_type', 'assetType');
+
+    if (assetType) {
+      assetQuery = assetQuery.where('mapping.asset_type = :assetType', { assetType });
+    }
+
+    const assetResults = await assetQuery.getRawMany();
+
+    // Get compliance scores for assets
+    const assets = await Promise.all(
+      assetResults.map(async (asset) => {
+        const compliance = await this.getAssetCompliancePosture(asset.assetType, asset.assetId);
+        return {
+          id: asset.assetId,
+          type: asset.assetType,
+          complianceScore: compliance.complianceScore,
+          totalControls: compliance.totalControls,
+        };
+      })
+    );
+
+    // Build matrix data
+    const matrix: Array<{
+      controlId: string;
+      assetId: string;
+      implementationStatus: ImplementationStatus;
+      effectivenessScore?: number;
+    }> = [];
+
+    for (const control of controls) {
+      for (const asset of assets) {
+        const mapping = await this.mappingRepository.findOne({
+          where: {
+            unified_control_id: control.id,
+            asset_type: asset.type,
+            asset_id: asset.id,
+          },
+        });
+
+        if (mapping) {
+          matrix.push({
+            controlId: control.id,
+            assetId: asset.id,
+            implementationStatus: mapping.implementation_status,
+            effectivenessScore: mapping.effectiveness_score,
+          });
+        }
+      }
+    }
+
+    // Add asset counts to controls
+    const controlsWithCounts = await Promise.all(
+      controls.map(async (control) => {
+        const mappings = await this.mappingRepository.find({
+          where: { unified_control_id: control.id },
+        });
+
+        let implementedAssets = 0;
+        let partialAssets = 0;
+        let notImplementedAssets = 0;
+
+        mappings.forEach(mapping => {
+          switch (mapping.implementation_status) {
+            case ImplementationStatus.IMPLEMENTED:
+              implementedAssets++;
+              break;
+            case ImplementationStatus.IN_PROGRESS:
+              partialAssets++;
+              break;
+            case ImplementationStatus.NOT_IMPLEMENTED:
+              notImplementedAssets++;
+              break;
+          }
+        });
+
+        return {
+          id: control.id,
+          identifier: control.control_identifier,
+          title: control.title,
+          domain: control.domain,
+          totalAssets: mappings.length,
+          implementedAssets,
+          partialAssets,
+          notImplementedAssets,
+        };
+      })
+    );
+
+    return {
+      controls: controlsWithCounts,
+      assets,
+      matrix,
+    };
+  }
+
+  /**
+   * Get control effectiveness summary across all assets
+   */
+  async getControlEffectivenessSummary(controlId: string): Promise<{
+    controlId: string;
+    totalAssets: number;
+    averageEffectiveness: number;
+    effectivenessDistribution: {
+      excellent: number; // 90-100%
+      good: number; // 70-89%
+      fair: number; // 50-69%
+      poor: number; // 0-49%
+    };
+    assetEffectiveness: Array<{
+      assetId: string;
+      assetType: AssetType;
+      effectivenessScore?: number;
+      lastTestDate?: Date;
+      implementationStatus: ImplementationStatus;
+    }>;
+  }> {
+    const mappings = await this.mappingRepository.find({
+      where: { unified_control_id: controlId },
+      order: { updated_at: 'DESC' },
+    });
+
+    const totalAssets = mappings.length;
+    const assetEffectiveness = mappings.map(mapping => ({
+      assetId: mapping.asset_id,
+      assetType: mapping.asset_type,
+      effectivenessScore: mapping.effectiveness_score,
+      lastTestDate: mapping.last_test_date,
+      implementationStatus: mapping.implementation_status,
+    }));
+
+    // Calculate average effectiveness (only for assets with scores)
+    const scoredAssets = assetEffectiveness.filter(a => a.effectivenessScore !== null);
+    const averageEffectiveness = scoredAssets.length > 0
+      ? Math.round(scoredAssets.reduce((sum, a) => sum + (a.effectivenessScore || 0), 0) / scoredAssets.length)
+      : 0;
+
+    // Calculate distribution
+    const distribution = { excellent: 0, good: 0, fair: 0, poor: 0 };
+    scoredAssets.forEach(asset => {
+      const score = asset.effectivenessScore || 0;
+      if (score >= 90) distribution.excellent++;
+      else if (score >= 70) distribution.good++;
+      else if (score >= 50) distribution.fair++;
+      else distribution.poor++;
+    });
+
+    return {
+      controlId,
+      totalAssets,
+      averageEffectiveness,
+      effectivenessDistribution: distribution,
+      assetEffectiveness,
+    };
+  }
+
+  /**
+   * Bulk update implementation status for multiple mappings
+   */
+  async bulkUpdateImplementationStatus(
+    updates: Array<{
+      controlId: string;
+      assetType: AssetType;
+      assetId: string;
+      implementationStatus: ImplementationStatus;
+      implementationNotes?: string;
+      effectivenessScore?: number;
+    }>,
+    userId: string,
+  ): Promise<{
+    updated: number;
+    notFound: number;
+    errors: Array<{ controlId: string; assetId: string; error: string }>;
+  }> {
+    const result = { updated: 0, notFound: 0, errors: [] as Array<{ controlId: string; assetId: string; error: string }> };
+
+    for (const update of updates) {
+      try {
+        const mapping = await this.mappingRepository.findOne({
+          where: {
+            unified_control_id: update.controlId,
+            asset_type: update.assetType,
+            asset_id: update.assetId,
+          },
+        });
+
+        if (!mapping) {
+          result.notFound++;
+          continue;
+        }
+
+        Object.assign(mapping, {
+          implementation_status: update.implementationStatus,
+          implementation_notes: update.implementationNotes,
+          effectiveness_score: update.effectivenessScore,
+          updated_at: new Date(),
+        });
+
+        await this.mappingRepository.save(mapping);
+        result.updated++;
+      } catch (error) {
+        result.errors.push({
+          controlId: update.controlId,
+          assetId: update.assetId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return result;
   }
 }
 

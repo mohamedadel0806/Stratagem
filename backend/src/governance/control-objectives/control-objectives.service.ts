@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException, Logger, Inject, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ControlObjective, ImplementationStatus } from './entities/control-objective.entity';
 import { CreateControlObjectiveDto } from './dto/create-control-objective.dto';
 import { Policy } from '../policies/entities/policy.entity';
+import { UnifiedControl } from '../unified-controls/entities/unified-control.entity';
 import { NotificationService } from '../../common/services/notification.service';
 import { NotificationType, NotificationPriority } from '../../common/entities/notification.entity';
 
@@ -16,6 +17,8 @@ export class ControlObjectivesService {
     private controlObjectiveRepository: Repository<ControlObjective>,
     @InjectRepository(Policy)
     private policyRepository: Repository<Policy>,
+    @InjectRepository(UnifiedControl)
+    private unifiedControlRepository: Repository<UnifiedControl>,
     @Optional() private notificationService?: NotificationService,
   ) {}
 
@@ -92,7 +95,7 @@ export class ControlObjectivesService {
   async findOne(id: string): Promise<ControlObjective> {
     const controlObjective = await this.controlObjectiveRepository.findOne({
       where: { id },
-      relations: ['policy', 'responsible_party', 'creator', 'updater'],
+      relations: ['policy', 'responsible_party', 'creator', 'updater', 'unified_controls'],
     });
 
     if (!controlObjective) {
@@ -190,6 +193,47 @@ export class ControlObjectivesService {
     }
 
     await this.controlObjectiveRepository.softRemove(controlObjective);
+  }
+
+  async linkUnifiedControls(id: string, controlIds: string[]): Promise<ControlObjective> {
+    const controlObjective = await this.findOne(id);
+    const controls = await this.unifiedControlRepository.find({
+      where: { id: In(controlIds) },
+    });
+
+    if (controls.length === 0 && controlIds.length > 0) {
+      throw new NotFoundException('No unified controls found with the provided IDs');
+    }
+
+    // Add new controls, avoiding duplicates
+    const currentControlIds = new Set(controlObjective.unified_controls?.map(c => c.id) || []);
+    const newControls = controls.filter(c => !currentControlIds.has(c.id));
+    
+    controlObjective.unified_controls = [
+      ...(controlObjective.unified_controls || []),
+      ...newControls
+    ];
+
+    return this.controlObjectiveRepository.save(controlObjective);
+  }
+
+  async unlinkUnifiedControls(id: string, controlIds: string[]): Promise<ControlObjective> {
+    const controlObjective = await this.findOne(id);
+    
+    if (!controlObjective.unified_controls) {
+      return controlObjective;
+    }
+
+    controlObjective.unified_controls = controlObjective.unified_controls.filter(
+      c => !controlIds.includes(c.id)
+    );
+
+    return this.controlObjectiveRepository.save(controlObjective);
+  }
+
+  async getUnifiedControls(id: string): Promise<UnifiedControl[]> {
+    const controlObjective = await this.findOne(id);
+    return controlObjective.unified_controls || [];
   }
 }
 

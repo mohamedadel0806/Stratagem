@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { assetsApi } from '@/lib/api/assets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FormValidationSummary, extractServerErrors } from './form-validation-summary';
 
 const supplierSchema = z.object({
   supplierIdentifier: z.string().optional(),
@@ -58,6 +60,7 @@ interface SupplierFormProps {
 export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [serverErrors, setServerErrors] = useState<string[]>([]);
 
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
@@ -92,14 +95,19 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
   const createMutation = useMutation({
     mutationFn: (data: SupplierFormValues) => assetsApi.createSupplier(data),
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       toast({ title: 'Success', description: 'Supplier created successfully' });
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error?.message || 'Failed to create supplier';
+      setServerErrors(extractServerErrors(error, errorMessage));
+      
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to create supplier',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
@@ -111,21 +119,40 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
       return assetsApi.updateSupplier(supplier.id, data);
     },
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       queryClient.invalidateQueries({ queryKey: ['supplier', supplier?.id] });
       toast({ title: 'Success', description: 'Supplier updated successfully' });
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error?.message || 'Failed to update supplier';
+      
+      // Collect server errors for display
+      const errors: string[] = [];
+      if (error?.response?.data?.message) {
+        errors.push(error.response.data.message);
+      }
+      if (error?.response?.data?.details?.errors) {
+        errors.push(...(Array.isArray(error.response.data.details.errors) 
+          ? error.response.data.details.errors 
+          : [error.response.data.details.errors]));
+      }
+      setServerErrors(errors.length > 0 ? errors : [errorMessage]);
+      
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to update supplier',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
   });
 
   const onSubmit = (values: SupplierFormValues) => {
+    // Clear previous server errors
+    setServerErrors([]);
+    
     if (supplier) {
       updateMutation.mutate(values);
     } else {
@@ -136,6 +163,10 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormValidationSummary
+          formErrors={form.formState.errors}
+          serverErrors={serverErrors}
+        />
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>

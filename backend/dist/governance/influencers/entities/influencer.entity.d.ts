@@ -29,7 +29,9 @@ export declare class Influencer {
     publication_date: Date;
     effective_date: Date;
     last_revision_date: Date;
+    revision_notes: string;
     next_review_date: Date;
+    review_frequency_days: number;
     status: InfluencerStatus;
     applicability_status: ApplicabilityStatus;
     applicability_justification: string;

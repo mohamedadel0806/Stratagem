@@ -22,9 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { governanceApi, CreateInfluencerData, Influencer, InfluencerCategory, InfluencerStatus, ApplicabilityStatus } from '@/lib/api/governance';
 import { useToast } from '@/hooks/use-toast';
+import { TagInput } from './tag-input';
 
 const influencerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(500, 'Name must be less than 500 characters'),
@@ -45,6 +46,8 @@ const influencerSchema = z.object({
   owner_id: z.string().uuid().optional().or(z.literal('')),
   business_units_affected: z.array(z.string().uuid()).optional(),
   tags: z.array(z.string()).optional(),
+  revision_notes: z.string().optional(),
+  review_frequency_days: z.number().int().min(30).max(3650).optional(),
 });
 
 type InfluencerFormData = z.infer<typeof influencerSchema>;
@@ -58,6 +61,11 @@ interface InfluencerFormProps {
 export function InfluencerForm({ influencer, onSuccess, onCancel }: InfluencerFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const { data: allTags = [] } = useQuery({
+    queryKey: ['influencer-tags'],
+    queryFn: () => governanceApi.getAllTags(),
+  });
 
   const form = useForm<InfluencerFormData>({
     resolver: zodResolver(influencerSchema),
@@ -81,6 +89,8 @@ export function InfluencerForm({ influencer, onSuccess, onCancel }: InfluencerFo
           owner_id: influencer.owner_id,
           business_units_affected: influencer.business_units_affected,
           tags: influencer.tags,
+          revision_notes: influencer.revision_notes,
+          review_frequency_days: influencer.review_frequency_days,
         }
       : {
           category: InfluencerCategory.REGULATORY,
@@ -284,15 +294,75 @@ export function InfluencerForm({ influencer, onSuccess, onCancel }: InfluencerFo
           />
         </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="source_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Source URL</FormLabel>
+                <FormControl>
+                  <Input {...field} type="url" placeholder="https://..." />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="next_review_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Next Review Date</FormLabel>
+                <FormControl>
+                  <Input {...field} type="date" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <FormField
           control={form.control}
-          name="source_url"
+          name="revision_notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Source URL</FormLabel>
+              <FormLabel>Revision Notes</FormLabel>
               <FormControl>
-                <Input {...field} type="url" placeholder="https://..." />
+                <Textarea
+                  {...field}
+                  placeholder="Document any changes or important notes about this revision..."
+                  rows={3}
+                />
               </FormControl>
+              <FormDescription>
+                Optional notes about this revision or update
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="tags"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tags</FormLabel>
+              <FormControl>
+                <TagInput
+                  tags={field.value || []}
+                  onChange={field.onChange}
+                  suggestions={allTags}
+                  allowCustom={true}
+                  placeholder="Add tags to categorize this influencer..."
+                />
+              </FormControl>
+              <FormDescription>
+                Add tags to help categorize and find this influencer. Press Enter to add a tag.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -310,6 +380,8 @@ export function InfluencerForm({ influencer, onSuccess, onCancel }: InfluencerFo
     </Form>
   );
 }
+
+
 
 
 

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { assetsApi, CreatePhysicalAssetData, PhysicalAsset, AssetType } from '@/lib/api/assets';
 import { usersApi, User } from '@/lib/api/users';
 import { businessUnitsApi, BusinessUnit } from '@/lib/api/business-units';
@@ -28,6 +28,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FormValidationSummary, extractServerErrors } from './form-validation-summary';
 
 const physicalAssetSchema = z.object({
   uniqueIdentifier: z.string().min(1, 'Unique identifier is required'),
@@ -70,6 +71,7 @@ function getBusinessUnitDisplayName(bu: BusinessUnit): string {
 export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [serverErrors, setServerErrors] = useState<string[]>([]);
 
   const normalizedAsset = useMemo(() => {
     if (!asset) return undefined;
@@ -122,12 +124,25 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
       uniqueIdentifier:
         normalizedAsset?.uniqueIdentifier || normalizedAsset?.assetIdentifier || '',
       assetDescription: normalizedAsset?.assetDescription || '',
-      assetTypeId: (normalizedAsset as any)?.assetTypeId || '',
+      // Ensure all ID fields are strings, not objects
+      assetTypeId: typeof (normalizedAsset as any)?.assetTypeId === 'string' 
+        ? (normalizedAsset as any)?.assetTypeId 
+        : (typeof (normalizedAsset as any)?.assetTypeId === 'object' && (normalizedAsset as any)?.assetTypeId?.id 
+            ? String((normalizedAsset as any).assetTypeId.id) 
+            : ''),
       manufacturer: normalizedAsset?.manufacturer || '',
       model: normalizedAsset?.model || '',
       businessPurpose: normalizedAsset?.businessPurpose || '',
-      ownerId: (normalizedAsset as any)?.ownerId || '',
-      businessUnitId: (normalizedAsset as any)?.businessUnitId || '',
+      ownerId: typeof (normalizedAsset as any)?.ownerId === 'string' 
+        ? (normalizedAsset as any)?.ownerId 
+        : (typeof (normalizedAsset as any)?.ownerId === 'object' && (normalizedAsset as any)?.ownerId?.id 
+            ? String((normalizedAsset as any).ownerId.id) 
+            : ''),
+      businessUnitId: typeof (normalizedAsset as any)?.businessUnitId === 'string' 
+        ? (normalizedAsset as any)?.businessUnitId 
+        : (typeof (normalizedAsset as any)?.businessUnitId === 'object' && (normalizedAsset as any)?.businessUnitId?.id 
+            ? String((normalizedAsset as any).businessUnitId.id) 
+            : ''),
       physicalLocation: (normalizedAsset as any)?.physicalLocation || '',
       criticalityLevel: normalizedAsset?.criticalityLevel || 'medium',
       connectivityStatus: normalizedAsset?.connectivityStatus || 'connected',
@@ -136,6 +151,48 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
       changeReason: '',
     },
   });
+
+  // Effect to ensure all ID fields are strings (not objects) after form initialization
+  useEffect(() => {
+    if (!normalizedAsset) return;
+
+    // Helper to safely get string ID from value
+    const getStringId = (value: any): string | undefined => {
+      if (!value) return undefined;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'object' && value !== null && 'id' in value) {
+        return String((value as { id?: string }).id || '');
+      }
+      return String(value);
+    };
+
+    // Check and normalize ownerId
+    const currentOwnerId = form.getValues('ownerId');
+    if (currentOwnerId && typeof currentOwnerId !== 'string') {
+      const normalizedOwnerId = getStringId(currentOwnerId);
+      if (normalizedOwnerId !== currentOwnerId) {
+        form.setValue('ownerId', normalizedOwnerId || '', { shouldValidate: false });
+      }
+    }
+
+    // Check and normalize businessUnitId
+    const currentBusinessUnitId = form.getValues('businessUnitId');
+    if (currentBusinessUnitId && typeof currentBusinessUnitId !== 'string') {
+      const normalizedBusinessUnitId = getStringId(currentBusinessUnitId);
+      if (normalizedBusinessUnitId !== currentBusinessUnitId) {
+        form.setValue('businessUnitId', normalizedBusinessUnitId || '', { shouldValidate: false });
+      }
+    }
+
+    // Check and normalize assetTypeId
+    const currentAssetTypeId = form.getValues('assetTypeId');
+    if (currentAssetTypeId && typeof currentAssetTypeId !== 'string') {
+      const normalizedAssetTypeId = getStringId(currentAssetTypeId);
+      if (normalizedAssetTypeId !== currentAssetTypeId) {
+        form.setValue('assetTypeId', normalizedAssetTypeId || '', { shouldValidate: false });
+      }
+    }
+  }, [normalizedAsset, form]);
 
   const createMutation = useMutation({
     mutationFn: (values: PhysicalAssetFormValues) => {
@@ -156,6 +213,8 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
       return assetsApi.createPhysicalAsset(payload);
     },
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['physical-assets'] });
       toast({
         title: 'Success',
@@ -164,12 +223,16 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to create physical asset';
+      
+      setServerErrors(extractServerErrors(error, errorMessage));
+      
       toast({
         title: 'Error',
-        description:
-          error?.response?.data?.message ||
-          error?.message ||
-          'Failed to create physical asset',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
@@ -201,6 +264,8 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
       return assetsApi.updatePhysicalAsset(asset.id, payload);
     },
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['physical-assets'] });
       if (asset?.id) {
         queryClient.invalidateQueries({ queryKey: ['physical-asset', asset.id] });
@@ -212,18 +277,58 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to update physical asset';
+      
+      // Collect server errors for display (ensure all are strings)
+      const errors: string[] = [];
+      if (error?.response?.data?.message) {
+        errors.push(typeof error.response.data.message === 'string' 
+          ? error.response.data.message 
+          : String(error.response.data.message));
+      }
+      // Handle validation errors from backend (can be array or object)
+      if (error?.response?.data?.details?.errors) {
+        const detailErrors = Array.isArray(error.response.data.details.errors) 
+          ? error.response.data.details.errors 
+          : [error.response.data.details.errors];
+        detailErrors.forEach((err: any) => {
+          if (typeof err === 'string') {
+            errors.push(err);
+          } else if (typeof err === 'object' && err !== null) {
+            // Handle objects like {id, name, code} by extracting meaningful message
+            if (err.message) errors.push(String(err.message));
+            else if (err.name) errors.push(String(err.name));
+            else if (err.id) errors.push(`Error: ${String(err.id)}`);
+            else errors.push(JSON.stringify(err));
+          } else {
+            errors.push(String(err));
+          }
+        });
+      }
+      setServerErrors(errors.length > 0 ? errors : [errorMessage]);
+      
+      // If the error is about changeReason being required, set it on the field
+      if (errorMessage.includes('reason for change') || errorMessage.includes('changeReason')) {
+        form.setError('changeReason', {
+          type: 'manual',
+          message: errorMessage,
+        });
+      }
+      
       toast({
         title: 'Error',
-        description:
-          error?.response?.data?.message ||
-          error?.message ||
-          'Failed to update physical asset',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
   });
 
   const onSubmit = (values: PhysicalAssetFormValues) => {
+    // Clear previous server errors
+    setServerErrors([]);
     if (asset) {
       updateMutation.mutate(values);
     } else {
@@ -233,9 +338,36 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
+  // Helper to get field display name
+  const getFieldDisplayName = (fieldName: string): string => {
+    const fieldMap: Record<string, string> = {
+      uniqueIdentifier: 'Unique Identifier',
+      assetDescription: 'Asset Description',
+      assetTypeId: 'Asset Type',
+      manufacturer: 'Manufacturer',
+      model: 'Model',
+      businessPurpose: 'Business Purpose',
+      ownerId: 'Owner',
+      businessUnitId: 'Business Unit',
+      physicalLocation: 'Physical Location',
+      criticalityLevel: 'Criticality Level',
+      connectivityStatus: 'Connectivity Status',
+      networkApprovalStatus: 'Network Approval Status',
+      changeReason: 'Reason for Change',
+      notes: 'Notes',
+    };
+    return fieldMap[fieldName] || fieldName;
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormValidationSummary
+          formErrors={form.formState.errors}
+          serverErrors={serverErrors}
+          fieldNameMapper={getFieldDisplayName}
+        />
+
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
@@ -282,32 +414,61 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
             <FormField
               control={form.control}
               name="assetTypeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Asset Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger
-                        aria-label="Asset Type"
-                        data-testid="physical-asset-type-dropdown-trigger"
-                      >
-                        <SelectValue placeholder="Select asset type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {assetTypes.map((type: AssetType) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                // Safely extract string value from field (handle objects)
+                const fieldValue = field.value;
+                let stringValue: string | undefined = undefined;
+                
+                if (!fieldValue) {
+                  stringValue = undefined;
+                } else if (typeof fieldValue === 'string') {
+                  stringValue = fieldValue;
+                } else if (typeof fieldValue === 'object' && fieldValue !== null) {
+                  // Handle objects like {id, name, code}
+                  if ('id' in fieldValue) {
+                    stringValue = String((fieldValue as any).id || '') || undefined;
+                  } else {
+                    // If no id, try to stringify but log a warning
+                    console.warn('Unexpected object in assetTypeId field:', fieldValue);
+                    stringValue = undefined;
+                  }
+                } else {
+                  stringValue = String(fieldValue) || undefined;
+                }
+                
+                // Final safety check - ensure it's a string or undefined
+                if (stringValue !== undefined && typeof stringValue !== 'string') {
+                  console.error('assetTypeId value is not a string:', stringValue);
+                  stringValue = undefined;
+                }
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Asset Type</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={stringValue || ''}
+                    >
+                      <FormControl>
+                        <SelectTrigger
+                          aria-label="Asset Type"
+                          data-testid="physical-asset-type-dropdown-trigger"
+                        >
+                          <SelectValue placeholder="Select asset type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {assetTypes.map((type: AssetType) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           </TabsContent>
 
@@ -315,69 +476,127 @@ export function PhysicalAssetForm({ asset, onSuccess, onCancel }: PhysicalAssetF
             <FormField
               control={form.control}
               name="ownerId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Owner</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      // Auto-populate business unit from owner profile if available
-                      const selectedUser = users.find((user) => user.id === value);
-                      const ownerBusinessUnitId = selectedUser?.businessUnitId;
-                      const currentBusinessUnitId = form.getValues('businessUnitId');
-                      if (ownerBusinessUnitId && !currentBusinessUnitId) {
-                        form.setValue('businessUnitId', ownerBusinessUnitId, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                        });
-                      }
-                    }}
-                    value={field.value || undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger aria-label="Owner">
-                        <SelectValue placeholder="Select owner" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {users.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {getUserDisplayName(user)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                // Safely extract string value from field (handle objects)
+                const fieldValue = field.value;
+                let stringValue: string | undefined = undefined;
+                
+                if (!fieldValue) {
+                  stringValue = undefined;
+                } else if (typeof fieldValue === 'string') {
+                  stringValue = fieldValue;
+                } else if (typeof fieldValue === 'object' && fieldValue !== null) {
+                  // Handle objects like {id, name, code}
+                  if ('id' in fieldValue) {
+                    stringValue = String((fieldValue as any).id || '') || undefined;
+                  } else {
+                    // If no id, try to stringify but log a warning
+                    console.warn('Unexpected object in ownerId field:', fieldValue);
+                    stringValue = undefined;
+                  }
+                } else {
+                  stringValue = String(fieldValue) || undefined;
+                }
+                
+                // Final safety check - ensure it's a string or undefined
+                if (stringValue !== undefined && typeof stringValue !== 'string') {
+                  console.error('ownerId value is not a string:', stringValue);
+                  stringValue = undefined;
+                }
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Owner</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Auto-populate business unit from owner profile if available
+                        const selectedUser = users.find((user) => user.id === value);
+                        const ownerBusinessUnitId = selectedUser?.businessUnitId;
+                        const currentBusinessUnitId = form.getValues('businessUnitId');
+                        if (ownerBusinessUnitId && !currentBusinessUnitId) {
+                          form.setValue('businessUnitId', ownerBusinessUnitId, {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          });
+                        }
+                      }}
+                      value={stringValue || ''}
+                    >
+                      <FormControl>
+                        <SelectTrigger aria-label="Owner">
+                          <SelectValue placeholder="Select owner" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {getUserDisplayName(user)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
               control={form.control}
               name="businessUnitId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Business Unit</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || undefined}
-                  >
-                    <FormControl>
-                      <SelectTrigger aria-label="Business Unit">
-                        <SelectValue placeholder="Select business unit" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {businessUnits.map((bu) => (
-                        <SelectItem key={bu.id} value={bu.id}>
-                          {getBusinessUnitDisplayName(bu)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                // Safely extract string value from field (handle objects)
+                const fieldValue = field.value;
+                let stringValue: string | undefined = undefined;
+                
+                if (!fieldValue) {
+                  stringValue = undefined;
+                } else if (typeof fieldValue === 'string') {
+                  stringValue = fieldValue;
+                } else if (typeof fieldValue === 'object' && fieldValue !== null) {
+                  // Handle objects like {id, name, code}
+                  if ('id' in fieldValue) {
+                    stringValue = String((fieldValue as any).id || '') || undefined;
+                  } else {
+                    // If no id, try to stringify but log a warning
+                    console.warn('Unexpected object in businessUnitId field:', fieldValue);
+                    stringValue = undefined;
+                  }
+                } else {
+                  stringValue = String(fieldValue) || undefined;
+                }
+                
+                // Final safety check - ensure it's a string or undefined
+                if (stringValue !== undefined && typeof stringValue !== 'string') {
+                  console.error('businessUnitId value is not a string:', stringValue);
+                  stringValue = undefined;
+                }
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Business Unit</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={stringValue || ''}
+                    >
+                      <FormControl>
+                        <SelectTrigger aria-label="Business Unit">
+                          <SelectValue placeholder="Select business unit" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {businessUnits.map((bu) => (
+                          <SelectItem key={bu.id} value={bu.id}>
+                            {getBusinessUnitDisplayName(bu)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           </TabsContent>
 

@@ -35,6 +35,22 @@ export default function InformationAssetDetailPage() {
     enabled: !!assetId,
   });
 
+  const formatDisplayValue = (value: any): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      if (value.name && value.code) return `${value.name} (${value.code})`;
+      if (value.name) return value.name;
+      if (value.firstName || value.lastName) {
+        return [value.firstName, value.lastName].filter(Boolean).join(' ');
+      }
+      if (value.email) return value.email;
+      if (value.code) return value.code;
+      if (value.id) return value.id;
+    }
+    return String(value);
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => assetsApi.deleteInformationAsset(id),
     onSuccess: () => {
@@ -104,15 +120,15 @@ export default function InformationAssetDetailPage() {
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="classification">Classification</TabsTrigger>
-          <TabsTrigger value="ownership">Ownership</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          <TabsTrigger value="controls">Controls</TabsTrigger>
-          <TabsTrigger value="risks">Risks</TabsTrigger>
-          <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-          <TabsTrigger value="graph">Graph View</TabsTrigger>
-          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
+          <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+          <TabsTrigger value="classification" data-testid="tab-classification">Classification</TabsTrigger>
+          <TabsTrigger value="ownership" data-testid="tab-ownership">Ownership</TabsTrigger>
+          <TabsTrigger value="compliance" data-testid="tab-compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="controls" data-testid="tab-controls">Controls</TabsTrigger>
+          <TabsTrigger value="risks" data-testid="tab-risks">Risks</TabsTrigger>
+          <TabsTrigger value="dependencies" data-testid="tab-dependencies">Dependencies</TabsTrigger>
+          <TabsTrigger value="graph" data-testid="tab-graph">Graph View</TabsTrigger>
+          <TabsTrigger value="audit" data-testid="tab-audit">Audit Trail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -208,28 +224,28 @@ export default function InformationAssetDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                {asset.ownerName && (
+                {(asset.ownerName || (asset as any).owner) && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Owner</p>
-                    <p>{asset.ownerName}</p>
+                    <p>{formatDisplayValue(asset.ownerName || (asset as any).owner)}</p>
                   </div>
                 )}
-                {asset.custodianName && (
+                {(asset.custodianName || (asset as any).custodian) && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Custodian</p>
-                    <p>{asset.custodianName}</p>
+                    <p>{formatDisplayValue(asset.custodianName || (asset as any).custodian)}</p>
                   </div>
                 )}
-                {asset.businessUnit && (
+                {(asset.businessUnit || (asset as any).businessUnitId) && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Business Unit</p>
-                    <p>{asset.businessUnit}</p>
+                    <p>{formatDisplayValue(asset.businessUnit || (asset as any).businessUnitId)}</p>
                   </div>
                 )}
-                {asset.department && (
+                {(asset as any).department && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Department</p>
-                    <p>{asset.department}</p>
+                    <p>{formatDisplayValue((asset as any).department)}</p>
                   </div>
                 )}
                 {asset.storageLocation && (

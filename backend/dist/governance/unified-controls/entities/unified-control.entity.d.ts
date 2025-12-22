@@ -1,4 +1,5 @@
 import { User } from '../../../users/entities/user.entity';
+import { ControlObjective } from '../../control-objectives/entities/control-objective.entity';
 export declare enum ControlType {
     PREVENTIVE = "preventive",
     DETECTIVE = "detective",
@@ -55,4 +56,5 @@ export declare class UnifiedControl {
     updater: User;
     updated_at: Date;
     deleted_at: Date;
+    control_objectives: ControlObjective[];
 }

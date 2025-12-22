@@ -306,7 +306,11 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                     <FormItem>
                       <FormLabel>Risk Title *</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Data Breach Risk from Unauthorized Access" {...field} />
+                        <Input
+                          placeholder="e.g., Data Breach Risk from Unauthorized Access"
+                          data-testid="risk-form-title-input"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -323,6 +327,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                         <Textarea
                           placeholder="If [threat] exploits [vulnerability], then [consequence] may occur..."
                           className="resize-none"
+                          data-testid="risk-form-risk-statement-textarea"
                           {...field}
                         />
                       </FormControl>
@@ -345,6 +350,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                           placeholder="Describe the risk in detail..."
                           className="resize-none"
                           rows={3}
+                          data-testid="risk-form-description-textarea"
                           {...field}
                         />
                       </FormControl>
@@ -372,7 +378,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                           value={field.value || "none"}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="risk-form-category-dropdown">
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                           </FormControl>
@@ -399,7 +405,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                         <FormLabel>Status</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="risk-form-status-dropdown">
                               <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                           </FormControl>
@@ -464,7 +470,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                           disabled={usersList === undefined}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="risk-form-owner-dropdown">
                               <SelectValue placeholder="Select owner (optional)" />
                             </SelectTrigger>
                           </FormControl>
@@ -497,7 +503,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                           disabled={usersList === undefined}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="risk-form-analyst-dropdown">
                               <SelectValue placeholder="Select analyst (optional)" />
                             </SelectTrigger>
                           </FormControl>
@@ -527,7 +533,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                       <FormItem>
                         <FormLabel>Date Identified</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input type="date" data-testid="risk-form-date-identified-input" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -541,7 +547,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                       <FormItem>
                         <FormLabel>Next Review Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input type="date" data-testid="risk-form-next-review-date-input" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -556,7 +562,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                     <FormItem>
                       <FormLabel>Tags</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter tags separated by commas" {...field} />
+                        <Input placeholder="Enter tags separated by commas" data-testid="risk-form-tags-input" {...field} />
                       </FormControl>
                       <FormDescription>e.g., GDPR, PCI-DSS, Customer Data</FormDescription>
                       <FormMessage />
@@ -581,7 +587,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                             value={String(field.value || 3)}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger data-testid="risk-form-likelihood-dropdown">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -609,7 +615,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                             value={String(field.value || 3)}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger data-testid="risk-form-impact-dropdown">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -664,7 +670,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                                 value={field.value ? String(field.value) : undefined}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger data-testid="risk-form-inherent-likelihood-dropdown">
                                     <SelectValue placeholder="Select..." />
                                   </SelectTrigger>
                                 </FormControl>
@@ -692,7 +698,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                                 value={field.value ? String(field.value) : undefined}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger data-testid="risk-form-inherent-impact-dropdown">
                                     <SelectValue placeholder="Select..." />
                                   </SelectTrigger>
                                 </FormControl>
@@ -730,7 +736,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                                 value={field.value ? String(field.value) : undefined}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger data-testid="risk-form-target-likelihood-dropdown">
                                     <SelectValue placeholder="Select..." />
                                   </SelectTrigger>
                                 </FormControl>
@@ -758,7 +764,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                                 value={field.value ? String(field.value) : undefined}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger data-testid="risk-form-target-impact-dropdown">
                                     <SelectValue placeholder="Select..." />
                                   </SelectTrigger>
                                 </FormControl>
@@ -796,7 +802,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                         <FormLabel>Threat Source</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="risk-form-threat-source-dropdown">
                               <SelectValue placeholder="Select threat source" />
                             </SelectTrigger>
                           </FormControl>
@@ -821,7 +827,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                         <FormLabel>Risk Velocity</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="risk-form-velocity-dropdown">
                               <SelectValue placeholder="Select velocity" />
                             </SelectTrigger>
                           </FormControl>
@@ -850,6 +856,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                           placeholder="What vulnerabilities could be exploited?"
                           className="resize-none"
                           rows={2}
+                          data-testid="risk-form-vulnerabilities-textarea"
                           {...field}
                         />
                       </FormControl>
@@ -869,6 +876,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                           placeholder="What indicators might signal this risk is materializing?"
                           className="resize-none"
                           rows={2}
+                          data-testid="risk-form-early-warning-signs-textarea"
                           {...field}
                         />
                       </FormControl>
@@ -884,7 +892,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                     <FormItem>
                       <FormLabel>Affected Business Process</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Customer Data Processing" {...field} />
+                        <Input placeholder="e.g., Customer Data Processing" data-testid="risk-form-business-process-input" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -902,6 +910,7 @@ export function RiskForm({ open, onOpenChange, riskId, initialData }: RiskFormPr
                           placeholder="Additional notes about the current status..."
                           className="resize-none"
                           rows={2}
+                          data-testid="risk-form-status-notes-textarea"
                           {...field}
                         />
                       </FormControl>

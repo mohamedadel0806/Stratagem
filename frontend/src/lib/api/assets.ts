@@ -373,6 +373,8 @@ export const assetsApi = {
     if (data.warrantyExpiry !== undefined) backendData.warrantyExpiry = data.warrantyExpiry;
     if (data.complianceRequirements !== undefined) backendData.complianceRequirements = data.complianceRequirements;
     if (data.securityTestResults !== undefined) backendData.securityTestResults = data.securityTestResults;
+    // Include changeReason if provided (for audit logging when critical fields change)
+    if ((data as any).changeReason !== undefined) backendData.changeReason = (data as any).changeReason;
 
     const response = await apiClient.put<PhysicalAsset>(`/assets/physical/${id}`, backendData);
     return response.data;
@@ -778,11 +780,22 @@ export const assetsApi = {
     }
     
     // Map UUID fields
-    if (data.ownerId !== undefined && isValidUUID(data.ownerId)) {
-      backendData.ownerId = data.ownerId;
+    // Handle ownerId: only include if it's a valid UUID
+    // If it's empty/null, omit it (don't change the current value)
+    // This prevents validation errors from invalid UUIDs
+    if (data.ownerId !== undefined && data.ownerId !== '' && data.ownerId !== null) {
+      if (isValidUUID(data.ownerId)) {
+        backendData.ownerId = data.ownerId;
+      }
+      // If it's not a valid UUID, we skip it (invalid value) to avoid validation errors
     }
-    if (data.businessUnit !== undefined && isValidUUID(data.businessUnit)) {
-      backendData.businessUnitId = data.businessUnit;
+    // Handle businessUnit: only include if it's a valid UUID
+    // If it's empty/null, omit it (don't change the current value)
+    if (data.businessUnit !== undefined && data.businessUnit !== '' && data.businessUnit !== null) {
+      if (isValidUUID(data.businessUnit)) {
+        backendData.businessUnitId = data.businessUnit;
+      }
+      // If it's not a valid UUID, we skip it (invalid value) to avoid validation errors
     }
     
     // Map data fields

@@ -35,7 +35,13 @@ export class InfluencerQueryDto {
   @IsOptional()
   @IsString()
   sort?: string; // e.g., "name:asc", "created_at:desc"
+
+  @IsOptional()
+  @IsString({ each: true })
+  tags?: string[]; // Filter by tags (array of tag names)
 }
+
+
 
 
 

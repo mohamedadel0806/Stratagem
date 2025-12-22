@@ -178,4 +178,70 @@ export const workflowsApi = {
     const response = await apiClient.get<any>(`/api/v1/workflows/approvals/${approvalId}/signature`);
     return response.data;
   },
+
+  // Trigger Rules
+  getRules: async (): Promise<WorkflowTriggerRule[]> => {
+    const response = await apiClient.get<WorkflowTriggerRule[]>('/api/v1/workflows/rules');
+    return response.data;
+  },
+
+  getRuleById: async (id: string): Promise<WorkflowTriggerRule> => {
+    const response = await apiClient.get<WorkflowTriggerRule>(`/api/v1/workflows/rules/${id}`);
+    return response.data;
+  },
+
+  createRule: async (data: CreateWorkflowTriggerRuleData): Promise<WorkflowTriggerRule> => {
+    const response = await apiClient.post<WorkflowTriggerRule>('/api/v1/workflows/rules', data);
+    return response.data;
+  },
+
+  updateRule: async (id: string, data: Partial<CreateWorkflowTriggerRuleData>): Promise<WorkflowTriggerRule> => {
+    const response = await apiClient.patch<WorkflowTriggerRule>(`/api/v1/workflows/rules/${id}`, data);
+    return response.data;
+  },
+
+  deleteRule: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/workflows/rules/${id}`);
+  },
 };
+
+export enum RuleOperator {
+  EQUALS = 'eq',
+  NOT_EQUALS = 'neq',
+  GREATER_THAN = 'gt',
+  LESS_THAN = 'lt',
+  CONTAINS = 'contains',
+  IN = 'in',
+}
+
+export interface TriggerCondition {
+  field: string;
+  operator: RuleOperator;
+  value: any;
+}
+
+export interface WorkflowTriggerRule {
+  id: string;
+  name: string;
+  description?: string;
+  entityType: string;
+  trigger: string;
+  conditions: TriggerCondition[];
+  workflowId: string;
+  workflow?: Workflow;
+  priority: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWorkflowTriggerRuleData {
+  name: string;
+  description?: string;
+  entityType: string;
+  trigger: string;
+  conditions: TriggerCondition[];
+  workflowId: string;
+  priority?: number;
+  isActive?: boolean;
+}

@@ -1,8 +1,8 @@
 import { Repository } from 'typeorm';
 import { IntegrationConfig } from '../entities/integration-config.entity';
-import { IntegrationSyncLog } from '../entities/integration-sync-log.entity';
 import { CreateIntegrationConfigDto } from '../dto/create-integration-config.dto';
 import { UpdateIntegrationConfigDto } from '../dto/update-integration-config.dto';
+import { IntegrationSyncLog } from '../entities/integration-sync-log.entity';
 import { PhysicalAssetService } from './physical-asset.service';
 import { NotificationService } from '../../common/services/notification.service';
 export declare class IntegrationService {

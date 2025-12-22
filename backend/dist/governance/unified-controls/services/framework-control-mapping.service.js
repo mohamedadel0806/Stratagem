@@ -133,6 +133,25 @@ let FrameworkControlMappingService = FrameworkControlMappingService_1 = class Fr
     async deleteMappingsForControl(controlId) {
         await this.mappingRepository.delete({ unified_control_id: controlId });
     }
+    async getCoverageMatrix(frameworkId) {
+        const mappings = await this.mappingRepository.find({
+            where: {
+                framework_requirement: {
+                    framework_id: frameworkId,
+                },
+            },
+            relations: ['framework_requirement', 'unified_control'],
+        });
+        return mappings.map((m) => ({
+            requirementId: m.framework_requirement_id,
+            requirementIdentifier: m.framework_requirement.requirement_identifier,
+            requirementTitle: m.framework_requirement.title,
+            controlId: m.unified_control_id,
+            controlIdentifier: m.unified_control.control_identifier,
+            controlTitle: m.unified_control.title,
+            coverageLevel: m.coverage_level,
+        }));
+    }
 };
 exports.FrameworkControlMappingService = FrameworkControlMappingService;
 exports.FrameworkControlMappingService = FrameworkControlMappingService = FrameworkControlMappingService_1 = __decorate([

@@ -21,6 +21,7 @@ const bull_1 = require("@nestjs/bull");
 const workflow_entity_1 = require("../entities/workflow.entity");
 const workflow_execution_entity_1 = require("../entities/workflow-execution.entity");
 const workflow_approval_entity_1 = require("../entities/workflow-approval.entity");
+const workflow_trigger_rules_service_1 = require("./workflow-trigger-rules.service");
 const policy_entity_1 = require("../../policy/entities/policy.entity");
 const risk_entity_1 = require("../../risk/entities/risk.entity");
 const compliance_requirement_entity_1 = require("../../common/entities/compliance-requirement.entity");
@@ -29,7 +30,7 @@ const user_entity_1 = require("../../users/entities/user.entity");
 const notification_service_1 = require("../../common/services/notification.service");
 const notification_entity_1 = require("../../common/entities/notification.entity");
 let WorkflowService = WorkflowService_1 = class WorkflowService {
-    constructor(workflowRepository, executionRepository, approvalRepository, policyRepository, riskRepository, requirementRepository, taskRepository, userRepository, notificationService, workflowQueue) {
+    constructor(workflowRepository, executionRepository, approvalRepository, policyRepository, riskRepository, requirementRepository, taskRepository, userRepository, workflowRulesService, notificationService, workflowQueue) {
         this.workflowRepository = workflowRepository;
         this.executionRepository = executionRepository;
         this.approvalRepository = approvalRepository;
@@ -38,6 +39,7 @@ let WorkflowService = WorkflowService_1 = class WorkflowService {
         this.requirementRepository = requirementRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.workflowRulesService = workflowRulesService;
         this.notificationService = notificationService;
         this.workflowQueue = workflowQueue;
         this.logger = new common_1.Logger(WorkflowService_1.name);
@@ -208,7 +210,16 @@ let WorkflowService = WorkflowService_1 = class WorkflowService {
                 status: workflow_entity_1.WorkflowStatus.ACTIVE,
             },
         });
-        for (const workflow of workflows) {
+        const matchingRuleWorkflowIds = await this.workflowRulesService.getMatchingWorkflows(entityType, trigger, entityData || {});
+        if (matchingRuleWorkflowIds.length > 0) {
+            const ruleWorkflows = await this.workflowRepository.find({
+                where: { id: (0, typeorm_2.In)(matchingRuleWorkflowIds), status: workflow_entity_1.WorkflowStatus.ACTIVE },
+            });
+            workflows.push(...ruleWorkflows);
+        }
+        const uniqueWorkflows = Array.from(new Set(workflows.map(w => w.id)))
+            .map(id => workflows.find(w => w.id === id));
+        for (const workflow of uniqueWorkflows) {
             if (this.checkConditions(workflow.conditions, entityData)) {
                 if (useQueue && this.workflowQueue) {
                     await this.queueWorkflowExecution(workflow.id, entityType, entityId, entityData);
@@ -703,8 +714,8 @@ exports.WorkflowService = WorkflowService = WorkflowService_1 = __decorate([
     __param(5, (0, typeorm_1.InjectRepository)(compliance_requirement_entity_1.ComplianceRequirement)),
     __param(6, (0, typeorm_1.InjectRepository)(task_entity_1.Task)),
     __param(7, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(9, (0, common_1.Optional)()),
-    __param(9, (0, bull_1.InjectQueue)('governance:policy')),
+    __param(10, (0, common_1.Optional)()),
+    __param(10, (0, bull_1.InjectQueue)('governance:policy')),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
@@ -713,6 +724,7 @@ exports.WorkflowService = WorkflowService = WorkflowService_1 = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
+        workflow_trigger_rules_service_1.WorkflowTriggerRulesService,
         notification_service_1.NotificationService, Object])
 ], WorkflowService);
 //# sourceMappingURL=workflow.service.js.map

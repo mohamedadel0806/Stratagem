@@ -99,3 +99,5 @@ export function SupplierCriticalityChart({ data, isLoading }: SupplierCriticalit
   );
 }
 
+
+

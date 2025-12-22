@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { config } from 'dotenv';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Task, TaskType, TaskPriority, TaskStatus } from '../common/entities/task.entity';

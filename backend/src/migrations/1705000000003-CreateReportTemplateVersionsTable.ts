@@ -169,3 +169,5 @@ export class CreateReportTemplateVersionsTable1705000000003
     await queryRunner.dropTable('report_template_versions');
   }
 }
+
+

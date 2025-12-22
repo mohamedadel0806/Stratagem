@@ -157,6 +157,7 @@ export function KRIBrowserDialog({ open, onOpenChange, riskId, existingKRIIds = 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
+                  data-testid="kri-search-input"
                 />
               </div>
               <select
@@ -201,12 +202,14 @@ export function KRIBrowserDialog({ open, onOpenChange, riskId, existingKRIIds = 
                           isSelected && 'bg-accent'
                         )}
                         onClick={() => handleToggleKRI(kri.id)}
+                        data-testid={`kri-item-${kri.id}`}
                       >
                         <div className="flex items-start gap-3">
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => handleToggleKRI(kri.id)}
                             onClick={(e) => e.stopPropagation()}
+                            data-testid={`kri-checkbox-${kri.id}`}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
@@ -263,10 +266,10 @@ export function KRIBrowserDialog({ open, onOpenChange, riskId, existingKRIIds = 
             <Button variant="outline" onClick={handleClose} disabled={linkProgress > 0}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleLink} 
+            <Button
+              onClick={handleLink}
               disabled={selectedKRIs.size === 0 || linkProgress > 0}
-              data-testid="risk-kri-dialog-submit-button"
+              data-testid="link-kri-submit"
             >
               {linkProgress > 0 ? (
                 <>

@@ -149,6 +149,7 @@ export function RiskAssetBrowserDialog({ open, onOpenChange, riskId, existingAss
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
+                  data-testid="asset-search-input"
                 />
               </div>
               <Select value={criticalityFilter} onValueChange={setCriticalityFilter}>
@@ -231,7 +232,7 @@ export function RiskAssetBrowserDialog({ open, onOpenChange, riskId, existingAss
             <Button
               onClick={handleLinkSelected}
               disabled={selectedAssets.size === 0 || linkMutation.isPending}
-              data-testid="risk-asset-dialog-submit-button"
+              data-testid="link-asset-submit"
             >
               {linkMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Link {selectedAssets.size > 0 ? `${selectedAssets.size} ` : ''}Asset(s)
@@ -324,11 +325,13 @@ function AssetTypeTab({ assetType, searchQuery, selectedAssets, existingAssetIds
             className={`flex items-center gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors ${
               isAlreadyLinked ? 'opacity-50' : ''
             }`}
+            data-testid={`asset-item-${assetId}`}
           >
             <Checkbox
               checked={isSelected}
               disabled={isAlreadyLinked}
               onCheckedChange={() => !isAlreadyLinked && onToggleAsset(assetId, assetType)}
+              data-testid={`asset-checkbox-${assetId}`}
             />
             <AssetIcon className="h-5 w-5 text-muted-foreground" />
             <div className="flex-1 min-w-0">
@@ -387,4 +390,6 @@ function AssetTypeTab({ assetType, searchQuery, selectedAssets, existingAssetIds
     </div>
   );
 }
+
+
 

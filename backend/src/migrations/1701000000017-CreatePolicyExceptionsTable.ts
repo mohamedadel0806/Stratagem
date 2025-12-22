@@ -242,3 +242,5 @@ export class CreatePolicyExceptionsTable1701000000017 implements MigrationInterf
     await queryRunner.query(`DROP TYPE IF EXISTS exception_status_enum;`);
   }
 }
+
+

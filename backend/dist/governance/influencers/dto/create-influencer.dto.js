@@ -70,9 +70,19 @@ __decorate([
 ], CreateInfluencerDto.prototype, "last_revision_date", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateInfluencerDto.prototype, "revision_notes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsDateString)(),
     __metadata("design:type", String)
 ], CreateInfluencerDto.prototype, "next_review_date", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], CreateInfluencerDto.prototype, "review_frequency_days", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(influencer_entity_1.InfluencerStatus),

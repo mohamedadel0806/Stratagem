@@ -3,3 +3,5 @@ import { CreateEmailDistributionListDto } from './create-email-distribution-list
 
 export class UpdateEmailDistributionListDto extends PartialType(CreateEmailDistributionListDto) {}
 
+
+

@@ -18,6 +18,8 @@ import { UpdateSOPDto } from './dto/update-sop.dto';
 import { SOPQueryDto } from './dto/sop-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Audit } from '../../common/decorators/audit.decorator';
+import { AuditAction } from '../../common/entities/audit-log.entity';
 
 @ApiTags('Governance - SOPs')
 @Controller('governance/sops')
@@ -29,6 +31,7 @@ export class SOPsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new SOP' })
   @ApiResponse({ status: 201, description: 'SOP created successfully' })
+  @Audit(AuditAction.CREATE, 'SOP')
   create(@Body() createSOPDto: CreateSOPDto, @Request() req) {
     return this.sopsService.create(createSOPDto, req.user.id);
   }
@@ -52,6 +55,7 @@ export class SOPsController {
   @ApiOperation({ summary: 'Update a SOP' })
   @ApiResponse({ status: 200, description: 'SOP updated successfully' })
   @ApiResponse({ status: 404, description: 'SOP not found' })
+  @Audit(AuditAction.UPDATE, 'SOP')
   update(@Param('id') id: string, @Body() updateSOPDto: UpdateSOPDto, @Request() req) {
     return this.sopsService.update(id, updateSOPDto, req.user.id);
   }
@@ -61,6 +65,7 @@ export class SOPsController {
   @ApiOperation({ summary: 'Delete a SOP (soft delete)' })
   @ApiResponse({ status: 204, description: 'SOP deleted successfully' })
   @ApiResponse({ status: 404, description: 'SOP not found' })
+  @Audit(AuditAction.DELETE, 'SOP')
   remove(@Param('id') id: string) {
     return this.sopsService.remove(id);
   }
@@ -69,6 +74,7 @@ export class SOPsController {
   @ApiOperation({ summary: 'Publish a SOP and optionally assign to users/roles' })
   @ApiResponse({ status: 200, description: 'SOP published successfully' })
   @ApiResponse({ status: 404, description: 'SOP not found' })
+  @Audit(AuditAction.PUBLISH, 'SOP')
   publish(
     @Param('id') id: string,
     @Body() body: { assign_to_user_ids?: string[]; assign_to_role_ids?: string[] },
@@ -96,3 +102,5 @@ export class SOPsController {
     return this.sopsService.getPublicationStatistics();
   }
 }
+
+

@@ -789,5 +789,247 @@ export class PoliciesService {
       };
     }
   }
+
+  // ==================== POLICY HIERARCHY SUPPORT (Story 2.1) ====================
+
+  /**
+   * Set or update parent policy (creates hierarchy relationship)
+   */
+  async setParentPolicy(
+    policyId: string,
+    parentPolicyId: string | null,
+    userId: string,
+    reason?: string,
+  ): Promise<Policy> {
+    const policy = await this.findOne(policyId);
+
+    // Prevent circular hierarchy
+    if (parentPolicyId && parentPolicyId === policyId) {
+      throw new Error('A policy cannot be its own parent');
+    }
+
+    // Check for circular references
+    if (parentPolicyId) {
+      const parentPolicy = await this.findOne(parentPolicyId);
+      if (!parentPolicy) {
+        throw new NotFoundException(`Parent policy with ID ${parentPolicyId} not found`);
+      }
+
+      // Verify no circular dependency
+      if (await this.isDescendantOf(parentPolicyId, policyId)) {
+        throw new Error('Setting this parent would create a circular hierarchy');
+      }
+    }
+
+    policy.parent_policy_id = parentPolicyId || null;
+    policy.updated_by = userId;
+
+    const savedPolicy = await this.policyRepository.save(policy);
+
+    // Log hierarchy change
+    this.logger.log(
+      `Policy hierarchy changed for ${policyId}: parent set to ${parentPolicyId}${reason ? ` (${reason})` : ''}`,
+    );
+
+    return savedPolicy;
+  }
+
+  /**
+   * Check if policy A is a descendant of policy B
+   * Used to prevent circular hierarchies
+   */
+  async isDescendantOf(ancestorId: string, potentialDescendantId: string): Promise<boolean> {
+    const descendants = await this.getAllDescendants(ancestorId);
+    return descendants.some((d) => d.id === potentialDescendantId);
+  }
+
+  /**
+   * Get parent policy
+   */
+  async getParent(policyId: string): Promise<Policy | null> {
+    const policy = await this.findOne(policyId);
+
+    if (!policy.parent_policy_id) {
+      return null;
+    }
+
+    return this.findOne(policy.parent_policy_id);
+  }
+
+  /**
+   * Get immediate child policies
+   */
+  async getChildren(policyId: string, includeArchived: boolean = false): Promise<Policy[]> {
+    const query = this.policyRepository
+      .createQueryBuilder('policy')
+      .where('policy.parent_policy_id = :policyId', { policyId });
+
+    if (!includeArchived) {
+      query.andWhere('policy.status != :archived', { archived: PolicyStatus.ARCHIVED });
+    }
+
+    return query.orderBy('policy.created_at', 'ASC').getMany();
+  }
+
+  /**
+   * Get all ancestor policies (from immediate parent up to root)
+   */
+  async getAncestors(policyId: string): Promise<Policy[]> {
+    const ancestors: Policy[] = [];
+    let currentPolicy = await this.findOne(policyId);
+
+    while (currentPolicy.parent_policy_id) {
+      const parent = await this.findOne(currentPolicy.parent_policy_id);
+      ancestors.unshift(parent); // Add to beginning to maintain order
+      currentPolicy = parent;
+    }
+
+    return ancestors;
+  }
+
+  /**
+   * Get all descendants (recursive - children, grandchildren, etc.)
+   */
+  async getAllDescendants(policyId: string): Promise<Policy[]> {
+    const descendants: Policy[] = [];
+
+    const children = await this.getChildren(policyId);
+
+    for (const child of children) {
+      descendants.push(child);
+      const grandChildren = await this.getAllDescendants(child.id);
+      descendants.push(...grandChildren);
+    }
+
+    return descendants;
+  }
+
+  /**
+   * Get root policy of hierarchy (policy with no parent)
+   */
+  async getRoot(policyId: string): Promise<Policy> {
+    const ancestors = await this.getAncestors(policyId);
+    return ancestors.length > 0 ? ancestors[0] : this.findOne(policyId);
+  }
+
+  /**
+   * Get complete policy hierarchy with tree structure
+   */
+  async getHierarchyTree(policyId: string, includeArchived: boolean = false): Promise<any> {
+    const policy = await this.findOne(policyId);
+    return this.buildHierarchyTree(policy, includeArchived);
+  }
+
+  /**
+   * Build hierarchy tree recursively
+   */
+  private async buildHierarchyTree(policy: Policy, includeArchived: boolean): Promise<any> {
+    const children = await this.getChildren(policy.id, includeArchived);
+
+    return {
+      id: policy.id,
+      title: policy.title,
+      policy_type: policy.policy_type,
+      status: policy.status,
+      version: policy.version,
+      parent_policy_id: policy.parent_policy_id,
+      created_at: policy.created_at,
+      children: await Promise.all(
+        children.map((child) => this.buildHierarchyTree(child, includeArchived)),
+      ),
+    };
+  }
+
+  /**
+   * Get root policies (policies with no parents)
+   */
+  async getRootPolicies(includeArchived: boolean = false): Promise<Policy[]> {
+    const query = this.policyRepository
+      .createQueryBuilder('policy')
+      .where('policy.parent_policy_id IS NULL');
+
+    if (!includeArchived) {
+      query.andWhere('policy.status != :archived', { archived: PolicyStatus.ARCHIVED });
+    }
+
+    return query.orderBy('policy.created_at', 'ASC').getMany();
+  }
+
+  /**
+   * Get complete hierarchy (all root policies with their trees)
+   */
+  async getAllHierarchies(includeArchived: boolean = false): Promise<any[]> {
+    const rootPolicies = await this.getRootPolicies(includeArchived);
+    return Promise.all(
+      rootPolicies.map((policy) => this.buildHierarchyTree(policy, includeArchived)),
+    );
+  }
+
+  /**
+   * Get hierarchy level of a policy (0 for root, 1 for children of root, etc.)
+   */
+  async getHierarchyLevel(policyId: string): Promise<number> {
+    const ancestors = await this.getAncestors(policyId);
+    return ancestors.length;
+  }
+
+  /**
+   * Get complete policy hierarchy information (ancestors, descendants, level)
+   */
+  async getCompleteHierarchy(policyId: string): Promise<any> {
+    const policy = await this.findOne(policyId);
+    const ancestors = await this.getAncestors(policyId);
+    const children = await this.getChildren(policyId);
+    const allDescendants = await this.getAllDescendants(policyId);
+    const level = ancestors.length;
+    const maxDepth = await this.getMaxDepth(policyId);
+
+    return {
+      id: policy.id,
+      title: policy.title,
+      policy_type: policy.policy_type,
+      status: policy.status,
+      version: policy.version,
+      parent_policy_id: policy.parent_policy_id,
+      level,
+      isRoot: ancestors.length === 0,
+      hasChildren: children.length > 0,
+      ancestors: ancestors.map((a) => ({
+        id: a.id,
+        title: a.title,
+        level: ancestors.indexOf(a),
+      })),
+      children: children.map((c) => ({
+        id: c.id,
+        title: c.title,
+        policy_type: c.policy_type,
+        status: c.status,
+      })),
+      descendants: allDescendants.map((d) => ({
+        id: d.id,
+        title: d.title,
+        depth: 1, // Simplified: direct descendants are depth 1
+      })),
+      descendantCount: allDescendants.length,
+      maxDepth,
+    };
+  }
+
+  /**
+   * Get maximum depth of descendants
+   */
+  async getMaxDepth(policyId: string, currentDepth: number = 0): Promise<number> {
+    const children = await this.getChildren(policyId);
+
+    if (children.length === 0) {
+      return currentDepth;
+    }
+
+    const childDepths = await Promise.all(
+      children.map((child) => this.getMaxDepth(child.id, currentDepth + 1)),
+    );
+
+    return Math.max(...childDepths, currentDepth);
+  }
 }
 

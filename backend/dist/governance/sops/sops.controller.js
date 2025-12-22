@@ -20,6 +20,8 @@ const update_sop_dto_1 = require("./dto/update-sop.dto");
 const sop_query_dto_1 = require("./dto/sop-query.dto");
 const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
 const swagger_1 = require("@nestjs/swagger");
+const audit_decorator_1 = require("../../common/decorators/audit.decorator");
+const audit_log_entity_1 = require("../../common/entities/audit-log.entity");
 let SOPsController = class SOPsController {
     constructor(sopsService) {
         this.sopsService = sopsService;
@@ -55,6 +57,7 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new SOP' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'SOP created successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.CREATE, 'SOP'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -85,6 +88,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Update a SOP' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'SOP updated successfully' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'SOP not found' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.UPDATE, 'SOP'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -98,6 +102,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Delete a SOP (soft delete)' }),
     (0, swagger_1.ApiResponse)({ status: 204, description: 'SOP deleted successfully' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'SOP not found' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.DELETE, 'SOP'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -108,6 +113,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Publish a SOP and optionally assign to users/roles' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'SOP published successfully' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'SOP not found' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.PUBLISH, 'SOP'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),

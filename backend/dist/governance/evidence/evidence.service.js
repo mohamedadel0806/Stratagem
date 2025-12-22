@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -21,6 +54,9 @@ const evidence_entity_1 = require("./entities/evidence.entity");
 const evidence_linkage_entity_1 = require("./entities/evidence-linkage.entity");
 const notification_service_1 = require("../../common/services/notification.service");
 const notification_entity_1 = require("../../common/entities/notification.entity");
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const fflate = __importStar(require("fflate"));
 let EvidenceService = EvidenceService_1 = class EvidenceService {
     constructor(evidenceRepository, evidenceLinkageRepository, notificationService) {
         this.evidenceRepository = evidenceRepository;
@@ -161,6 +197,56 @@ let EvidenceService = EvidenceService_1 = class EvidenceService {
             relations: ['evidence', 'evidence.collector'],
         });
         return linkages.map((linkage) => linkage.evidence);
+    }
+    async generateEvidencePackage(options) {
+        let evidenceItems = [];
+        if (options.evidenceIds && options.evidenceIds.length > 0) {
+            evidenceItems = await this.evidenceRepository.find({
+                where: { id: (0, typeorm_2.In)(options.evidenceIds) },
+                relations: ['linkages'],
+            });
+        }
+        else if (options.controlId) {
+            evidenceItems = await this.getLinkedEvidence(evidence_linkage_entity_1.EvidenceLinkType.CONTROL, options.controlId);
+        }
+        else if (options.assessmentId) {
+            evidenceItems = await this.getLinkedEvidence(evidence_linkage_entity_1.EvidenceLinkType.ASSESSMENT, options.assessmentId);
+        }
+        else {
+            evidenceItems = await this.evidenceRepository.find({
+                where: { status: 'approved' },
+            });
+        }
+        if (evidenceItems.length === 0) {
+            throw new common_1.NotFoundException('No evidence items found for the specified criteria');
+        }
+        const zipFiles = {};
+        const manifest = [];
+        for (const item of evidenceItems) {
+            const filePath = path.resolve(process.cwd(), item.file_path.startsWith('/') ? item.file_path.substring(1) : item.file_path);
+            if (fs.existsSync(filePath)) {
+                const fileData = fs.readFileSync(filePath);
+                const fileName = `${item.evidence_identifier}_${item.filename || 'file'}`;
+                zipFiles[fileName] = new Uint8Array(fileData);
+                manifest.push({
+                    id: item.id,
+                    identifier: item.evidence_identifier,
+                    title: item.title,
+                    type: item.evidence_type,
+                    filename: fileName,
+                    collected_at: item.collection_date,
+                    status: item.status,
+                    description: item.description,
+                });
+            }
+        }
+        zipFiles['manifest.json'] = Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8');
+        const zipped = fflate.zipSync(zipFiles);
+        const filename = `evidence_package_${new Date().toISOString().split('T')[0]}.zip`;
+        return {
+            data: Buffer.from(zipped),
+            filename,
+        };
     }
 };
 exports.EvidenceService = EvidenceService;

@@ -29,20 +29,20 @@ __decorate([
     __metadata("design:type", String)
 ], WorkflowExecution.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid' }),
+    (0, typeorm_1.Column)({ type: 'uuid', name: 'workflow_id' }),
     __metadata("design:type", String)
 ], WorkflowExecution.prototype, "workflowId", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => workflow_entity_1.Workflow),
-    (0, typeorm_1.JoinColumn)({ name: 'workflowId' }),
+    (0, typeorm_1.JoinColumn)({ name: 'workflow_id' }),
     __metadata("design:type", workflow_entity_1.Workflow)
 ], WorkflowExecution.prototype, "workflow", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 255 }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 255, name: 'entity_type' }),
     __metadata("design:type", String)
 ], WorkflowExecution.prototype, "entityType", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid' }),
+    (0, typeorm_1.Column)({ type: 'uuid', name: 'entity_id' }),
     __metadata("design:type", String)
 ], WorkflowExecution.prototype, "entityId", void 0);
 __decorate([
@@ -54,40 +54,40 @@ __decorate([
     __metadata("design:type", String)
 ], WorkflowExecution.prototype, "status", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'jsonb', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'jsonb', nullable: true, name: 'input_data' }),
     __metadata("design:type", Object)
 ], WorkflowExecution.prototype, "inputData", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'jsonb', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'jsonb', nullable: true, name: 'output_data' }),
     __metadata("design:type", Object)
 ], WorkflowExecution.prototype, "outputData", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'text', nullable: true, name: 'error_message' }),
     __metadata("design:type", String)
 ], WorkflowExecution.prototype, "errorMessage", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: true, name: 'assigned_to_id' }),
     __metadata("design:type", String)
 ], WorkflowExecution.prototype, "assignedToId", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true }),
-    (0, typeorm_1.JoinColumn)({ name: 'assignedToId' }),
+    (0, typeorm_1.JoinColumn)({ name: 'assigned_to_id' }),
     __metadata("design:type", user_entity_1.User)
 ], WorkflowExecution.prototype, "assignedTo", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true, name: 'started_at' }),
     __metadata("design:type", Date)
 ], WorkflowExecution.prototype, "startedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true, name: 'completed_at' }),
     __metadata("design:type", Date)
 ], WorkflowExecution.prototype, "completedAt", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)(),
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
 ], WorkflowExecution.prototype, "createdAt", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)(),
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
     __metadata("design:type", Date)
 ], WorkflowExecution.prototype, "updatedAt", void 0);
 exports.WorkflowExecution = WorkflowExecution = __decorate([

@@ -36,6 +36,22 @@ export default function SupplierDetailPage() {
     enabled: !!assetId,
   });
 
+  const formatDisplayValue = (value: any): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      if (value.name && value.code) return `${value.name} (${value.code})`;
+      if (value.name) return value.name;
+      if (value.firstName || value.lastName) {
+        return [value.firstName, value.lastName].filter(Boolean).join(' ');
+      }
+      if (value.email) return value.email;
+      if (value.code) return value.code;
+      if (value.id) return value.id;
+    }
+    return String(value);
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => assetsApi.deleteSupplier(id),
     onSuccess: () => {
@@ -174,7 +190,7 @@ export default function SupplierDetailPage() {
                 {supplier.businessUnit && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Business Unit</p>
-                    <p>{supplier.businessUnit}</p>
+                    <p>{formatDisplayValue(supplier.businessUnit)}</p>
                   </div>
                 )}
                 {supplier.goodsOrServicesProvided && (

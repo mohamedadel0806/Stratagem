@@ -6,6 +6,7 @@ import {
   IsArray,
   IsUUID,
   IsObject,
+  IsInt,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
@@ -57,8 +58,16 @@ export class CreateInfluencerDto {
   last_revision_date?: string;
 
   @IsOptional()
+  @IsString()
+  revision_notes?: string;
+
+  @IsOptional()
   @IsDateString()
   next_review_date?: string;
+
+  @IsOptional()
+  @IsInt()
+  review_frequency_days?: number;
 
   @IsOptional()
   @IsEnum(InfluencerStatus)
@@ -102,6 +111,8 @@ export class CreateInfluencerDto {
   @IsObject()
   custom_fields?: Record<string, any>;
 }
+
+
 
 
 

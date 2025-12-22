@@ -13,6 +13,7 @@ exports.ControlObjective = exports.ImplementationStatus = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("../../../users/entities/user.entity");
 const policy_entity_1 = require("../../policies/entities/policy.entity");
+const unified_control_entity_1 = require("../../unified-controls/entities/unified-control.entity");
 var ImplementationStatus;
 (function (ImplementationStatus) {
     ImplementationStatus["NOT_IMPLEMENTED"] = "not_implemented";
@@ -125,6 +126,15 @@ __decorate([
     (0, typeorm_1.DeleteDateColumn)({ name: 'deleted_at' }),
     __metadata("design:type", Date)
 ], ControlObjective.prototype, "deleted_at", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => unified_control_entity_1.UnifiedControl),
+    (0, typeorm_1.JoinTable)({
+        name: 'control_objective_unified_controls',
+        joinColumn: { name: 'control_objective_id', referencedColumnName: 'id' },
+        inverseJoinColumn: { name: 'unified_control_id', referencedColumnName: 'id' },
+    }),
+    __metadata("design:type", Array)
+], ControlObjective.prototype, "unified_controls", void 0);
 exports.ControlObjective = ControlObjective = __decorate([
     (0, typeorm_1.Entity)('control_objectives'),
     (0, typeorm_1.Index)(['policy_id']),

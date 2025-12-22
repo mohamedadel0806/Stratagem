@@ -71,6 +71,27 @@ const nextConfig = {
   turbopack: {
     // Turbopack-specific config can go here if needed
   },
+  // Configure webpack watchOptions to prevent continuous compilation
+  // This helps with file watcher issues on macOS
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: false,
+        ignored: [
+          '**/node_modules/**',
+          '**/.next/**',
+          '**/.git/**',
+          '**/coverage/**',
+          '**/playwright-report/**',
+          '**/test-results/**',
+          '**/*.tsbuildinfo',
+          '**/dist/**',
+          '**/build/**',
+        ],
+      };
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;

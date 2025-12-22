@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { Response } from 'express';
 import { GovernanceReportingService } from '../services/governance-reporting.service';
 import { GapAnalysisService } from '../services/gap-analysis.service';
+import { GovernanceDashboardService } from '../services/governance-dashboard.service';
 import { ReportQueryDto, ReportType, ExportFormat } from '../dto/report-query.dto';
 import { GapAnalysisQueryDto, GapAnalysisDto } from '../dto/gap-analysis.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -15,6 +16,7 @@ export class GovernanceReportingController {
   constructor(
     private readonly reportingService: GovernanceReportingService,
     private readonly gapAnalysisService: GapAnalysisService,
+    private readonly dashboardService: GovernanceDashboardService,
   ) { }
 
   @Get('export')
@@ -223,6 +225,18 @@ export class GovernanceReportingController {
   @ApiResponse({ status: 200, description: 'Gap analysis report', type: GapAnalysisDto })
   async getGapAnalysis(@Query() query: GapAnalysisQueryDto): Promise<GapAnalysisDto> {
     return this.gapAnalysisService.performGapAnalysis(query);
+  }
+
+  @Get('policy-compliance/stats')
+  @ApiOperation({ summary: 'Get policy compliance statistics' })
+  async getPolicyComplianceStats() {
+    return this.reportingService.getPolicyComplianceStats();
+  }
+
+  @Get('executive/summary')
+  @ApiOperation({ summary: 'Get high-level executive summary across all modules' })
+  async getExecutiveSummary() {
+    return this.dashboardService.getDashboard();
   }
 }
 

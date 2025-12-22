@@ -11,12 +11,15 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const schedule_1 = require("@nestjs/schedule");
 const workflow_controller_1 = require("./controllers/workflow.controller");
+const workflow_trigger_rules_controller_1 = require("./controllers/workflow-trigger-rules.controller");
 const workflow_service_1 = require("./services/workflow.service");
 const workflow_templates_service_1 = require("./services/workflow-templates.service");
+const workflow_trigger_rules_service_1 = require("./services/workflow-trigger-rules.service");
 const deadline_workflow_scheduler_1 = require("./schedulers/deadline-workflow.scheduler");
 const workflow_entity_1 = require("./entities/workflow.entity");
 const workflow_execution_entity_1 = require("./entities/workflow-execution.entity");
 const workflow_approval_entity_1 = require("./entities/workflow-approval.entity");
+const workflow_trigger_rule_entity_1 = require("./entities/workflow-trigger-rule.entity");
 const policy_entity_1 = require("../policy/entities/policy.entity");
 const risk_entity_1 = require("../risk/entities/risk.entity");
 const compliance_requirement_entity_1 = require("../common/entities/compliance-requirement.entity");
@@ -35,6 +38,7 @@ exports.WorkflowModule = WorkflowModule = __decorate([
                 workflow_entity_1.Workflow,
                 workflow_execution_entity_1.WorkflowExecution,
                 workflow_approval_entity_1.WorkflowApproval,
+                workflow_trigger_rule_entity_1.WorkflowTriggerRule,
                 policy_entity_1.Policy,
                 risk_entity_1.Risk,
                 compliance_requirement_entity_1.ComplianceRequirement,
@@ -43,9 +47,9 @@ exports.WorkflowModule = WorkflowModule = __decorate([
                 user_entity_1.User,
             ]),
         ],
-        controllers: [workflow_controller_1.WorkflowController],
-        providers: [workflow_service_1.WorkflowService, workflow_templates_service_1.WorkflowTemplatesService, deadline_workflow_scheduler_1.DeadlineWorkflowScheduler, notification_service_1.NotificationService],
-        exports: [workflow_service_1.WorkflowService, workflow_templates_service_1.WorkflowTemplatesService],
+        controllers: [workflow_controller_1.WorkflowController, workflow_trigger_rules_controller_1.WorkflowTriggerRulesController],
+        providers: [workflow_service_1.WorkflowService, workflow_templates_service_1.WorkflowTemplatesService, workflow_trigger_rules_service_1.WorkflowTriggerRulesService, deadline_workflow_scheduler_1.DeadlineWorkflowScheduler, notification_service_1.NotificationService],
+        exports: [workflow_service_1.WorkflowService, workflow_templates_service_1.WorkflowTemplatesService, workflow_trigger_rules_service_1.WorkflowTriggerRulesService],
     })
 ], WorkflowModule);
 //# sourceMappingURL=workflow.module.js.map

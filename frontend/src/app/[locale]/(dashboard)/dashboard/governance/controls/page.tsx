@@ -21,6 +21,8 @@ import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UnifiedControlForm } from '@/components/governance/unified-control-form';
 import { BulkAssetControlAssignment } from '@/components/governance/bulk-asset-control-assignment';
+import { DomainSelector } from '@/components/governance/domain-selector';
+import { ControlDomain } from '@/lib/api/governance';
 
 const controlTypeLabels: Record<ControlType, string> = {
   [ControlType.PREVENTIVE]: 'Preventive',
@@ -63,6 +65,24 @@ export default function UnifiedControlsPage() {
     queryKey: ['unified-controls', filters],
     queryFn: () => governanceApi.getUnifiedControls(filters),
   });
+
+  const { data: hierarchy = [] } = useQuery({
+    queryKey: ['domain-hierarchy'],
+    queryFn: () => governanceApi.getDomainHierarchy(),
+  });
+
+  const flattenDomains = (domains: ControlDomain[]): ControlDomain[] => {
+    const result: ControlDomain[] = [];
+    for (const d of domains) {
+      result.push(d);
+      if (d.children && d.children.length > 0) {
+        result.push(...flattenDomains(d.children));
+      }
+    }
+    return result;
+  };
+
+  const allDomains = flattenDomains(hierarchy);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => governanceApi.deleteUnifiedControl(id),
@@ -175,8 +195,16 @@ export default function UnifiedControlsPage() {
                 {
                   key: 'domain',
                   label: 'Domain',
-                  type: 'text',
-                  placeholder: 'e.g., IAM, Network Security',
+                  type: 'select',
+                  options: [
+                    { value: '', label: 'All Domains' },
+                    ...allDomains
+                      .filter((d) => d.is_active)
+                      .map((d) => ({
+                        value: d.name,
+                        label: d.name + (d.code ? ` (${d.code})` : ''),
+                      })),
+                  ],
                 },
               ]}
             />

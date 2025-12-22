@@ -20,6 +20,7 @@ var ReportType;
     ReportType["ASSESSMENT"] = "assessment";
     ReportType["FINDINGS"] = "findings";
     ReportType["CONTROL_STATUS"] = "control_status";
+    ReportType["EXECUTIVE_GOVERNANCE"] = "executive_governance";
 })(ReportType || (exports.ReportType = ReportType = {}));
 var ExportFormat;
 (function (ExportFormat) {

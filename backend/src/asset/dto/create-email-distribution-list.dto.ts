@@ -22,3 +22,5 @@ export class CreateEmailDistributionListDto {
   isActive?: boolean;
 }
 
+
+

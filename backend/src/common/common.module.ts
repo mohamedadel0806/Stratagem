@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { Task } from './entities/task.entity';
 import { ComplianceFramework } from './entities/compliance-framework.entity';
@@ -20,6 +21,7 @@ import { TasksService } from './services/tasks.service';
 import { ComplianceService } from './services/compliance.service';
 import { NotificationService } from './services/notification.service';
 import { AuditLogService } from './services/audit-log.service';
+import { AIService } from './services/ai.service';
 import { FileService } from './services/file.service';
 import { ComplianceAssessmentService } from './services/compliance-assessment.service';
 import { ComplianceAssessmentScheduler } from './schedulers/compliance-assessment.scheduler';
@@ -32,6 +34,7 @@ import { FileUploadController } from './controllers/file-upload.controller';
 import { ComplianceAssessmentController } from './controllers/compliance-assessment.controller';
 import { BusinessUnitController } from './controllers/business-unit.controller';
 import { BusinessUnitService } from './services/business-unit.service';
+import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { AssetModule } from '../asset/asset.module';
 
@@ -72,12 +75,17 @@ import { AssetModule } from '../asset/asset.module';
     ComplianceService,
     NotificationService,
     AuditLogService,
+    AIService,
     FileService,
     ComplianceAssessmentService,
     ComplianceAssessmentScheduler,
     InformationAssetClassificationScheduler,
     BusinessUnitService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditLogInterceptor,
+    },
   ],
-  exports: [TasksService, ComplianceService, NotificationService, AuditLogService, FileService, ComplianceAssessmentService, BusinessUnitService],
+  exports: [TasksService, ComplianceService, NotificationService, AuditLogService, AIService, FileService, ComplianceAssessmentService, BusinessUnitService],
 })
 export class CommonModule {}

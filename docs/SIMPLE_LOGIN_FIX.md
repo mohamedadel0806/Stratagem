@@ -61,3 +61,5 @@ docker-compose exec postgres psql -U postgres -d grc_platform -c "SELECT email F
 
 
 
+
+

@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2, FileText, Calendar, Download } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, FileText, Calendar, Download, Archive } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,7 @@ import { DataTableFilters } from '@/components/filters/data-table-filters';
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EvidenceForm } from '@/components/governance/evidence-form';
+import { EvidencePackageDialog } from '@/components/governance/evidence-package-dialog';
 
 const evidenceTypeLabels: Record<EvidenceType, string> = {
   [EvidenceType.POLICY_DOCUMENT]: 'Policy Document',
@@ -49,6 +50,7 @@ export default function EvidencePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isPackageOpen, setIsPackageOpen] = useState(false);
   const [editingEvidence, setEditingEvidence] = useState<Evidence | null>(null);
   const [filters, setFilters] = useState<EvidenceQueryParams>({
     page: 1,
@@ -123,10 +125,16 @@ export default function EvidencePage() {
           <h1 className="text-3xl font-bold">Evidence</h1>
           <p className="text-muted-foreground">Manage evidence repository for controls and assessments</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Evidence
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsPackageOpen(true)}>
+            <Archive className="mr-2 h-4 w-4" />
+            Generate Package
+          </Button>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Evidence
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -282,6 +290,8 @@ export default function EvidencePage() {
               <Pagination
                 currentPage={data.meta.page}
                 totalPages={data.meta.totalPages}
+                totalItems={data.meta.total}
+                itemsPerPage={data.meta.limit}
                 onPageChange={(page) => setFilters({ ...filters, page })}
               />
             )}
@@ -312,6 +322,12 @@ export default function EvidencePage() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Package Dialog */}
+      <EvidencePackageDialog
+        open={isPackageOpen}
+        onOpenChange={setIsPackageOpen}
+      />
     </div>
   );
 }

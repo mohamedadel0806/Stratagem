@@ -259,7 +259,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                     <FormLabel>Strategy *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="treatment-form-strategy-dropdown">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -284,7 +284,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                     <FormLabel>Status *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="treatment-form-status-dropdown">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -310,7 +310,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                 <FormItem>
                   <FormLabel>Title *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Treatment plan title" {...field} />
+                    <Input placeholder="Treatment plan title" {...field} data-testid="treatment-form-title-input" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -325,7 +325,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Describe the treatment plan..." rows={3} {...field} />
+                    <Textarea placeholder="Describe the treatment plan..." rows={3} {...field} data-testid="treatment-form-description-textarea" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -342,7 +342,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                     <FormLabel>Treatment Owner</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="treatment-form-owner-dropdown">
                           <SelectValue placeholder="Select owner (optional)" />
                         </SelectTrigger>
                       </FormControl>
@@ -369,7 +369,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                     <FormLabel>Priority *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="treatment-form-priority-dropdown">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -395,7 +395,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                   <FormItem>
                     <FormLabel>Start Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" {...field} data-testid="treatment-form-start-date-input" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -410,7 +410,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                   <FormItem>
                     <FormLabel>Target Completion Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" {...field} data-testid="treatment-form-end-date-input" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -426,7 +426,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
                 <FormItem>
                   <FormLabel>Estimated Cost</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value || ""} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value || ""} data-testid="treatment-form-cost-input" />
                   </FormControl>
                   <FormDescription>Estimated cost for implementing this treatment</FormDescription>
                   <FormMessage />
@@ -529,7 +529,7 @@ export function TreatmentForm({ open, onOpenChange, treatmentId, riskId, initial
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading} data-testid="treatment-form-cancel-button">
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading} data-testid={isEditMode ? "treatment-form-submit-update" : "treatment-form-submit-create"}>

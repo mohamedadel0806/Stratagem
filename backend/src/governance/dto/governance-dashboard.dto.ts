@@ -151,7 +151,7 @@ export class UpcomingReviewDto {
   id: string;
 
   @ApiProperty()
-  type: 'policy' | 'influencer' | 'control';
+  type: 'policy' | 'influencer' | 'control' | 'sop' | 'assessment';
 
   @ApiProperty()
   name: string;
@@ -283,6 +283,8 @@ export class GovernanceDashboardDto {
   @ApiProperty({ type: [RecentActivityDto] })
   recentActivity: RecentActivityDto[];
 }
+
+
 
 
 

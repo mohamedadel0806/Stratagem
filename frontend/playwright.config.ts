@@ -1,72 +1,39 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
+ * Clean Playwright configuration for E2E tests
+ * Single source of truth for test configuration
  */
-// require('dotenv').config();
 
-/**
- * See https://playwright.dev/docs/test-configuration.
- */
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: process.env.CI ? true : false, // Don't run in parallel locally
+  fullyParallel: false, // Run sequentially to avoid conflicts
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 1, // Always use 1 worker for better session management
-  reporter: [
-    ['html'],
-    process.env.CI ? ['github'] : ['list'],
-  ],
+  workers: 1, // Single worker for debugging
+  reporter: [['list']], // Simple reporter
+  timeout: 30000, // 30 second test timeout
+  expect: {
+    timeout: 8000, // 8 second assertion timeout
+  },
   use: {
     baseURL: process.env.FRONTEND_URL || 'http://localhost:3000',
-    trace: 'on-first-retry',
+    trace: 'off', // Disable traces for speed
     screenshot: 'only-on-failure',
-    video: 'on',
+    video: 'off', // Disable video for speed
+    actionTimeout: 10000, // 10 second action timeout
+    navigationTimeout: 20000, // 20 second navigation timeout
   },
-
-  /* Configure projects for major browsers */
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true, // Run headless for CI
+      },
     },
-
-    // Uncomment to test in other browsers
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
   ],
-
-  /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run dev',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: true, // Reuse existing server if available
-  //   timeout: 120 * 1000,
-  //   stdout: 'ignore',
-  //   stderr: 'pipe',
-  // },
+  // Disable automatic webServer start for testing
+  webServer: undefined,
 });
-
-
-
-
 

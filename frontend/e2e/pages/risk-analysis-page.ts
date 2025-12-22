@@ -27,15 +27,12 @@ export class RiskAnalysisPage {
       this.WAIT_LARGE = waitTimes.large || this.WAIT_LARGE;
     }
 
-    // Tab locators - using getByTestId (recommended Playwright method)
-    this.compareTab = this.page.getByTestId('risk-analysis-tab-compare')
-      .or(this.page.getByRole('tab', { name: /Compare Risks/i }).first());
-    
-    this.whatIfTab = this.page.getByTestId('risk-analysis-tab-whatif')
-      .or(this.page.getByRole('tab', { name: /What-If Analysis/i }).first());
-    
-    this.reportsTab = this.page.getByTestId('risk-analysis-tab-reports')
-      .or(this.page.getByRole('tab', { name: /Custom Reports/i }).first());
+    // Tab locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.compareTab = this.page.getByTestId('risk-analysis-tab-compare');
+
+    this.whatIfTab = this.page.getByTestId('risk-analysis-tab-whatif');
+
+    this.reportsTab = this.page.getByTestId('risk-analysis-tab-reports');
   }
 
   /**
@@ -84,4 +81,6 @@ export class RiskAnalysisPage {
     await this.page.waitForTimeout(this.WAIT_MEDIUM);
   }
 }
+
+
 

@@ -102,3 +102,5 @@ export class CreateRiskFindingLinks1702000000006 implements MigrationInterface {
   }
 }
 
+
+

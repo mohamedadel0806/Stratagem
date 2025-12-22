@@ -109,4 +109,42 @@ export declare class PoliciesController {
     }, req: any): Promise<{
         data: import("./entities/policy-review.entity").PolicyReview;
     }>;
+    getAllHierarchies(includeArchived?: string): Promise<{
+        data: any[];
+    }>;
+    getRootPolicies(includeArchived?: string): Promise<{
+        data: import("./entities/policy.entity").Policy[];
+    }>;
+    getCompleteHierarchy(id: string): Promise<{
+        data: any;
+    }>;
+    getHierarchyTree(id: string, includeArchived?: string): Promise<{
+        data: any;
+    }>;
+    getParent(id: string): Promise<{
+        data: import("./entities/policy.entity").Policy;
+    }>;
+    getChildren(id: string, includeArchived?: string): Promise<{
+        data: import("./entities/policy.entity").Policy[];
+    }>;
+    getAncestors(id: string): Promise<{
+        data: import("./entities/policy.entity").Policy[];
+    }>;
+    getDescendants(id: string): Promise<{
+        data: import("./entities/policy.entity").Policy[];
+    }>;
+    getHierarchyLevel(id: string): Promise<{
+        data: {
+            level: number;
+        };
+    }>;
+    getRoot(id: string): Promise<{
+        data: import("./entities/policy.entity").Policy;
+    }>;
+    setParentPolicy(id: string, body: {
+        parent_policy_id?: string | null;
+        reason?: string;
+    }, req: any): Promise<{
+        data: import("./entities/policy.entity").Policy;
+    }>;
 }

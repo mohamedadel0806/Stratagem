@@ -4,16 +4,16 @@ import { i18n } from '../next-i18next.config'
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  
+
   // Skip locale redirect for static files and API routes
-  const isStaticFile = pathname.startsWith('/uploads/') || 
-                       pathname.startsWith('/downloads/') ||
-                       pathname.match(/\.(ico|png|jpg|jpeg|svg|gif|webp|pdf|txt|csv|doc|docx|xls|xlsx)$/i)
-  
+  const isStaticFile = pathname.startsWith('/uploads/') ||
+    pathname.startsWith('/downloads/') ||
+    pathname.match(/\.(ico|png|jpg|jpeg|svg|gif|webp|pdf|txt|csv|doc|docx|xls|xlsx)$/i)
+
   if (isStaticFile) {
     return NextResponse.next()
   }
-  
+
   const pathnameIsMissingLocale = i18n.locales.every(
     (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
   )
@@ -25,7 +25,7 @@ export function middleware(request: NextRequest) {
       new URL(`/${locale}${pathname}`, request.url)
     )
   }
-  
+
   // Return next() when locale is already present to allow request to proceed
   return NextResponse.next()
 }
@@ -33,6 +33,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Skip all internal paths (_next) and static files
-    '/((?!api|_next/static|_next/image|favicon.ico|uploads|downloads).*)',
+    '/((?!api|_next|favicon.ico|uploads|downloads).*)',
   ],
 }

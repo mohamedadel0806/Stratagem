@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommonModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const core_1 = require("@nestjs/core");
 const schedule_1 = require("@nestjs/schedule");
 const task_entity_1 = require("./entities/task.entity");
 const compliance_framework_entity_1 = require("./entities/compliance-framework.entity");
@@ -29,6 +30,7 @@ const tasks_service_1 = require("./services/tasks.service");
 const compliance_service_1 = require("./services/compliance.service");
 const notification_service_1 = require("./services/notification.service");
 const audit_log_service_1 = require("./services/audit-log.service");
+const ai_service_1 = require("./services/ai.service");
 const file_service_1 = require("./services/file.service");
 const compliance_assessment_service_1 = require("./services/compliance-assessment.service");
 const compliance_assessment_scheduler_1 = require("./schedulers/compliance-assessment.scheduler");
@@ -41,6 +43,7 @@ const file_upload_controller_1 = require("./controllers/file-upload.controller")
 const compliance_assessment_controller_1 = require("./controllers/compliance-assessment.controller");
 const business_unit_controller_1 = require("./controllers/business-unit.controller");
 const business_unit_service_1 = require("./services/business-unit.service");
+const audit_log_interceptor_1 = require("./interceptors/audit-log.interceptor");
 const workflow_module_1 = require("../workflow/workflow.module");
 const asset_module_1 = require("../asset/asset.module");
 let CommonModule = class CommonModule {
@@ -84,13 +87,18 @@ exports.CommonModule = CommonModule = __decorate([
             compliance_service_1.ComplianceService,
             notification_service_1.NotificationService,
             audit_log_service_1.AuditLogService,
+            ai_service_1.AIService,
             file_service_1.FileService,
             compliance_assessment_service_1.ComplianceAssessmentService,
             compliance_assessment_scheduler_1.ComplianceAssessmentScheduler,
             information_asset_classification_scheduler_1.InformationAssetClassificationScheduler,
             business_unit_service_1.BusinessUnitService,
+            {
+                provide: core_1.APP_INTERCEPTOR,
+                useClass: audit_log_interceptor_1.AuditLogInterceptor,
+            },
         ],
-        exports: [tasks_service_1.TasksService, compliance_service_1.ComplianceService, notification_service_1.NotificationService, audit_log_service_1.AuditLogService, file_service_1.FileService, compliance_assessment_service_1.ComplianceAssessmentService, business_unit_service_1.BusinessUnitService],
+        exports: [tasks_service_1.TasksService, compliance_service_1.ComplianceService, notification_service_1.NotificationService, audit_log_service_1.AuditLogService, ai_service_1.AIService, file_service_1.FileService, compliance_assessment_service_1.ComplianceAssessmentService, business_unit_service_1.BusinessUnitService],
     })
 ], CommonModule);
 //# sourceMappingURL=common.module.js.map

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { governanceApi, UnifiedControl } from '@/lib/api/governance';
+import { governanceApi, UnifiedControl, MappingCoverage } from '@/lib/api/governance';
 import { complianceApi, Framework, FrameworkRequirement } from '@/lib/api/compliance';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,12 +25,6 @@ import {
 
 interface ControlFrameworkMappingProps {
   controlId: string;
-}
-
-export enum MappingCoverage {
-  FULL = 'full',
-  PARTIAL = 'partial',
-  NOT_APPLICABLE = 'not_applicable',
 }
 
 interface FrameworkMapping {
@@ -405,3 +399,5 @@ export function ControlFrameworkMapping({ controlId }: ControlFrameworkMappingPr
     </div>
   );
 }
+
+

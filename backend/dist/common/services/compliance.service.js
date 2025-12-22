@@ -30,7 +30,16 @@ let ComplianceService = class ComplianceService {
         const query = this.frameworksRepository
             .createQueryBuilder('framework')
             .leftJoinAndSelect('framework.requirements', 'requirement')
-            .orderBy('framework.name', 'ASC');
+            .orderBy('framework.name', 'ASC')
+            .select([
+            'framework.id',
+            'framework.name',
+            'framework.framework_code',
+            'framework.version',
+            'framework.status',
+            'requirement.id',
+            'requirement.status',
+        ]);
         if (organizationId) {
             query.where('framework.organizationId = :organizationId', { organizationId });
         }
@@ -202,8 +211,8 @@ let ComplianceService = class ComplianceService {
             code: framework.code,
             description: framework.description,
             region: framework.region,
-            createdAt: framework.createdAt.toISOString(),
-            updatedAt: framework.updatedAt.toISOString(),
+            createdAt: framework.created_at.toISOString(),
+            updatedAt: framework.updated_at.toISOString(),
         };
     }
     async bulkCreateRequirements(frameworkId, requirements, clearExisting = true) {

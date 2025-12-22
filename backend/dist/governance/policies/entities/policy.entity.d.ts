@@ -36,6 +36,9 @@ export declare class Policy {
     linked_influencers: string[];
     supersedes_policy_id: string;
     supersedes_policy: Policy;
+    parent_policy_id: string;
+    parent_policy: Policy;
+    child_policies: Policy[];
     attachments: Array<{
         filename: string;
         path: string;

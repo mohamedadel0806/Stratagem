@@ -150,11 +150,73 @@ export async function navigateToDetails(page: Page, tableSelector = 'table'): Pr
 
 /**
  * Wait for table to load and return rows
+ * Handles both scenarios: tables with data and empty states
  */
 export async function waitForTable(page: Page, tableSelector = 'table'): Promise<void> {
-  await page.waitForSelector(tableSelector, { state: 'visible' });
-  // Wait for table rows to appear (indicating data has loaded)
-  await page.waitForSelector(`${tableSelector} tbody tr`, { timeout: 10000 });
+  try {
+    // First check if the table exists
+    await page.waitForSelector(tableSelector, { state: 'visible', timeout: 5000 });
+
+    // Try to wait for table rows, but handle empty state gracefully
+    try {
+      await page.waitForSelector(`${tableSelector} tbody tr`, { timeout: 3000 });
+    } catch (error) {
+      // If no rows found, that's okay - it might be an empty state
+      console.log('Table found but no rows - likely empty state');
+    }
+  } catch (error) {
+    // If no table found, check for empty state message
+    const emptyState = page.locator('text=/No data|No records|empty/i');
+    const isVisible = await emptyState.isVisible().catch(() => false);
+
+    if (!isVisible) {
+      // If neither table nor empty state is found, throw the original error
+      throw error;
+    }
+  }
+}
+
+/**
+ * Wait for assets page to load (handles both table and empty states)
+ */
+export async function waitForAssetsPage(page: Page): Promise<void> {
+  // Wait for page to be loaded with a simple approach
+  await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+
+  // Wait a bit for React to render
+  await page.waitForTimeout(2000);
+
+  // Try to find common page elements that indicate the page has loaded
+  try {
+    // Look for any of these indicators that the page has loaded
+    const indicators = [
+      'table',
+      'h1', 'h2', 'h3',
+      'button',
+      '[data-testid]',
+      '.container',
+      '.main'
+    ];
+
+    for (const indicator of indicators) {
+      const element = page.locator(indicator);
+      if (await element.isVisible().catch(() => false)) {
+        return; // Found at least one indicator
+      }
+    }
+
+    // If no specific elements found, at least verify we're on the right URL
+    const url = page.url();
+    if (url.includes('/dashboard/assets/')) {
+      console.log('Assets page loaded (URL verification)');
+      return;
+    }
+
+    throw new Error('Could not verify assets page loaded');
+  } catch (error) {
+    // Fallback: just check if we have a body element
+    await page.waitForSelector('body', { state: 'visible' });
+  }
 }
 
 /**

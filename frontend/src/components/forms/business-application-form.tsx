@@ -22,6 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FormValidationSummary, extractServerErrors } from './form-validation-summary';
 
 const businessApplicationSchema = z.object({
   applicationIdentifier: z.string().optional(),
@@ -63,8 +64,29 @@ interface BusinessApplicationFormProps {
 export function BusinessApplicationForm({ application, onSuccess, onCancel }: BusinessApplicationFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [serverErrors, setServerErrors] = useState<string[]>([]);
+
+  // Helper to format date for HTML date input (YYYY-MM-DD)
+  const formatDateForInput = (date: any): string => {
+    if (!date) return '';
+    if (typeof date === 'string') {
+      // If it's already in YYYY-MM-DD format, return as is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+      // Otherwise try to parse and format
+      const parsed = new Date(date);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0];
+      }
+      return '';
+    }
+    if (date instanceof Date) {
+      return date.toISOString().split('T')[0];
+    }
+    return '';
+  };
 
   // Normalize application data to ensure IDs are strings, not objects
+  // Also map API field names to form field names
   const normalizedApplication = useMemo(() => {
     if (!application) return undefined;
     
@@ -78,9 +100,34 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
       return String(value || '');
     };
     
+    // Map API response fields to form fields
+    // API returns: versionNumber, vendorName, vendorContact (object), accessUrl, businessPurpose
+    // Form expects: version, vendor, vendorContact (string), vendorEmail, vendorPhone, url, description
+    const vendorContact = application.vendorContact;
+    const vendorContactName = typeof vendorContact === 'object' && vendorContact !== null 
+      ? vendorContact.name || '' 
+      : (typeof vendorContact === 'string' ? vendorContact : '');
+    const vendorEmail = typeof vendorContact === 'object' && vendorContact !== null 
+      ? vendorContact.email || '' 
+      : '';
+    const vendorPhone = typeof vendorContact === 'object' && vendorContact !== null 
+      ? vendorContact.phone || '' 
+      : '';
+    
     // Extract IDs from nested objects if they exist
     const normalized = {
       ...application,
+      // Map API field names to form field names
+      applicationName: application.applicationName || '',
+      version: application.versionNumber || application.version || '',
+      vendor: application.vendorName || application.vendor || '',
+      vendorContact: vendorContactName,
+      vendorEmail: application.vendorEmail || vendorEmail,
+      vendorPhone: application.vendorPhone || vendorPhone,
+      url: application.accessUrl || application.url || '',
+      description: application.businessPurpose || application.description || '',
+      deploymentDate: formatDateForInput(application.deploymentDate),
+      lastUpdateDate: formatDateForInput(application.lastUpdateDate),
       ownerId: application.ownerId ? getStringId(application.ownerId) : (application.owner?.id || ''),
       businessUnit: application.businessUnit ? getStringId(application.businessUnit) : (application.businessUnitId || (application.businessUnit?.id || '')),
     };
@@ -124,7 +171,7 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
   const form = useForm<BusinessApplicationFormValues>({
     resolver: zodResolver(businessApplicationSchema),
     defaultValues: {
-      applicationIdentifier: normalizedApplication?.applicationIdentifier || '',
+      applicationIdentifier: normalizedApplication?.applicationIdentifier || normalizedApplication?.uniqueIdentifier || '',
       applicationName: normalizedApplication?.applicationName || '',
       description: normalizedApplication?.description || '',
       applicationType: normalizedApplication?.applicationType || 'other',
@@ -139,7 +186,7 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
       department: normalizedApplication?.department || '',
       status: normalizedApplication?.status || 'active',
       criticalityLevel: normalizedApplication?.criticalityLevel || 'medium',
-      dataTypesProcessed: normalizedApplication?.dataTypesProcessed || [],
+      dataTypesProcessed: normalizedApplication?.dataTypesProcessed || normalizedApplication?.dataProcessed || [],
       processesPII: normalizedApplication?.processesPII || false,
       processesPHI: normalizedApplication?.processesPHI || false,
       processesFinancialData: normalizedApplication?.processesFinancialData || false,
@@ -152,6 +199,40 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
       notes: normalizedApplication?.notes || '',
     },
   });
+
+  // Reset form when application data changes (for edit mode)
+  useEffect(() => {
+    if (normalizedApplication) {
+      form.reset({
+        applicationIdentifier: normalizedApplication.applicationIdentifier || normalizedApplication.uniqueIdentifier || '',
+        applicationName: normalizedApplication.applicationName || '',
+        description: normalizedApplication.description || '',
+        applicationType: normalizedApplication.applicationType || 'other',
+        version: normalizedApplication.version || '',
+        patchLevel: normalizedApplication.patchLevel || '',
+        vendor: normalizedApplication.vendor || '',
+        vendorContact: normalizedApplication.vendorContact || '',
+        vendorEmail: normalizedApplication.vendorEmail || '',
+        vendorPhone: normalizedApplication.vendorPhone || '',
+        ownerId: normalizedApplication.ownerId || '',
+        businessUnit: normalizedApplication.businessUnit || '',
+        department: normalizedApplication.department || '',
+        status: normalizedApplication.status || 'active',
+        criticalityLevel: normalizedApplication.criticalityLevel || 'medium',
+        dataTypesProcessed: normalizedApplication.dataTypesProcessed || normalizedApplication.dataProcessed || [],
+        processesPII: normalizedApplication.processesPII || false,
+        processesPHI: normalizedApplication.processesPHI || false,
+        processesFinancialData: normalizedApplication.processesFinancialData || false,
+        hostingLocation: normalizedApplication.hostingLocation || '',
+        technologyStack: normalizedApplication.technologyStack || '',
+        url: normalizedApplication.url || '',
+        complianceRequirements: normalizedApplication.complianceRequirements || [],
+        deploymentDate: normalizedApplication.deploymentDate || '',
+        lastUpdateDate: normalizedApplication.lastUpdateDate || '',
+        notes: normalizedApplication.notes || '',
+      });
+    }
+  }, [normalizedApplication, form]);
 
   // CRITICAL: Ensure all ID fields are strings IMMEDIATELY on mount and on every render
   // This prevents React from trying to render objects as children
@@ -202,14 +283,19 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
   const createMutation = useMutation({
     mutationFn: (data: BusinessApplicationFormValues) => assetsApi.createBusinessApplication(data),
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['business-applications'] });
       toast({ title: 'Success', description: 'Application created successfully' });
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error?.message || 'Failed to create application';
+      setServerErrors(extractServerErrors(error, errorMessage));
+      
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to create application',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
@@ -221,26 +307,48 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
       return assetsApi.updateBusinessApplication(application.id, data);
     },
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['business-applications'] });
       queryClient.invalidateQueries({ queryKey: ['business-application', application?.id] });
       toast({ title: 'Success', description: 'Application updated successfully' });
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error?.message || 'Failed to update application';
+      
+      // Collect server errors for display
+      const errors: string[] = [];
+      if (error?.response?.data?.message) {
+        errors.push(error.response.data.message);
+      }
+      if (error?.response?.data?.details?.errors) {
+        errors.push(...(Array.isArray(error.response.data.details.errors) 
+          ? error.response.data.details.errors 
+          : [error.response.data.details.errors]));
+      }
+      setServerErrors(errors.length > 0 ? errors : [errorMessage]);
+      
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to update application',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
   });
 
   const onSubmit = (values: BusinessApplicationFormValues) => {
-    // Clean up empty strings for UUID fields
+    // Clear previous server errors
+    setServerErrors([]);
+    
+    // Clean up empty strings for UUID fields - keep empty strings so API can handle them (send null to clear)
+    // Only convert to undefined if the field wasn't touched/changed
     const cleanedData: BusinessApplicationFormValues = {
       ...values,
-      ownerId: values.ownerId || undefined,
-      businessUnit: values.businessUnit || undefined,
+      // Keep empty strings as-is so the API can send null to clear the field
+      // Only set to undefined if it's truly not provided
+      ownerId: values.ownerId === '' ? '' : (values.ownerId || undefined),
+      businessUnit: values.businessUnit === '' ? '' : (values.businessUnit || undefined),
     };
 
     if (application) {
@@ -253,6 +361,10 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormValidationSummary
+          formErrors={form.formState.errors}
+          serverErrors={serverErrors}
+        />
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
@@ -593,6 +705,11 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
                     <FormLabel>Owner</FormLabel>
                     <Select
                       onValueChange={(value) => {
+                        // Handle special "clear" value
+                        if (value === '__clear__') {
+                          field.onChange('');
+                          return;
+                        }
                         // Always set as string
                         const stringVal = typeof value === 'string' ? value : String(value || '');
                         field.onChange(stringVal);
@@ -611,7 +728,7 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
                           });
                         }
                       }}
-                      value={String(field.value || '')}
+                      value={field.value && field.value !== '' ? String(field.value) : undefined}
                       disabled={isLoadingUsers}
                     >
                       <FormControl>
@@ -620,6 +737,7 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="__clear__">None (Clear Owner)</SelectItem>
                         {users.length === 0 && !isLoadingUsers ? (
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">No users available</div>
                         ) : (
@@ -645,11 +763,16 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
                     <FormLabel>Business Unit</FormLabel>
                     <Select
                       onValueChange={(value) => {
+                        // Handle special "clear" value
+                        if (value === '__clear__') {
+                          field.onChange('');
+                          return;
+                        }
                         // Always set as string
                         const stringVal = typeof value === 'string' ? value : String(value || '');
                         field.onChange(stringVal);
                       }}
-                      value={String(field.value || '')}
+                      value={field.value && field.value !== '' ? String(field.value) : undefined}
                       disabled={isLoadingBusinessUnits}
                     >
                       <FormControl>
@@ -658,6 +781,7 @@ export function BusinessApplicationForm({ application, onSuccess, onCancel }: Bu
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="__clear__">None (Clear Business Unit)</SelectItem>
                         {businessUnits.length === 0 && !isLoadingBusinessUnits ? (
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">No business units available</div>
                         ) : (

@@ -23,8 +23,9 @@ const assessment_entity_1 = require("../assessments/entities/assessment.entity")
 const finding_entity_1 = require("../findings/entities/finding.entity");
 const evidence_entity_1 = require("../evidence/entities/evidence.entity");
 const control_asset_mapping_entity_1 = require("../unified-controls/entities/control-asset-mapping.entity");
+const sop_entity_1 = require("../sops/entities/sop.entity");
 let GovernanceDashboardService = class GovernanceDashboardService {
-    constructor(influencerRepository, policyRepository, unifiedControlRepository, assessmentRepository, findingRepository, evidenceRepository, controlAssetMappingRepository) {
+    constructor(influencerRepository, policyRepository, unifiedControlRepository, assessmentRepository, findingRepository, evidenceRepository, controlAssetMappingRepository, sopRepository) {
         this.influencerRepository = influencerRepository;
         this.policyRepository = policyRepository;
         this.unifiedControlRepository = unifiedControlRepository;
@@ -32,6 +33,7 @@ let GovernanceDashboardService = class GovernanceDashboardService {
         this.findingRepository = findingRepository;
         this.evidenceRepository = evidenceRepository;
         this.controlAssetMappingRepository = controlAssetMappingRepository;
+        this.sopRepository = sopRepository;
     }
     async getDashboard(startDate, endDate) {
         const [summary, controlStats, policyStats, assessmentStats, findingStats, assetComplianceStats, upcomingReviews, recentActivity,] = await Promise.all([
@@ -329,61 +331,98 @@ let GovernanceDashboardService = class GovernanceDashboardService {
     }
     async getUpcomingReviews() {
         const now = new Date();
-        const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
         const upcoming = [];
         const policies = await this.policyRepository.find({
             where: {
-                next_review_date: (0, typeorm_2.LessThanOrEqual)(thirtyDaysFromNow),
+                next_review_date: (0, typeorm_2.LessThanOrEqual)(ninetyDaysFromNow),
                 deleted_at: (0, typeorm_2.IsNull)(),
             },
-            take: 10,
+            take: 20,
             order: { next_review_date: 'ASC' },
         });
-        policies.forEach((policy) => {
-            if (policy.next_review_date) {
-                const reviewDate = policy.next_review_date instanceof Date
-                    ? policy.next_review_date
-                    : new Date(policy.next_review_date);
-                if (isNaN(reviewDate.getTime())) {
-                    return;
+        policies.forEach((p) => {
+            if (p.next_review_date) {
+                const d = p.next_review_date instanceof Date ? p.next_review_date : new Date(p.next_review_date);
+                if (!isNaN(d.getTime())) {
+                    upcoming.push({
+                        id: p.id,
+                        type: 'policy',
+                        name: p.title,
+                        reviewDate: d,
+                        daysUntil: Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+                    });
                 }
-                const daysUntil = Math.ceil((reviewDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                upcoming.push({
-                    id: policy.id,
-                    type: 'policy',
-                    name: policy.title,
-                    reviewDate,
-                    daysUntil,
-                });
             }
         });
         const influencers = await this.influencerRepository.find({
             where: {
-                next_review_date: (0, typeorm_2.LessThanOrEqual)(thirtyDaysFromNow),
+                next_review_date: (0, typeorm_2.LessThanOrEqual)(ninetyDaysFromNow),
                 deleted_at: (0, typeorm_2.IsNull)(),
             },
-            take: 10,
+            take: 20,
             order: { next_review_date: 'ASC' },
         });
-        influencers.forEach((influencer) => {
-            if (influencer.next_review_date) {
-                const reviewDate = influencer.next_review_date instanceof Date
-                    ? influencer.next_review_date
-                    : new Date(influencer.next_review_date);
-                if (isNaN(reviewDate.getTime())) {
-                    return;
+        influencers.forEach((i) => {
+            if (i.next_review_date) {
+                const d = i.next_review_date instanceof Date ? i.next_review_date : new Date(i.next_review_date);
+                if (!isNaN(d.getTime())) {
+                    upcoming.push({
+                        id: i.id,
+                        type: 'influencer',
+                        name: i.name,
+                        reviewDate: d,
+                        daysUntil: Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+                    });
                 }
-                const daysUntil = Math.ceil((reviewDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                upcoming.push({
-                    id: influencer.id,
-                    type: 'influencer',
-                    name: influencer.name,
-                    reviewDate,
-                    daysUntil,
-                });
             }
         });
-        return upcoming.sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 10);
+        const sops = await this.sopRepository.find({
+            where: {
+                next_review_date: (0, typeorm_2.LessThanOrEqual)(ninetyDaysFromNow),
+                deleted_at: (0, typeorm_2.IsNull)(),
+            },
+            take: 20,
+            order: { next_review_date: 'ASC' },
+        });
+        sops.forEach((s) => {
+            if (s.next_review_date) {
+                const d = s.next_review_date instanceof Date ? s.next_review_date : new Date(s.next_review_date);
+                if (!isNaN(d.getTime())) {
+                    upcoming.push({
+                        id: s.id,
+                        type: 'sop',
+                        name: s.title,
+                        reviewDate: d,
+                        daysUntil: Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+                    });
+                }
+            }
+        });
+        const assessments = await this.assessmentRepository.find({
+            where: {
+                end_date: (0, typeorm_2.LessThanOrEqual)(ninetyDaysFromNow),
+                deleted_at: (0, typeorm_2.IsNull)(),
+                status: (0, typeorm_2.In)([assessment_entity_1.AssessmentStatus.NOT_STARTED, assessment_entity_1.AssessmentStatus.IN_PROGRESS]),
+            },
+            take: 20,
+            order: { end_date: 'ASC' },
+        });
+        assessments.forEach((a) => {
+            if (a.end_date) {
+                const d = a.end_date instanceof Date ? a.end_date : new Date(a.end_date);
+                if (!isNaN(d.getTime())) {
+                    upcoming.push({
+                        id: a.id,
+                        type: 'assessment',
+                        name: a.name,
+                        reviewDate: d,
+                        daysUntil: Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+                    });
+                }
+            }
+        });
+        return upcoming.sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 20);
     }
     async getRecentActivity() {
         const activities = [];
@@ -621,7 +660,9 @@ exports.GovernanceDashboardService = GovernanceDashboardService = __decorate([
     __param(4, (0, typeorm_1.InjectRepository)(finding_entity_1.Finding)),
     __param(5, (0, typeorm_1.InjectRepository)(evidence_entity_1.Evidence)),
     __param(6, (0, typeorm_1.InjectRepository)(control_asset_mapping_entity_1.ControlAssetMapping)),
+    __param(7, (0, typeorm_1.InjectRepository)(sop_entity_1.SOP)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

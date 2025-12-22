@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assetsApi, PhysicalAsset, PhysicalAssetQueryParams } from '@/lib/api/assets';
-import { usersApi, User } from '@/lib/api/users';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,19 +36,6 @@ export default function PhysicalAssetsPage() {
     limit: 20,
   });
   const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
-
-  const { data: users = [] } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.getAll(),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const getUserDisplayName = (user: User): string => {
-    if (user.firstName || user.lastName) {
-      return [user.firstName, user.lastName].filter(Boolean).join(' ');
-    }
-    return user.email;
-  };
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['physical-assets', filters],
@@ -124,11 +110,19 @@ export default function PhysicalAssetsPage() {
   const getTypeColor = (type: PhysicalAsset['assetType']) => {
     if (!type) return 'bg-gray-100 text-gray-800';
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'physical/page.tsx:110',message:'getTypeColor called',data:{type,typeType:typeof type,isObject:typeof type === 'object' && type !== null,keys:typeof type === 'object' && type !== null ? Object.keys(type) : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
+    
     const typeName = typeof type === 'string' 
       ? type 
       : (typeof type === 'object' && type !== null && 'name' in type)
         ? (type as any).name || (type as any).code || 'other'
         : 'other';
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'physical/page.tsx:120',message:'getTypeColor result',data:{originalType:type,typeName,colorKey:typeName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     
     const colors: Record<string, string> = {
       server: 'bg-blue-100 text-blue-800',
@@ -236,7 +230,12 @@ export default function PhysicalAssetsPage() {
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Physical Assets</h1>
+          <h1
+            className="text-3xl font-bold"
+            data-testid="assets-physical-title"
+          >
+            Physical Assets
+          </h1>
           <p className="text-muted-foreground mt-2">
             Manage your physical IT assets and infrastructure
           </p>
@@ -246,7 +245,10 @@ export default function PhysicalAssetsPage() {
             <Upload className="h-4 w-4 mr-2" />
             Import
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            data-testid="assets-physical-new-asset-button"
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Asset
           </Button>
@@ -315,22 +317,6 @@ export default function PhysicalAssetsPage() {
                   hasDependencies: value === '' ? undefined : value === 'true' 
                 }),
               },
-              {
-                key: 'ownerId',
-                label: 'Owner',
-                value: filters.ownerId || '',
-                options: [
-                  { value: '', label: 'All owners' },
-                  ...users.map((user) => ({
-                    value: user.id,
-                    label: getUserDisplayName(user),
-                  })),
-                ],
-                onChange: (value) =>
-                  handleFilterChange({
-                    ownerId: value || undefined,
-                  }),
-              },
             ]}
             onClear={() => setFilters({ page: 1, limit: 20 })}
             storageKey="physical-assets"
@@ -345,7 +331,6 @@ export default function PhysicalAssetsPage() {
                 hasDependencies: presetFilters.hasDependencies !== undefined 
                   ? presetFilters.hasDependencies === 'true' || presetFilters.hasDependencies === true
                   : undefined,
-                ownerId: (presetFilters.ownerId as string) || undefined,
               });
             }}
           />
@@ -388,8 +373,14 @@ export default function PhysicalAssetsPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div
+            className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+            data-testid="assets-physical-list"
+          >
             {data.data.map((asset) => {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'physical/page.tsx:368',message:'Mapping asset for rendering',data:{assetId:asset.id,assetType:asset.assetType,assetTypeType:typeof asset.assetType,isObject:typeof asset.assetType === 'object' && asset.assetType !== null,keys:typeof asset.assetType === 'object' && asset.assetType !== null ? Object.keys(asset.assetType) : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+              // #endregion
               return (
               <Card 
                 key={asset.id} 
@@ -414,12 +405,18 @@ export default function PhysicalAssetsPage() {
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
                       {asset.assetType && (() => {
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'physical/page.tsx:396',message:'Before Badge render - assetType value',data:{assetType:asset.assetType,assetTypeType:typeof asset.assetType,isObject:typeof asset.assetType === 'object' && asset.assetType !== null,keys:typeof asset.assetType === 'object' && asset.assetType !== null ? Object.keys(asset.assetType) : null,assetId:asset.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+                        // #endregion
                         // Convert assetType to string BEFORE passing to Badge
                         const assetTypeDisplay = typeof asset.assetType === 'string' 
                           ? asset.assetType.replace('_', ' ')
                           : (typeof asset.assetType === 'object' && asset.assetType !== null && 'name' in asset.assetType)
                             ? (asset.assetType as any).name || (asset.assetType as any).code || (asset.assetType as any).id || 'Unknown'
                             : String(asset.assetType || 'Unknown');
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/45949711-2fc3-46e3-a840-ce93de4dc214',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'physical/page.tsx:403',message:'After conversion - assetTypeDisplay',data:{original:asset.assetType,converted:assetTypeDisplay,convertedType:typeof assetTypeDisplay},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+                        // #endregion
                         return (
                           <Badge className={getTypeColor(asset.assetType)}>
                             {assetTypeDisplay}
@@ -427,12 +424,12 @@ export default function PhysicalAssetsPage() {
                         );
                       })()}
                       {asset.criticalityLevel && (
-                        <Badge className={getCriticalityColor(typeof asset.criticalityLevel === 'string' ? asset.criticalityLevel : (asset.criticalityLevel as any).name || (asset.criticalityLevel as any).code || 'medium')}>
-                          {typeof asset.criticalityLevel === 'string' ? asset.criticalityLevel : (asset.criticalityLevel as any).name || (asset.criticalityLevel as any).code || 'Unknown'}
+                        <Badge className={getCriticalityColor(asset.criticalityLevel)}>
+                          {asset.criticalityLevel}
                         </Badge>
                       )}
                       {asset.connectivityStatus && (
-                        <Badge variant="outline">{typeof asset.connectivityStatus === 'string' ? asset.connectivityStatus : (asset.connectivityStatus as any).name || (asset.connectivityStatus as any).code || 'Unknown'}</Badge>
+                        <Badge variant="outline">{asset.connectivityStatus}</Badge>
                       )}
                       <AssetRiskBadge 
                         assetId={asset.id} 

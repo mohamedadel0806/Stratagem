@@ -1,4 +1,5 @@
-import { test, expect } from '../fixtures/auth';
+import { test } from '../fixtures/auth';
+import { expect } from '@playwright/test';
 import { navigateToGovernancePage, waitForApiCalls } from '../utils/helpers';
 
 test.describe('Governance Dashboard E2E Tests', () => {

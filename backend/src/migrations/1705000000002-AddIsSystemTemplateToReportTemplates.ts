@@ -19,3 +19,5 @@ export class AddIsSystemTemplateToReportTemplates1705000000002
     await queryRunner.dropColumn('report_templates', 'is_system_template');
   }
 }
+
+

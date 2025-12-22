@@ -27,20 +27,14 @@ export class RiskRegisterPage {
       this.WAIT_LARGE = waitTimes.large || this.WAIT_LARGE;
     }
 
-    // Button locators - using multiple fallback strategies
-    this.newRiskButton = page.locator('button:has-text("New Risk")')
-      .or(page.getByTestId('risk-register-new-risk-button'))
-      .or(page.locator('[data-testid*="risk-register-new"]'))
-      .or(page.locator('button:has-text("Add Risk")'))
-      .first();
-    
-    // Search input - use getByPlaceholder (recommended Playwright method)
-    this.searchInput = page.getByPlaceholder(/Search.*risk/i)
-      .or(page.locator('input[placeholder*="Search"], input[type="search"]').first());
-    
-    // Risks list container - use semantic selectors
-    this.risksList = page.getByRole('main')
-      .or(page.locator('main').first());
+    // Button locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.newRiskButton = page.getByTestId('risk-register-new-risk-button');
+
+    // Search input - using getByTestId only (Playwright Advisory Guide compliant)
+    this.searchInput = page.getByTestId('risk-register-search-input');
+
+    // Risks list container - using getByTestId only (Playwright Advisory Guide compliant)
+    this.risksList = page.getByTestId('risk-register-list');
   }
 
   /**
@@ -270,7 +264,8 @@ export class RiskRegisterPage {
     const inputVisible = await this.searchInput.isVisible({ timeout: 3000 }).catch(() => false);
     if (inputVisible) {
       await this.searchInput.clear();
-      await this.searchInput.fill(query);
+      // Use type() with delay for better React form handling (Playwright Advisory Guide compliant)
+      await this.searchInput.type(query, { delay: 30 });
       await this.page.waitForTimeout(this.WAIT_MEDIUM); // Wait for search results
     }
   }
@@ -282,10 +277,8 @@ export class RiskRegisterPage {
     // Wait for form to be fully loaded
     await this.page.waitForTimeout(this.WAIT_MEDIUM);
 
-    // Fill title - required field (slower typing)
-    const titleInput = this.page.getByLabel(/Risk Title/i).or(
-      this.page.locator('input[name="title"]').first()
-    );
+    // Fill title - required field (slower typing) - using getByTestId only (Playwright Advisory Guide compliant)
+    const titleInput = this.page.getByTestId('risk-form-title-input');
     await titleInput.waitFor({ state: 'visible', timeout: 5000 });
     await titleInput.clear({ timeout: 3000 });
     await this.page.waitForTimeout(this.WAIT_SMALL);
@@ -294,12 +287,10 @@ export class RiskRegisterPage {
     await this.page.waitForTimeout(this.WAIT_MEDIUM);
     console.log(`✅ Filled risk title: ${options.title}`);
 
-    // Fill description if provided
+    // Fill description if provided - using getByTestId only (Playwright Advisory Guide compliant)
     if (options.description) {
       await this.page.waitForTimeout(this.WAIT_SMALL);
-      const descriptionTextarea = this.page.getByLabel(/Description/i).or(
-        this.page.locator('textarea[name="description"]').first()
-      );
+      const descriptionTextarea = this.page.getByTestId('risk-form-description-textarea');
       await descriptionTextarea.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
       await descriptionTextarea.clear({ timeout: 3000 });
       await this.page.waitForTimeout(this.WAIT_SMALL);
@@ -309,12 +300,10 @@ export class RiskRegisterPage {
       console.log('✅ Filled risk description');
     }
 
-    // Select category if provided
+    // Select category if provided - using getByTestId only (Playwright Advisory Guide compliant)
     if (options.category) {
       await this.page.waitForTimeout(this.WAIT_SMALL);
-      const categorySelect = this.page.getByLabel(/Category/i).or(
-        this.page.locator('select[name*="category"], [role="combobox"]').first()
-      );
+      const categorySelect = this.page.getByTestId('risk-form-category-dropdown');
       await categorySelect.waitFor({ state: 'visible', timeout: 3000 });
       await this.page.waitForTimeout(this.WAIT_SMALL);
       await categorySelect.click();
@@ -467,4 +456,6 @@ export class RiskRegisterPage {
     console.log('✅ Risk form submission completed');
   }
 }
+
+
 

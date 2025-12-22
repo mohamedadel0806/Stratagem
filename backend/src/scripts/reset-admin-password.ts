@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { config } from 'dotenv';
 import { User } from '../users/entities/user.entity';
 
@@ -59,6 +59,8 @@ async function resetAdminPassword() {
 }
 
 resetAdminPassword();
+
+
 
 
 

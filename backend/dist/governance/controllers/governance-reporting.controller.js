@@ -17,13 +17,15 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const governance_reporting_service_1 = require("../services/governance-reporting.service");
 const gap_analysis_service_1 = require("../services/gap-analysis.service");
+const governance_dashboard_service_1 = require("../services/governance-dashboard.service");
 const report_query_dto_1 = require("../dto/report-query.dto");
 const gap_analysis_dto_1 = require("../dto/gap-analysis.dto");
 const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
 let GovernanceReportingController = class GovernanceReportingController {
-    constructor(reportingService, gapAnalysisService) {
+    constructor(reportingService, gapAnalysisService, dashboardService) {
         this.reportingService = reportingService;
         this.gapAnalysisService = gapAnalysisService;
+        this.dashboardService = dashboardService;
     }
     async exportReport(query, res) {
         const report = await this.reportingService.generateReport(query);
@@ -155,6 +157,12 @@ let GovernanceReportingController = class GovernanceReportingController {
     async getGapAnalysis(query) {
         return this.gapAnalysisService.performGapAnalysis(query);
     }
+    async getPolicyComplianceStats() {
+        return this.reportingService.getPolicyComplianceStats();
+    }
+    async getExecutiveSummary() {
+        return this.dashboardService.getDashboard();
+    }
 };
 exports.GovernanceReportingController = GovernanceReportingController;
 __decorate([
@@ -259,12 +267,27 @@ __decorate([
     __metadata("design:paramtypes", [gap_analysis_dto_1.GapAnalysisQueryDto]),
     __metadata("design:returntype", Promise)
 ], GovernanceReportingController.prototype, "getGapAnalysis", null);
+__decorate([
+    (0, common_1.Get)('policy-compliance/stats'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get policy compliance statistics' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], GovernanceReportingController.prototype, "getPolicyComplianceStats", null);
+__decorate([
+    (0, common_1.Get)('executive/summary'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get high-level executive summary across all modules' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], GovernanceReportingController.prototype, "getExecutiveSummary", null);
 exports.GovernanceReportingController = GovernanceReportingController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
     (0, common_1.Controller)('governance/reports'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
     __metadata("design:paramtypes", [governance_reporting_service_1.GovernanceReportingService,
-        gap_analysis_service_1.GapAnalysisService])
+        gap_analysis_service_1.GapAnalysisService,
+        governance_dashboard_service_1.GovernanceDashboardService])
 ], GovernanceReportingController);
 //# sourceMappingURL=governance-reporting.controller.js.map

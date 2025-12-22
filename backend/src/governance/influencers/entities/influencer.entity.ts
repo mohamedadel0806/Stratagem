@@ -76,8 +76,14 @@ export class Influencer {
   @Column({ type: 'date', nullable: true })
   last_revision_date: Date;
 
+  @Column({ type: 'text', nullable: true, name: 'revision_notes' })
+  revision_notes: string;
+
   @Column({ type: 'date', nullable: true })
   next_review_date: Date;
+
+  @Column({ type: 'integer', nullable: true, name: 'review_frequency_days' })
+  review_frequency_days: number; // Days between reviews (e.g., 365 for annual)
 
   @Column({
     type: 'enum',
@@ -148,6 +154,8 @@ export class Influencer {
   @DeleteDateColumn({ name: 'deleted_at' })
   deleted_at: Date;
 }
+
+
 
 
 

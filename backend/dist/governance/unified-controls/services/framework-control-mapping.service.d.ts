@@ -18,4 +18,13 @@ export declare class FrameworkControlMappingService {
     updateMapping(mappingId: string, coverageLevel?: MappingCoverage, mappingNotes?: string): Promise<FrameworkControlMapping>;
     deleteMapping(mappingId: string): Promise<void>;
     deleteMappingsForControl(controlId: string): Promise<void>;
+    getCoverageMatrix(frameworkId: string): Promise<{
+        requirementId: string;
+        requirementIdentifier: string;
+        requirementTitle: string;
+        controlId: string;
+        controlIdentifier: string;
+        controlTitle: string;
+        coverageLevel: MappingCoverage;
+    }[]>;
 }

@@ -18,6 +18,8 @@ import { UpdateStandardDto } from './dto/update-standard.dto';
 import { StandardQueryDto } from './dto/standard-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Audit } from '../../common/decorators/audit.decorator';
+import { AuditAction } from '../../common/entities/audit-log.entity';
 
 @ApiTags('Governance - Standards')
 @Controller('governance/standards')
@@ -29,6 +31,7 @@ export class StandardsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new standard' })
   @ApiResponse({ status: 201, description: 'Standard created successfully' })
+  @Audit(AuditAction.CREATE, 'Standard')
   create(@Body() createStandardDto: CreateStandardDto, @Request() req) {
     return this.standardsService.create(createStandardDto, req.user.id);
   }
@@ -52,6 +55,7 @@ export class StandardsController {
   @ApiOperation({ summary: 'Update a standard' })
   @ApiResponse({ status: 200, description: 'Standard updated successfully' })
   @ApiResponse({ status: 404, description: 'Standard not found' })
+  @Audit(AuditAction.UPDATE, 'Standard')
   update(@Param('id') id: string, @Body() updateStandardDto: UpdateStandardDto, @Request() req) {
     return this.standardsService.update(id, updateStandardDto, req.user.id);
   }
@@ -61,7 +65,10 @@ export class StandardsController {
   @ApiOperation({ summary: 'Delete a standard (soft delete)' })
   @ApiResponse({ status: 204, description: 'Standard deleted successfully' })
   @ApiResponse({ status: 404, description: 'Standard not found' })
+  @Audit(AuditAction.DELETE, 'Standard')
   remove(@Param('id') id: string) {
     return this.standardsService.remove(id);
   }
 }
+
+

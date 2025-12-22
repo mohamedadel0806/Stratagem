@@ -289,3 +289,5 @@ export function KRITrendChart({ kriId, kri, limit = 50, showThresholds = true }:
     </Card>
   );
 }
+
+

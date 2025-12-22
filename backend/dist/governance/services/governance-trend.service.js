@@ -19,9 +19,11 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const governance_dashboard_service_1 = require("./governance-dashboard.service");
 const governance_metric_snapshot_entity_1 = require("../metrics/entities/governance-metric-snapshot.entity");
+const control_test_entity_1 = require("../unified-controls/entities/control-test.entity");
 let GovernanceTrendService = GovernanceTrendService_1 = class GovernanceTrendService {
-    constructor(snapshotRepository, dashboardService) {
+    constructor(snapshotRepository, testRepository, dashboardService) {
         this.snapshotRepository = snapshotRepository;
+        this.testRepository = testRepository;
         this.dashboardService = dashboardService;
         this.logger = new common_1.Logger(GovernanceTrendService_1.name);
     }
@@ -219,12 +221,36 @@ let GovernanceTrendService = GovernanceTrendService_1 = class GovernanceTrendSer
     clamp(value, min, max) {
         return Math.min(Math.max(value, min), max);
     }
+    async getControlEffectivenessTrend(controlId, rangeDays = 90) {
+        const query = this.testRepository
+            .createQueryBuilder('test')
+            .select('test.test_date', 'date')
+            .addSelect('AVG(test.effectiveness_score)', 'averageScore')
+            .where('test.status = :status', { status: control_test_entity_1.ControlTestStatus.COMPLETED })
+            .andWhere('test.effectiveness_score IS NOT NULL')
+            .andWhere('test.deleted_at IS NULL');
+        if (controlId) {
+            query.andWhere('test.unified_control_id = :controlId', { controlId });
+        }
+        const startDate = this.addDays(new Date(), -rangeDays);
+        query.andWhere('test.test_date >= :startDate', { startDate: this.formatDate(startDate) });
+        const results = await query
+            .groupBy('test.test_date')
+            .orderBy('test.test_date', 'ASC')
+            .getRawMany();
+        return results.map(r => ({
+            date: r.date,
+            score: Math.round(parseFloat(r.averageScore) * 10) / 10
+        }));
+    }
 };
 exports.GovernanceTrendService = GovernanceTrendService;
 exports.GovernanceTrendService = GovernanceTrendService = GovernanceTrendService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(governance_metric_snapshot_entity_1.GovernanceMetricSnapshot)),
+    __param(1, (0, typeorm_1.InjectRepository)(control_test_entity_1.ControlTest)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         governance_dashboard_service_1.GovernanceDashboardService])
 ], GovernanceTrendService);
 //# sourceMappingURL=governance-trend.service.js.map

@@ -39,6 +39,15 @@ export class GovernanceDashboardController {
     return this.trendService.getTrend();
   }
 
+  @Get('effectiveness/trends')
+  @ApiOperation({ summary: 'Get historical control effectiveness trends' })
+  async getEffectivenessTrends(
+    @Query('controlId') controlId?: string,
+    @Query('rangeDays') rangeDays?: number,
+  ) {
+    return this.trendService.getControlEffectivenessTrend(controlId, rangeDays);
+  }
+
   @Get('export')
   @ApiOperation({ summary: 'Export dashboard to PDF' })
   @ApiQuery({ name: 'startDate', required: false, type: String })
@@ -63,6 +72,8 @@ export class GovernanceDashboardController {
     };
   }
 }
+
+
 
 
 

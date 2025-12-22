@@ -47,7 +47,30 @@ export class ControlObjectivesController {
   remove(@Param('id') id: string) {
     return this.controlObjectivesService.remove(id);
   }
+
+  @Post(':id/unified-controls')
+  linkUnifiedControls(
+    @Param('id') id: string,
+    @Body('control_ids') controlIds: string[]
+  ) {
+    return this.controlObjectivesService.linkUnifiedControls(id, controlIds);
+  }
+
+  @Delete(':id/unified-controls')
+  unlinkUnifiedControls(
+    @Param('id') id: string,
+    @Body('control_ids') controlIds: string[]
+  ) {
+    return this.controlObjectivesService.unlinkUnifiedControls(id, controlIds);
+  }
+
+  @Get(':id/unified-controls')
+  getUnifiedControls(@Param('id') id: string) {
+    return this.controlObjectivesService.getUnifiedControls(id);
+  }
 }
+
+
 
 
 

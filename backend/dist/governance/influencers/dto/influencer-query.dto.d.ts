@@ -7,4 +7,5 @@ export declare class InfluencerQueryDto {
     applicability_status?: ApplicabilityStatus;
     search?: string;
     sort?: string;
+    tags?: string[];
 }

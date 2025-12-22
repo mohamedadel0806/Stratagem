@@ -5,12 +5,15 @@ import { governanceApi, Influencer, InfluencerCategory, InfluencerStatus, Applic
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, ArrowLeft, ExternalLink, FileText, Calendar, Building2, MapPin } from 'lucide-react';
+import { Edit, Trash2, ArrowLeft, ExternalLink, FileText, Calendar, Building2, MapPin, CheckCircle2, History } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { InfluencerForm } from '@/components/governance/influencer-form';
+import { InfluencerReviewForm } from '@/components/governance/influencer-review-form';
+import { InfluencerRevisionHistory } from '@/components/governance/influencer-revision-history';
+import { AIMappingSuggestions } from '@/components/governance/ai-mapping-suggestions';
 
 const categoryLabels: Record<InfluencerCategory, string> = {
   [InfluencerCategory.INTERNAL]: 'Internal',
@@ -40,6 +43,7 @@ export default function InfluencerDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
   const influencerId = params.id as string;
 
   const { data: influencerData, isLoading, error } = useQuery({
@@ -127,6 +131,10 @@ export default function InfluencerDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsReviewOpen(true)}>
+            <CheckCircle2 className="h-4 w-4 mr-2" />
+            Review
+          </Button>
           <Button variant="outline" onClick={() => setIsEditOpen(true)}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
@@ -144,6 +152,9 @@ export default function InfluencerDetailPage() {
           </Button>
         </div>
       </div>
+
+      {/* AI Mapping Suggestions */}
+      <AIMappingSuggestions influencerId={influencerId} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
@@ -304,12 +315,23 @@ export default function InfluencerDetailPage() {
                 </p>
               </div>
             )}
+            {influencer.revision_notes && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Revision Notes</p>
+                <p className="text-sm whitespace-pre-wrap">{influencer.revision_notes}</p>
+              </div>
+            )}
             {influencer.next_review_date && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Next Review Date</p>
                 <p className="text-sm">
                   {new Date(influencer.next_review_date).toLocaleDateString()}
                 </p>
+                {influencer.review_frequency_days && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Review every {influencer.review_frequency_days} days
+                  </p>
+                )}
               </div>
             )}
             {influencer.applicability_assessment_date && (
@@ -443,6 +465,10 @@ export default function InfluencerDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Revision History */}
+      <InfluencerRevisionHistory influencerId={influencer.id} />
+
+      {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -456,6 +482,27 @@ export default function InfluencerDetailPage() {
               queryClient.invalidateQueries({ queryKey: ['influencer', influencerId] });
             }}
             onCancel={() => setIsEditOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Dialog */}
+      <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Review Influencer</DialogTitle>
+            <DialogDescription>
+              Complete a review of this influencer and document any changes or impact assessment
+            </DialogDescription>
+          </DialogHeader>
+          <InfluencerReviewForm
+            influencer={influencer}
+            onSuccess={() => {
+              setIsReviewOpen(false);
+              queryClient.invalidateQueries({ queryKey: ['influencer', influencerId] });
+              queryClient.invalidateQueries({ queryKey: ['influencer-revisions', influencerId] });
+            }}
+            onCancel={() => setIsReviewOpen(false)}
           />
         </DialogContent>
       </Dialog>

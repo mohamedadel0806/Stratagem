@@ -77,3 +77,5 @@ export function AssetsByComplianceScope({ data, isLoading }: AssetsByComplianceS
 }
 
 
+
+

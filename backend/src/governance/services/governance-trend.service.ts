@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GovernanceDashboardService } from './governance-dashboard.service';
 import { GovernanceMetricSnapshot } from '../metrics/entities/governance-metric-snapshot.entity';
+import { ControlTest, ControlTestStatus } from '../unified-controls/entities/control-test.entity';
 import {
   GovernanceTrendResponseDto,
   GovernanceTrendPointDto,
@@ -16,6 +17,8 @@ export class GovernanceTrendService {
   constructor(
     @InjectRepository(GovernanceMetricSnapshot)
     private readonly snapshotRepository: Repository<GovernanceMetricSnapshot>,
+    @InjectRepository(ControlTest)
+    private readonly testRepository: Repository<ControlTest>,
     private readonly dashboardService: GovernanceDashboardService,
   ) {}
 
@@ -254,5 +257,35 @@ export class GovernanceTrendService {
 
   private clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
+  }
+
+  /**
+   * Get historical effectiveness trend for a specific control or all controls
+   */
+  async getControlEffectivenessTrend(controlId?: string, rangeDays = 90) {
+    const query = this.testRepository
+      .createQueryBuilder('test')
+      .select('test.test_date', 'date')
+      .addSelect('AVG(test.effectiveness_score)', 'averageScore')
+      .where('test.status = :status', { status: ControlTestStatus.COMPLETED })
+      .andWhere('test.effectiveness_score IS NOT NULL')
+      .andWhere('test.deleted_at IS NULL');
+
+    if (controlId) {
+      query.andWhere('test.unified_control_id = :controlId', { controlId });
+    }
+
+    const startDate = this.addDays(new Date(), -rangeDays);
+    query.andWhere('test.test_date >= :startDate', { startDate: this.formatDate(startDate) });
+
+    const results = await query
+      .groupBy('test.test_date')
+      .orderBy('test.test_date', 'ASC')
+      .getRawMany();
+
+    return results.map(r => ({
+      date: r.date,
+      score: Math.round(parseFloat(r.averageScore) * 10) / 10
+    }));
   }
 }

@@ -30,4 +30,14 @@ export declare class EvidenceService {
     remove(id: string): Promise<void>;
     linkEvidence(evidenceId: string, linkType: EvidenceLinkType, linkedEntityId: string, description?: string, userId?: string): Promise<EvidenceLinkage>;
     getLinkedEvidence(linkType: EvidenceLinkType, linkedEntityId: string): Promise<Evidence[]>;
+    generateEvidencePackage(options: {
+        evidenceIds?: string[];
+        controlId?: string;
+        assessmentId?: string;
+        startDate?: string;
+        endDate?: string;
+    }): Promise<{
+        data: Buffer;
+        filename: string;
+    }>;
 }

@@ -199,15 +199,15 @@ export default function BusinessApplicationDetailPage() {
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="technical">Technical Details</TabsTrigger>
-          <TabsTrigger value="vendor">Vendor</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          <TabsTrigger value="security">Security Tests</TabsTrigger>
-          <TabsTrigger value="risks">Risks</TabsTrigger>
-          <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-          <TabsTrigger value="graph">Graph View</TabsTrigger>
-          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
+          <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+          <TabsTrigger value="technical" data-testid="tab-technical">Technical Details</TabsTrigger>
+          <TabsTrigger value="vendor" data-testid="tab-vendor">Vendor</TabsTrigger>
+          <TabsTrigger value="compliance" data-testid="tab-compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="security" data-testid="tab-security">Security Tests</TabsTrigger>
+          <TabsTrigger value="risks" data-testid="tab-risks">Risks</TabsTrigger>
+          <TabsTrigger value="dependencies" data-testid="tab-dependencies">Dependencies</TabsTrigger>
+          <TabsTrigger value="graph" data-testid="tab-graph">Graph View</TabsTrigger>
+          <TabsTrigger value="audit" data-testid="tab-audit">Audit Trail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -532,7 +532,7 @@ export default function BusinessApplicationDetailPage() {
             <DialogDescription>Update the application details</DialogDescription>
           </DialogHeader>
           <BusinessApplicationForm
-            asset={app}
+            application={app}
             onSuccess={() => {
               setIsEditOpen(false);
               queryClient.invalidateQueries({ queryKey: ['business-application', assetId] });

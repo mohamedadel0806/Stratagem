@@ -9,8 +9,10 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   Index,
+  ManyToMany,
 } from 'typeorm';
 import { User } from '../../../users/entities/user.entity';
+import { ControlObjective } from '../../control-objectives/entities/control-objective.entity';
 
 export enum ControlType {
   PREVENTIVE = 'preventive',
@@ -153,7 +155,12 @@ export class UnifiedControl {
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deleted_at: Date;
+
+  @ManyToMany(() => ControlObjective, (objective) => objective.unified_controls)
+  control_objectives: ControlObjective[];
 }
+
+
 
 
 

@@ -27,17 +27,14 @@ export class KRIsPage {
       this.WAIT_LARGE = waitTimes.large || this.WAIT_LARGE;
     }
 
-    // Button locators - using getByTestId with fallback
-    this.newKriButton = this.page.getByTestId('kris-new-button')
-      .or(this.page.locator('button:has-text("New KRI")').first());
-    
-    // Search input - use getByPlaceholder (recommended Playwright method)
-    this.searchInput = this.page.getByPlaceholder(/Search.*kri/i)
-      .or(this.page.locator('input[placeholder*="Search"], input[type="search"]').first());
-    
-    // KRIs list container - use semantic selectors
-    this.krisList = this.page.getByRole('main')
-      .or(this.page.locator('main').first());
+    // Button locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.newKriButton = this.page.getByTestId('kris-new-button');
+
+    // Search input - using getByTestId only (Playwright Advisory Guide compliant)
+    this.searchInput = this.page.getByTestId('kris-search-input');
+
+    // KRIs list container - using getByTestId only (Playwright Advisory Guide compliant)
+    this.krisList = this.page.getByTestId('kris-list');
   }
 
   /**
@@ -91,7 +88,8 @@ export class KRIsPage {
     const inputVisible = await this.searchInput.isVisible({ timeout: 3000 }).catch(() => false);
     if (inputVisible) {
       await this.searchInput.clear();
-      await this.searchInput.fill(query);
+      // Use type() with delay for better React form handling (Playwright Advisory Guide compliant)
+      await this.searchInput.type(query, { delay: 30 });
       await this.page.waitForTimeout(this.WAIT_MEDIUM); // Wait for search results
     }
   }
@@ -154,11 +152,9 @@ export class KRIsPage {
     // Wait for form to be fully ready
     await this.page.waitForTimeout(this.WAIT_MEDIUM);
 
-    // Fill name - required field (slower typing)
+    // Fill name - required field (slower typing) - using getByTestId only (Playwright Advisory Guide compliant)
     if (options.name) {
-      const nameInput = this.page.getByLabel('Name').or(
-        this.page.locator('input[name*="name"]').first()
-      );
+      const nameInput = this.page.getByTestId('kri-form-name-input');
       await nameInput.waitFor({ state: 'visible', timeout: 5000 });
       await nameInput.clear({ timeout: 3000 });
       await this.page.waitForTimeout(this.WAIT_SMALL);
@@ -168,12 +164,10 @@ export class KRIsPage {
       console.log(`✅ Filled KRI name: ${options.name}`);
     }
 
-    // Fill description (slower typing)
+    // Fill description (slower typing) - using getByTestId only (Playwright Advisory Guide compliant)
     if (options.description) {
       await this.page.waitForTimeout(this.WAIT_SMALL);
-      const descriptionTextarea = this.page.getByLabel('Description').or(
-        this.page.locator('textarea[name*="description"]').first()
-      );
+      const descriptionTextarea = this.page.getByTestId('kri-form-description-textarea');
       await descriptionTextarea.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
       await descriptionTextarea.clear({ timeout: 3000 });
       await this.page.waitForTimeout(this.WAIT_SMALL);
@@ -286,4 +280,6 @@ export class KRIsPage {
     console.log('✅ KRI form submitted successfully');
   }
 }
+
+
 

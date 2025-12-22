@@ -88,3 +88,5 @@ export class ReportTemplateVersion {
   @CreateDateColumn()
   createdAt: Date;
 }
+
+

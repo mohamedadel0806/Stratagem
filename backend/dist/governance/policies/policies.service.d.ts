@@ -78,4 +78,18 @@ export declare class PoliciesService {
         dueIn60Days: number;
         dueIn90Days: number;
     }>;
+    setParentPolicy(policyId: string, parentPolicyId: string | null, userId: string, reason?: string): Promise<Policy>;
+    isDescendantOf(ancestorId: string, potentialDescendantId: string): Promise<boolean>;
+    getParent(policyId: string): Promise<Policy | null>;
+    getChildren(policyId: string, includeArchived?: boolean): Promise<Policy[]>;
+    getAncestors(policyId: string): Promise<Policy[]>;
+    getAllDescendants(policyId: string): Promise<Policy[]>;
+    getRoot(policyId: string): Promise<Policy>;
+    getHierarchyTree(policyId: string, includeArchived?: boolean): Promise<any>;
+    private buildHierarchyTree;
+    getRootPolicies(includeArchived?: boolean): Promise<Policy[]>;
+    getAllHierarchies(includeArchived?: boolean): Promise<any[]>;
+    getHierarchyLevel(policyId: string): Promise<number>;
+    getCompleteHierarchy(policyId: string): Promise<any>;
+    getMaxDepth(policyId: string, currentDepth?: number): Promise<number>;
 }

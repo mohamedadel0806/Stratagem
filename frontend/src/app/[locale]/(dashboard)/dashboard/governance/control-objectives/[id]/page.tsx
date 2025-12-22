@@ -5,9 +5,15 @@ import { governanceApi, ControlObjective, ImplementationStatus } from '@/lib/api
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ExternalLink, Calendar, User, FileText } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Calendar, User, FileText, Shield, AlertCircle } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { ControlObjectiveMapping } from '@/components/governance/control-objective-mapping';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PolicyExceptionForm } from '@/components/governance/policy-exception-form';
+import { AuditLogList } from '@/components/governance/audit-log-list';
 
 const implementationStatusLabels: Record<ImplementationStatus, string> = {
   [ImplementationStatus.NOT_IMPLEMENTED]: 'Not Implemented',
@@ -30,6 +36,7 @@ export default function ControlObjectiveDetailPage() {
   const params = useParams();
   const locale = (params.locale as string) || 'en';
   const objectiveId = params.id as string;
+  const [isExceptionOpen, setIsExceptionOpen] = useState(false);
 
   const { data: objective, isLoading } = useQuery({
     queryKey: ['control-objective', objectiveId],
@@ -57,40 +64,62 @@ export default function ControlObjectiveDetailPage() {
             <p className="text-muted-foreground mt-1">{objective.statement}</p>
           </div>
         </div>
+        <Button variant="outline" onClick={() => setIsExceptionOpen(true)} className="text-orange-600 border-orange-200 hover:bg-orange-50">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          Request Exception
+        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Statement</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{objective.statement}</p>
-            </CardContent>
-          </Card>
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="mappings">Mapped Controls</TabsTrigger>
+              <TabsTrigger value="audit">Audit Trail</TabsTrigger>
+            </TabsList>
 
-          {objective.rationale && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Rationale</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{objective.rationale}</p>
-              </CardContent>
-            </Card>
-          )}
+            <TabsContent value="overview" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Statement</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm whitespace-pre-wrap">{objective.statement}</p>
+                </CardContent>
+              </Card>
 
-          {objective.domain && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Domain</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Badge variant="outline">{objective.domain}</Badge>
-              </CardContent>
-            </Card>
-          )}
+              {objective.rationale && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Rationale</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm whitespace-pre-wrap">{objective.rationale}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {objective.domain && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Domain</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Badge variant="outline">{objective.domain}</Badge>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="mappings">
+              <ControlObjectiveMapping objectiveId={objectiveId} />
+            </TabsContent>
+
+            <TabsContent value="audit">
+              <AuditLogList entityType="ControlObjective" entityId={objectiveId} title="Objective Audit Trail" />
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="space-y-6">
@@ -181,6 +210,28 @@ export default function ControlObjectiveDetailPage() {
           )}
         </div>
       </div>
+
+      <Dialog open={isExceptionOpen} onOpenChange={setIsExceptionOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Request Policy Exception</DialogTitle>
+            <DialogDescription>
+              Submit a request for a deviation from objective: <strong>{objective.objective_identifier}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <PolicyExceptionForm
+            exception={{
+              entity_id: objectiveId,
+              entity_type: 'control_objective',
+              exception_type: 'control' as any,
+            } as any}
+            onSuccess={() => setIsExceptionOpen(false)}
+            onCancel={() => setIsExceptionOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+

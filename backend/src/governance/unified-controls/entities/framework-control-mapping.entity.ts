@@ -63,3 +63,5 @@ export class FrameworkControlMapping {
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 }
+
+

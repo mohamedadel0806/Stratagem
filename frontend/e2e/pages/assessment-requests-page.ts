@@ -28,23 +28,17 @@ export class AssessmentRequestsPage {
       this.WAIT_LARGE = waitTimes.large || this.WAIT_LARGE;
     }
 
-    // Button locators - using getByTestId with fallback
-    this.newRequestButton = page.getByTestId('assessment-requests-new-button')
-      .or(page.locator('button:has-text("New Request")').first());
-    
-    // Search input - using getByTestId (recommended Playwright method)
-    this.searchInput = page.getByTestId('assessment-requests-search-input')
-      .or(page.getByPlaceholder(/Search.*request/i))
-      .or(page.locator('input[placeholder*="Search"]').first());
-    
-    // Status filter - use getByLabel or getByRole when testid not available
-    this.statusFilter = page.getByLabel(/status/i)
-      .or(page.getByRole('combobox').filter({ hasText: /status/i }).first())
-      .or(page.locator('select, [role="combobox"]').filter({ hasText: /status/i }).first());
-    
-    // Requests list container - use semantic selectors
-    this.requestsList = page.getByRole('main')
-      .or(page.locator('main').first());
+    // Button locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.newRequestButton = page.getByTestId('assessment-requests-new-button');
+
+    // Search input - using getByTestId only (Playwright Advisory Guide compliant)
+    this.searchInput = page.getByTestId('assessment-requests-search-input');
+
+    // Status filter - using getByTestId only (Playwright Advisory Guide compliant)
+    this.statusFilter = page.getByTestId('assessment-requests-status-filter');
+
+    // Requests list container - using getByTestId only (Playwright Advisory Guide compliant)
+    this.requestsList = page.getByTestId('assessment-requests-list');
   }
 
   /**
@@ -101,7 +95,8 @@ export class AssessmentRequestsPage {
     const inputVisible = await this.searchInput.isVisible({ timeout: 3000 }).catch(() => false);
     if (inputVisible) {
       await this.searchInput.clear();
-      await this.searchInput.fill(query);
+      // Use type() with delay for better React form handling (Playwright Advisory Guide compliant)
+      await this.searchInput.type(query, { delay: 30 });
       await this.page.waitForTimeout(this.WAIT_MEDIUM); // Wait for search results
     }
   }
@@ -329,6 +324,7 @@ export class AssessmentRequestsPage {
         );
         const dueDateExists = await dueDateField.isVisible({ timeout: 3000 }).catch(() => false);
         if (dueDateExists) {
+          // Date fields can use fill() directly (no typing simulation needed)
           await dueDateField.fill(options.dueDate);
           await this.page.waitForTimeout(this.WAIT_MEDIUM);
           console.log(`✅ Filled due date: ${options.dueDate}`);
@@ -348,6 +344,7 @@ export class AssessmentRequestsPage {
           const futureDate = new Date();
           futureDate.setDate(futureDate.getDate() + 30);
           const dateString = futureDate.toISOString().split('T')[0];
+          // Date fields can use fill() directly (no typing simulation needed)
           await dueDateField.fill(dateString);
           await this.page.waitForTimeout(this.WAIT_MEDIUM);
           console.log(`✅ Filled due date: ${dateString}`);
@@ -468,4 +465,6 @@ export class AssessmentRequestsPage {
     console.log('✅ Assessment request form submitted successfully');
   }
 }
+
+
 

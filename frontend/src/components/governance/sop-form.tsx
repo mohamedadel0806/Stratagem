@@ -176,34 +176,34 @@ export function SOPForm({ sop, onSuccess, onCancel }: SOPFormProps) {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="version"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Version</FormLabel>
-                <FormControl>
-                  <Input placeholder="1.0" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <FormField
+                control={form.control}
+                name="sop_identifier"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SOP Identifier *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., SOP-IT-001" data-testid="sop-form-identifier-input" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
         </div>
 
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title *</FormLabel>
-              <FormControl>
-                <Input placeholder="User Provisioning Procedure" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter SOP title" data-testid="sop-form-title-input" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
@@ -307,8 +307,8 @@ export function SOPForm({ sop, onSuccess, onCancel }: SOPFormProps) {
               <FormLabel>Content</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Step-by-step procedure instructions"
-                  rows={12}
+                  placeholder="Detailed procedure steps and instructions"
+                  rows={6}
                   {...field}
                 />
               </FormControl>
@@ -320,13 +320,38 @@ export function SOPForm({ sop, onSuccess, onCancel }: SOPFormProps) {
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="sop-form-category-dropdown">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {Object.values(SOPCategory).map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category.charAt(0).toUpperCase() + category.slice(1).toLowerCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="flex justify-end gap-2">
           {onCancel && (
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isLoading}>
+          <Button type="submit" disabled={isLoading} data-testid={sop ? 'sop-form-submit-update' : 'sop-form-submit-create'}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {sop ? 'Update SOP' : 'Create SOP'}
           </Button>
@@ -335,3 +360,5 @@ export function SOPForm({ sop, onSuccess, onCancel }: SOPFormProps) {
     </Form>
   );
 }
+
+

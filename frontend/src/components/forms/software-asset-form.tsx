@@ -21,6 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FormValidationSummary, extractServerErrors } from './form-validation-summary';
 
 const softwareAssetSchema = z.object({
   softwareIdentifier: z.string().optional(),
@@ -59,6 +60,7 @@ interface SoftwareAssetFormProps {
 export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAssetFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [serverErrors, setServerErrors] = useState<string[]>([]);
 
   // Normalize software data to ensure IDs are strings, not objects
   const normalizedSoftware = useMemo(() => {
@@ -195,14 +197,19 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
   const createMutation = useMutation({
     mutationFn: (data: SoftwareAssetFormValues) => assetsApi.createSoftwareAsset(data),
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['software-assets'] });
       toast({ title: 'Success', description: 'Software asset created successfully' });
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error?.message || 'Failed to create software asset';
+      setServerErrors(extractServerErrors(error, errorMessage));
+      
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to create software asset',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
@@ -214,21 +221,41 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
       return assetsApi.updateSoftwareAsset(software.id, data);
     },
     onSuccess: () => {
+      // Clear server errors on success
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['software-assets'] });
       queryClient.invalidateQueries({ queryKey: ['software-asset', software?.id] });
       toast({ title: 'Success', description: 'Software asset updated successfully' });
       onSuccess?.();
     },
     onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error?.message || 'Failed to update software asset';
+      
+      // Collect server errors for display
+      const errors: string[] = [];
+      if (error?.response?.data?.message) {
+        errors.push(error.response.data.message);
+      }
+      // Handle validation errors from backend (can be array or object)
+      if (error?.response?.data?.details?.errors) {
+        errors.push(...(Array.isArray(error.response.data.details.errors) 
+          ? error.response.data.details.errors 
+          : [error.response.data.details.errors]));
+      }
+      setServerErrors(errors.length > 0 ? errors : [errorMessage]);
+      
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to update software asset',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
   });
 
   const onSubmit = (values: SoftwareAssetFormValues) => {
+    // Clear previous server errors
+    setServerErrors([]);
+    
     // Clean up empty strings for UUID fields
     const cleanedData: SoftwareAssetFormValues = {
       ...values,
@@ -243,9 +270,44 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
     }
   };
 
+  // Helper to get field display name
+  const getFieldDisplayName = (fieldName: string): string => {
+    const fieldMap: Record<string, string> = {
+      softwareIdentifier: 'Software Identifier',
+      softwareName: 'Software Name',
+      description: 'Description',
+      softwareType: 'Software Type',
+      version: 'Version',
+      patchLevel: 'Patch Level',
+      vendor: 'Vendor',
+      vendorContact: 'Vendor Contact',
+      vendorEmail: 'Vendor Email',
+      vendorPhone: 'Vendor Phone',
+      licenseType: 'License Type',
+      licenseKey: 'License Key',
+      numberOfLicenses: 'Number of Licenses',
+      licensesInUse: 'Licenses In Use',
+      licenseExpiryDate: 'License Expiry Date',
+      ownerId: 'Owner',
+      businessUnit: 'Business Unit',
+      criticalityLevel: 'Criticality Level',
+      installedOnAssets: 'Installed On Assets',
+      complianceRequirements: 'Compliance Requirements',
+      purchaseDate: 'Purchase Date',
+      installationDate: 'Installation Date',
+      notes: 'Notes',
+    };
+    return fieldMap[fieldName] || fieldName;
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormValidationSummary
+          formErrors={form.formState.errors}
+          serverErrors={serverErrors}
+          fieldNameMapper={getFieldDisplayName}
+        />
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>

@@ -151,6 +151,7 @@ export function RiskControlBrowserDialog({ open, onOpenChange, riskId, existingC
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
+                data-testid="control-search-input"
               />
             </div>
           </div>
@@ -212,11 +213,13 @@ export function RiskControlBrowserDialog({ open, onOpenChange, riskId, existingC
                           ? 'border-primary bg-primary/5'
                           : 'hover:bg-muted/50'
                       }`}
+                      data-testid={`control-item-${control.id}`}
                     >
                       <div className="flex items-start gap-3">
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => handleToggleControl(control.id)}
+                          data-testid={`control-checkbox-${control.id}`}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -261,7 +264,7 @@ export function RiskControlBrowserDialog({ open, onOpenChange, riskId, existingC
             <Button
               onClick={handleLink}
               disabled={selectedControls.size === 0 || linkMutation.isPending}
-              data-testid="risk-control-dialog-submit-button"
+              data-testid="link-control-submit"
             >
               {linkMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Link {selectedControls.size > 0 ? `${selectedControls.size} ` : ''}Control(s)
@@ -271,4 +274,6 @@ export function RiskControlBrowserDialog({ open, onOpenChange, riskId, existingC
     </Dialog>
   );
 }
+
+
 

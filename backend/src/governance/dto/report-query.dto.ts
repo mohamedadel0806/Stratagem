@@ -8,6 +8,7 @@ export enum ReportType {
   ASSESSMENT = 'assessment',
   FINDINGS = 'findings',
   CONTROL_STATUS = 'control_status',
+  EXECUTIVE_GOVERNANCE = 'executive_governance',
 }
 
 export enum ExportFormat {
@@ -46,6 +47,8 @@ export class ReportQueryDto {
   @IsOptional()
   filters?: string;
 }
+
+
 
 
 

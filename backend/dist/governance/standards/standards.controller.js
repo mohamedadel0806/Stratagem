@@ -20,6 +20,8 @@ const update_standard_dto_1 = require("./dto/update-standard.dto");
 const standard_query_dto_1 = require("./dto/standard-query.dto");
 const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
 const swagger_1 = require("@nestjs/swagger");
+const audit_decorator_1 = require("../../common/decorators/audit.decorator");
+const audit_log_entity_1 = require("../../common/entities/audit-log.entity");
 let StandardsController = class StandardsController {
     constructor(standardsService) {
         this.standardsService = standardsService;
@@ -46,6 +48,7 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new standard' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Standard created successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.CREATE, 'Standard'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -76,6 +79,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Update a standard' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Standard updated successfully' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Standard not found' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.UPDATE, 'Standard'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -89,6 +93,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Delete a standard (soft delete)' }),
     (0, swagger_1.ApiResponse)({ status: 204, description: 'Standard deleted successfully' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Standard not found' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.DELETE, 'Standard'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

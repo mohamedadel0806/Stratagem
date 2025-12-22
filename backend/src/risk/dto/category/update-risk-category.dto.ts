@@ -7,3 +7,5 @@ export class UpdateRiskCategoryDto extends PartialType(CreateRiskCategoryDto) {}
 
 
 
+
+

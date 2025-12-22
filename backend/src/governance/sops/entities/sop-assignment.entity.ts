@@ -71,3 +71,5 @@ export class SOPAssignment {
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 }
+
+

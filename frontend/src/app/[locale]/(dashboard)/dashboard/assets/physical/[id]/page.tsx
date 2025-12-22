@@ -106,6 +106,22 @@ export default function PhysicalAssetDetailPage() {
     return colors[level] || colors.medium;
   };
 
+  const formatDisplayValue = (value: any): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      if (value.name && value.code) return `${value.name} (${value.code})`;
+      if (value.name) return value.name;
+      if (value.firstName || value.lastName) {
+        return [value.firstName, value.lastName].filter(Boolean).join(' ');
+      }
+      if (value.email) return value.email;
+      if (value.code) return value.code;
+      if (value.id) return value.id;
+    }
+    return String(value);
+  };
+
   const handleExportPDF = () => {
     if (!asset) return;
     
@@ -135,9 +151,9 @@ export default function PhysicalAssetDetailPage() {
       {
         title: 'Ownership',
         fields: [
-          { label: 'Owner', value: asset.ownerName || '' },
-          { label: 'Business Unit', value: asset.businessUnit || '' },
-          { label: 'Department', value: asset.department || '' },
+          { label: 'Owner', value: formatDisplayValue(asset.ownerName || (asset as any).owner) },
+          { label: 'Business Unit', value: formatDisplayValue(asset.businessUnit || (asset as any).businessUnitId) },
+          { label: 'Department', value: formatDisplayValue((asset as any).department) },
         ],
       },
       {
@@ -400,22 +416,22 @@ export default function PhysicalAssetDetailPage() {
               <CardTitle>Ownership & Business Context</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {asset.ownerName && (
+              {(asset.ownerName || (asset as any).owner) && (
                 <div>
                   <span className="text-sm font-medium text-muted-foreground">Owner:</span>
-                  <p>{asset.ownerName}</p>
+                  <p>{formatDisplayValue(asset.ownerName || (asset as any).owner)}</p>
                 </div>
               )}
-              {asset.businessUnit && (
+              {(asset.businessUnit || (asset as any).businessUnitId) && (
                 <div>
                   <span className="text-sm font-medium text-muted-foreground">Business Unit:</span>
-                  <p>{asset.businessUnit}</p>
+                  <p>{formatDisplayValue(asset.businessUnit || (asset as any).businessUnitId)}</p>
                 </div>
               )}
-              {asset.department && (
+              {(asset as any).department && (
                 <div>
                   <span className="text-sm font-medium text-muted-foreground">Department:</span>
-                  <p>{asset.department}</p>
+                  <p>{formatDisplayValue((asset as any).department)}</p>
                 </div>
               )}
               <div>

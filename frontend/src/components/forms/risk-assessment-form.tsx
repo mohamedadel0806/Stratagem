@@ -278,7 +278,7 @@ export function RiskAssessmentForm({
                       <FormLabel>Assessment Type *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger data-testid="assessment-form-assessment-type-dropdown">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -306,7 +306,7 @@ export function RiskAssessmentForm({
                           value={field.value?.toString()}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="assessment-form-likelihood-dropdown">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -334,7 +334,7 @@ export function RiskAssessmentForm({
                           value={field.value?.toString()}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="assessment-form-impact-dropdown">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -359,7 +359,7 @@ export function RiskAssessmentForm({
                     <FormItem>
                       <FormLabel>Assessment Date</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input type="date" {...field} data-testid="assessment-form-date-input" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -377,7 +377,7 @@ export function RiskAssessmentForm({
                         <FormLabel>Financial Impact</FormLabel>
                         <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} value={field.value || "none"}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="assessment-form-financial-impact-dropdown">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                           </FormControl>
@@ -408,6 +408,7 @@ export function RiskAssessmentForm({
                               placeholder="0.00"
                               {...field}
                               onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              data-testid="assessment-form-financial-impact-amount-input"
                             />
                           </FormControl>
                           <FormMessage />
@@ -426,7 +427,7 @@ export function RiskAssessmentForm({
                         <FormLabel>Operational Impact</FormLabel>
                         <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} value={field.value || "none"}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="assessment-form-operational-impact-dropdown">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                           </FormControl>
@@ -452,7 +453,7 @@ export function RiskAssessmentForm({
                         <FormLabel>Reputational Impact</FormLabel>
                         <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} value={field.value || "none"}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="assessment-form-reputational-impact-dropdown">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                           </FormControl>
@@ -480,7 +481,7 @@ export function RiskAssessmentForm({
                         <FormLabel>Compliance Impact</FormLabel>
                         <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} value={field.value || "none"}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="assessment-form-compliance-impact-dropdown">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                           </FormControl>
@@ -506,7 +507,7 @@ export function RiskAssessmentForm({
                         <FormLabel>Safety Impact</FormLabel>
                         <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} value={field.value || "none"}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="assessment-form-safety-impact-dropdown">
                               <SelectValue placeholder="Select..." />
                             </SelectTrigger>
                           </FormControl>
@@ -535,7 +536,7 @@ export function RiskAssessmentForm({
                       <FormLabel>Assessment Method</FormLabel>
                       <Select onValueChange={(value) => field.onChange(value === "none" ? "" : value)} value={field.value || "none"}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger data-testid="assessment-form-method-dropdown">
                             <SelectValue placeholder="Select method..." />
                           </SelectTrigger>
                         </FormControl>
@@ -562,7 +563,7 @@ export function RiskAssessmentForm({
                       <FormLabel>Confidence Level</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || "medium"}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger data-testid="assessment-form-confidence-level-dropdown">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -587,7 +588,7 @@ export function RiskAssessmentForm({
                     <FormItem>
                       <FormLabel>Assessment Notes</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Document your assessment rationale..." rows={4} {...field} />
+                        <Textarea placeholder="Document your assessment rationale..." rows={4} {...field} data-testid="assessment-form-notes-textarea" />
                       </FormControl>
                       <FormDescription>Detailed notes about this assessment</FormDescription>
                       <FormMessage />
@@ -602,7 +603,7 @@ export function RiskAssessmentForm({
                     <FormItem>
                       <FormLabel>Assumptions</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Any assumptions made during assessment..." rows={3} {...field} />
+                        <Textarea placeholder="Any assumptions made during assessment..." rows={3} {...field} data-testid="assessment-form-assumptions-textarea" />
                       </FormControl>
                       <FormDescription>Key assumptions underlying this assessment</FormDescription>
                       <FormMessage />
@@ -613,10 +614,10 @@ export function RiskAssessmentForm({
             </Tabs>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending} data-testid="assessment-form-cancel-button">
                 Cancel
               </Button>
-              <Button type="submit" disabled={mutation.isPending}>
+              <Button type="submit" disabled={mutation.isPending} data-testid={isEditMode ? "assessment-form-submit-update" : "assessment-form-submit-create"}>
                 {mutation.isPending ? "Creating..." : "Create Assessment"}
               </Button>
             </DialogFooter>
@@ -626,4 +627,6 @@ export function RiskAssessmentForm({
     </Dialog>
   )
 }
+
+
 

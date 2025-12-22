@@ -156,3 +156,5 @@ export class CreatePolicyAssignmentsTable1701000000015 implements MigrationInter
     await queryRunner.dropTable('policy_assignments', true);
   }
 }
+
+

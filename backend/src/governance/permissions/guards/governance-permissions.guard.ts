@@ -74,3 +74,5 @@ export class GovernancePermissionsGuard implements CanActivate {
     return Object.keys(resourceData).length > 0 ? resourceData : undefined;
   }
 }
+
+

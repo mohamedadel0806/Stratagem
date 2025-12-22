@@ -19,3 +19,5 @@ export class ComplianceScorecardController {
     return this.scorecardService.generateScorecard(ids);
   }
 }
+
+

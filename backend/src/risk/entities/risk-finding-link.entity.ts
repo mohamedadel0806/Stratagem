@@ -67,3 +67,5 @@ export class RiskFindingLink {
   updated_at: Date;
 }
 
+
+

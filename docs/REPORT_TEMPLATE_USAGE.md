@@ -261,3 +261,5 @@ Reports can be automatically sent to email distribution lists:
 - Files are streamed directly to the client (no disk storage)
 - For scheduled reports, files are attached to emails
 
+
+

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, LessThanOrEqual } from 'typeorm';
+import { Repository, IsNull, LessThanOrEqual, In } from 'typeorm';
 import { Influencer, InfluencerStatus } from '../influencers/entities/influencer.entity';
 import { Policy, PolicyStatus } from '../policies/entities/policy.entity';
 import { UnifiedControl, ControlStatus, ImplementationStatus, ControlType } from '../unified-controls/entities/unified-control.entity';
@@ -8,6 +8,7 @@ import { Assessment, AssessmentStatus, AssessmentType } from '../assessments/ent
 import { Finding, FindingStatus, FindingSeverity } from '../findings/entities/finding.entity';
 import { Evidence, EvidenceStatus } from '../evidence/entities/evidence.entity';
 import { ControlAssetMapping, AssetType } from '../unified-controls/entities/control-asset-mapping.entity';
+import { SOP, SOPStatus } from '../sops/entities/sop.entity';
 import {
   GovernanceDashboardDto,
   GovernanceSummaryDto,
@@ -39,6 +40,8 @@ export class GovernanceDashboardService {
     private evidenceRepository: Repository<Evidence>,
     @InjectRepository(ControlAssetMapping)
     private controlAssetMappingRepository: Repository<ControlAssetMapping>,
+    @InjectRepository(SOP)
+    private sopRepository: Repository<SOP>,
   ) {}
 
   async getDashboard(startDate?: string, endDate?: string): Promise<GovernanceDashboardDto> {
@@ -389,82 +392,112 @@ export class GovernanceDashboardService {
 
   private async getUpcomingReviews(): Promise<UpcomingReviewDto[]> {
     const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
     const upcoming: UpcomingReviewDto[] = [];
 
-    // Policies with upcoming reviews
+    // 1. Policies
     const policies = await this.policyRepository.find({
       where: {
-        next_review_date: LessThanOrEqual(thirtyDaysFromNow),
+        next_review_date: LessThanOrEqual(ninetyDaysFromNow),
         deleted_at: IsNull(),
       },
-      take: 10,
+      take: 20,
       order: { next_review_date: 'ASC' },
     });
 
-    policies.forEach((policy) => {
-      if (policy.next_review_date) {
-        // Convert to Date if it's a string
-        const reviewDate = policy.next_review_date instanceof Date
-          ? policy.next_review_date
-          : new Date(policy.next_review_date);
-        
-        // Skip if invalid date
-        if (isNaN(reviewDate.getTime())) {
-          return;
+    policies.forEach((p) => {
+      if (p.next_review_date) {
+        const d = p.next_review_date instanceof Date ? p.next_review_date : new Date(p.next_review_date);
+        if (!isNaN(d.getTime())) {
+          upcoming.push({
+            id: p.id,
+            type: 'policy',
+            name: p.title,
+            reviewDate: d,
+            daysUntil: Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+          });
         }
-        
-        const daysUntil = Math.ceil(
-          (reviewDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        upcoming.push({
-          id: policy.id,
-          type: 'policy',
-          name: policy.title,
-          reviewDate,
-          daysUntil,
-        });
       }
     });
 
-    // Influencers with upcoming reviews
+    // 2. Influencers
     const influencers = await this.influencerRepository.find({
       where: {
-        next_review_date: LessThanOrEqual(thirtyDaysFromNow),
+        next_review_date: LessThanOrEqual(ninetyDaysFromNow),
         deleted_at: IsNull(),
       },
-      take: 10,
+      take: 20,
       order: { next_review_date: 'ASC' },
     });
 
-    influencers.forEach((influencer) => {
-      if (influencer.next_review_date) {
-        // Convert to Date if it's a string
-        const reviewDate = influencer.next_review_date instanceof Date
-          ? influencer.next_review_date
-          : new Date(influencer.next_review_date);
-        
-        // Skip if invalid date
-        if (isNaN(reviewDate.getTime())) {
-          return;
+    influencers.forEach((i) => {
+      if (i.next_review_date) {
+        const d = i.next_review_date instanceof Date ? i.next_review_date : new Date(i.next_review_date);
+        if (!isNaN(d.getTime())) {
+          upcoming.push({
+            id: i.id,
+            type: 'influencer',
+            name: i.name,
+            reviewDate: d,
+            daysUntil: Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+          });
         }
-        
-        const daysUntil = Math.ceil(
-          (reviewDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        upcoming.push({
-          id: influencer.id,
-          type: 'influencer',
-          name: influencer.name,
-          reviewDate,
-          daysUntil,
-        });
       }
     });
 
-    // Sort by days until review
-    return upcoming.sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 10);
+    // 3. SOPs
+    const sops = await this.sopRepository.find({
+      where: {
+        next_review_date: LessThanOrEqual(ninetyDaysFromNow),
+        deleted_at: IsNull(),
+      },
+      take: 20,
+      order: { next_review_date: 'ASC' },
+    });
+
+    sops.forEach((s) => {
+      if (s.next_review_date) {
+        const d = s.next_review_date instanceof Date ? s.next_review_date : new Date(s.next_review_date);
+        if (!isNaN(d.getTime())) {
+          upcoming.push({
+            id: s.id,
+            type: 'sop',
+            name: s.title,
+            reviewDate: d,
+            daysUntil: Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+          });
+        }
+      }
+    });
+
+    // 4. Assessments
+    const assessments = await this.assessmentRepository.find({
+      where: {
+        end_date: LessThanOrEqual(ninetyDaysFromNow),
+        deleted_at: IsNull(),
+        status: In([AssessmentStatus.NOT_STARTED, AssessmentStatus.IN_PROGRESS]),
+      },
+      take: 20,
+      order: { end_date: 'ASC' },
+    });
+
+    assessments.forEach((a) => {
+      if (a.end_date) {
+        const d = a.end_date instanceof Date ? a.end_date : new Date(a.end_date);
+        if (!isNaN(d.getTime())) {
+          upcoming.push({
+            id: a.id,
+            type: 'assessment',
+            name: a.name,
+            reviewDate: d,
+            daysUntil: Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+          });
+        }
+      }
+    });
+
+    return upcoming.sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 20);
   }
 
   private async getRecentActivity(): Promise<RecentActivityDto[]> {

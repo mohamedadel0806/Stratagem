@@ -68,3 +68,5 @@ export class CreateReportTemplateDto {
   isOrganizationWide?: boolean;
 }
 
+
+

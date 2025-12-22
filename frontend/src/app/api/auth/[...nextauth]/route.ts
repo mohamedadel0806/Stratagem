@@ -12,12 +12,12 @@ function getBackendBaseUrl(): string {
   if (process.env.BACKEND_URL) {
     return process.env.BACKEND_URL;
   }
-  
+
   // Fall back to NEXT_PUBLIC_API_URL if BACKEND_URL is not set
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  
+
   // Fallback to localhost for local development
   return 'http://localhost:3001';
 }
@@ -31,18 +31,18 @@ function getBackendBaseUrl(): string {
  */
 function getLoginEndpoint(baseUrl: string): string {
   const cleanUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
-  
+
   // If URL already ends with /api/v1, just append /auth/login
   if (cleanUrl.endsWith('/api/v1')) {
     return `${cleanUrl}/auth/login`;
   }
-  
+
   // If URL ends with /api (but not /api/v1), append /v1/auth/login
   // This handles API gateway URLs like https://domain.com/api
   if (cleanUrl.endsWith('/api')) {
     return `${cleanUrl}/v1/auth/login`;
   }
-  
+
   // Default: append /api/v1/auth/login
   // This handles direct backend URLs like http://backend:3001 or http://localhost:3001
   return `${cleanUrl}/api/v1/auth/login`;
@@ -80,13 +80,10 @@ export const authOptions: NextAuthOptions = {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
             console.log(`Attempting login for: ${credentials.email} (attempt ${attempt}/${maxRetries})`);
-            console.log(`BACKEND_URL env: ${process.env.BACKEND_URL || '(not set)'}`);
-            console.log(`NEXT_PUBLIC_API_URL env: ${process.env.NEXT_PUBLIC_API_URL || '(not set)'}`);
-            console.log(`Using API_BASE_URL: ${API_BASE_URL}`);
-            
-            // Construct the login endpoint using the helper function
+            console.log(`API URL: ${API_BASE_URL}`);
+
             const loginEndpoint = getLoginEndpoint(API_BASE_URL);
-            console.log(`Login endpoint: ${loginEndpoint}`);
+            console.log(`Using login endpoint: ${loginEndpoint}`);
             
             const response = await axios.post(
               loginEndpoint,
@@ -117,9 +114,9 @@ export const authOptions: NextAuthOptions = {
               role: data.user.role,
               accessToken: data.accessToken,
             };
-            console.log("✅✅✅ AUTHORIZE SUCCESS - Returning user object:", { 
-              id: userData.id, 
-              email: userData.email, 
+            console.log("✅✅✅ AUTHORIZE SUCCESS - Returning user object:", {
+              id: userData.id,
+              email: userData.email,
               hasAccessToken: !!userData.accessToken,
               accessTokenLength: userData.accessToken?.length,
               role: userData.role,
@@ -129,9 +126,9 @@ export const authOptions: NextAuthOptions = {
           } catch (error: any) {
             lastError = error;
             const axiosError = error as AxiosError;
-            
+
             // Check if it's a connection error (ECONNREFUSED, ETIMEDOUT, etc.)
-            const isConnectionError = 
+            const isConnectionError =
               error?.code === 'ECONNREFUSED' ||
               error?.code === 'ETIMEDOUT' ||
               error?.code === 'ENOTFOUND' ||
@@ -156,14 +153,14 @@ export const authOptions: NextAuthOptions = {
               code: error?.code,
               message: error?.message,
             });
-            
+
             // If it's a connection error on final attempt, return null with error message
             if (isConnectionError && attempt === maxRetries) {
               console.error("Connection failed after all retries");
               // Return null - NextAuth will show error page
               return null;
             }
-            
+
             // For auth errors (401, etc.), return null (invalid credentials)
             return null;
           }
@@ -175,24 +172,24 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, account, trigger }) {
-      console.log("🔍 JWT callback called:", { 
+      console.log("🔍 JWT callback called:", {
         hasUser: !!user,
         hasAccount: !!account,
         trigger,
         currentTokenHasAccessToken: !!token.accessToken,
         currentTokenId: token.id,
       });
-      
+
       // When user logs in with credentials, the user object is provided
       if (user) {
-        console.log("✅ JWT callback - user provided:", { 
-          id: user.id, 
-          email: user.email, 
+        console.log("✅ JWT callback - user provided:", {
+          id: user.id,
+          email: user.email,
           hasAccessToken: !!(user as any).accessToken,
           accessTokenLength: ((user as any).accessToken as string)?.length,
           userKeys: Object.keys(user),
         });
-        
+
         // CRITICAL: Set accessToken from user object during initial login
         if ((user as any).accessToken) {
           token.accessToken = (user as any).accessToken;
@@ -200,15 +197,15 @@ export const authOptions: NextAuthOptions = {
         } else {
           console.error("❌ CRITICAL: User object provided but NO accessToken!");
         }
-        
+
         if ((user as any).role) {
           token.role = (user as any).role;
         }
-        
+
         if (user.id) {
           token.id = user.id;
         }
-        
+
         console.log("✅ JWT callback - AFTER setting from user:", {
           accessTokenSet: !!token.accessToken,
           accessTokenLength: (token.accessToken as string)?.length,
@@ -219,15 +216,15 @@ export const authOptions: NextAuthOptions = {
           hasAccessToken: !!token.accessToken,
           accessTokenLength: (token.accessToken as string)?.length,
         });
-        
+
         // If token doesn't have accessToken, something went wrong - log it
         if (!token.accessToken) {
           console.error("❌ CRITICAL: Token missing accessToken! This should not happen.");
           console.error("❌ Token will be invalid - user needs to log out and log back in.");
         }
       }
-      
-      console.log("✅ JWT callback - FINAL token:", { 
+
+      console.log("✅ JWT callback - FINAL token:", {
         hasAccessToken: !!token.accessToken,
         accessTokenLength: (token.accessToken as string)?.length,
         userId: token.id,
@@ -236,12 +233,12 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      console.log("✅ Session callback - token:", { 
+      console.log("✅ Session callback - token:", {
         hasAccessToken: !!token.accessToken,
         accessTokenLength: (token.accessToken as string)?.length,
-        tokenId: token.id 
+        tokenId: token.id
       });
-      
+
       if (token.accessToken) {
         session.accessToken = token.accessToken as string;
         session.user.id = (token.id || token.sub) as string;
@@ -250,11 +247,11 @@ export const authOptions: NextAuthOptions = {
       } else {
         console.error("❌ Session callback - NO accessToken in token!");
       }
-      
-      console.log("✅ Session callback - returning session:", { 
+
+      console.log("✅ Session callback - returning session:", {
         hasAccessToken: !!session.accessToken,
         accessTokenLength: (session.accessToken as string)?.length,
-        userId: session.user.id 
+        userId: session.user.id
       });
       return session;
     },

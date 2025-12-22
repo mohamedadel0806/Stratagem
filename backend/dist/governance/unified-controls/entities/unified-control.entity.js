@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UnifiedControl = exports.ImplementationStatus = exports.ControlStatus = exports.ControlCostImpact = exports.ControlComplexity = exports.ControlType = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("../../../users/entities/user.entity");
+const control_objective_entity_1 = require("../../control-objectives/entities/control-objective.entity");
 var ControlType;
 (function (ControlType) {
     ControlType["PREVENTIVE"] = "preventive";
@@ -173,6 +174,10 @@ __decorate([
     (0, typeorm_1.DeleteDateColumn)({ name: 'deleted_at' }),
     __metadata("design:type", Date)
 ], UnifiedControl.prototype, "deleted_at", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => control_objective_entity_1.ControlObjective, (objective) => objective.unified_controls),
+    __metadata("design:type", Array)
+], UnifiedControl.prototype, "control_objectives", void 0);
 exports.UnifiedControl = UnifiedControl = __decorate([
     (0, typeorm_1.Entity)('unified_controls'),
     (0, typeorm_1.Index)(['control_identifier']),

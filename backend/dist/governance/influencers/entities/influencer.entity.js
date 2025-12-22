@@ -85,9 +85,17 @@ __decorate([
     __metadata("design:type", Date)
 ], Influencer.prototype, "last_revision_date", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true, name: 'revision_notes' }),
+    __metadata("design:type", String)
+], Influencer.prototype, "revision_notes", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'date', nullable: true }),
     __metadata("design:type", Date)
 ], Influencer.prototype, "next_review_date", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'integer', nullable: true, name: 'review_frequency_days' }),
+    __metadata("design:type", Number)
+], Influencer.prototype, "review_frequency_days", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',

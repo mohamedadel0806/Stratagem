@@ -84,7 +84,7 @@ export declare class FindingStatsDto {
 }
 export declare class UpcomingReviewDto {
     id: string;
-    type: 'policy' | 'influencer' | 'control';
+    type: 'policy' | 'influencer' | 'control' | 'sop' | 'assessment';
     name: string;
     reviewDate: Date;
     daysUntil: number;

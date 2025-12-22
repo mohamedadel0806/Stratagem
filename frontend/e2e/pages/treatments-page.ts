@@ -27,17 +27,14 @@ export class TreatmentsPage {
       this.WAIT_LARGE = waitTimes.large || this.WAIT_LARGE;
     }
 
-    // Button locators - using getByTestId with fallback
-    this.newTreatmentButton = this.page.getByTestId('treatments-new-button')
-      .or(this.page.locator('button:has-text("New Treatment")').first());
-    
-    // Search input - use getByPlaceholder (recommended Playwright method)
-    this.searchInput = this.page.getByPlaceholder(/Search.*treatment/i)
-      .or(this.page.locator('input[placeholder*="Search"], input[type="search"]').first());
-    
-    // Treatments list container - use semantic selectors
-    this.treatmentsList = this.page.getByRole('main')
-      .or(this.page.locator('main').first());
+    // Button locators - using getByTestId only (Playwright Advisory Guide compliant)
+    this.newTreatmentButton = this.page.getByTestId('treatments-new-button');
+
+    // Search input - using getByTestId only (Playwright Advisory Guide compliant)
+    this.searchInput = this.page.getByTestId('treatments-search-input');
+
+    // Treatments list container - using getByTestId only (Playwright Advisory Guide compliant)
+    this.treatmentsList = this.page.getByTestId('treatments-list');
   }
 
   /**
@@ -91,7 +88,8 @@ export class TreatmentsPage {
     const inputVisible = await this.searchInput.isVisible({ timeout: 3000 }).catch(() => false);
     if (inputVisible) {
       await this.searchInput.clear();
-      await this.searchInput.fill(query);
+      // Use type() with delay for better React form handling (Playwright Advisory Guide compliant)
+      await this.searchInput.type(query, { delay: 30 });
       await this.page.waitForTimeout(this.WAIT_MEDIUM); // Wait for search results
     }
   }
@@ -170,11 +168,9 @@ export class TreatmentsPage {
       console.log('✅ Risk already selected or not required');
     }
 
-    // Fill title - required field (slower typing)
+    // Fill title - required field (slower typing) - using getByTestId only (Playwright Advisory Guide compliant)
     if (options.title) {
-      const titleInput = this.page.getByLabel('Title').or(
-        this.page.locator('input[name*="title"]').first()
-      );
+      const titleInput = this.page.getByTestId('treatment-form-title-input');
       await titleInput.waitFor({ state: 'visible', timeout: 5000 });
       await titleInput.clear({ timeout: 3000 });
       await this.page.waitForTimeout(this.WAIT_SMALL);
@@ -184,12 +180,10 @@ export class TreatmentsPage {
       console.log(`✅ Filled treatment title: ${options.title}`);
     }
 
-    // Fill description (slower typing)
+    // Fill description (slower typing) - using getByTestId only (Playwright Advisory Guide compliant)
     if (options.description) {
       await this.page.waitForTimeout(this.WAIT_SMALL);
-      const descriptionTextarea = this.page.getByLabel('Description').or(
-        this.page.locator('textarea[name*="description"]').first()
-      );
+      const descriptionTextarea = this.page.getByTestId('treatment-form-description-textarea');
       await descriptionTextarea.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
       await descriptionTextarea.clear({ timeout: 3000 });
       await this.page.waitForTimeout(this.WAIT_SMALL);
@@ -199,16 +193,16 @@ export class TreatmentsPage {
       console.log(`✅ Filled treatment description`);
     }
 
-    // Fill strategy - required field (with delays)
+    // Fill strategy - required field (with delays) - using getByTestId only (Playwright Advisory Guide compliant)
     if (options.strategy) {
       try {
         await this.page.waitForTimeout(this.WAIT_SMALL);
-        const strategySelect = this.page.getByLabel('Strategy').first();
+        const strategySelect = this.page.getByTestId('treatment-form-strategy-dropdown');
         await strategySelect.waitFor({ state: 'visible', timeout: 5000 });
         await this.page.waitForTimeout(this.WAIT_MEDIUM);
         await strategySelect.click();
         await this.page.waitForTimeout(this.WAIT_MEDIUM);
-        
+
         const option = this.page.getByRole('option', { name: new RegExp(options.strategy, 'i') }).first();
         await option.waitFor({ state: 'visible', timeout: 3000 });
         await this.page.waitForTimeout(this.WAIT_SMALL);
@@ -220,16 +214,16 @@ export class TreatmentsPage {
       }
     }
 
-    // Fill status - required field (with delays)
+    // Fill status - required field (with delays) - using getByTestId only (Playwright Advisory Guide compliant)
     if (options.status) {
       try {
         await this.page.waitForTimeout(this.WAIT_SMALL);
-        const statusSelect = this.page.getByLabel('Status').first();
+        const statusSelect = this.page.getByTestId('treatment-form-status-dropdown');
         await statusSelect.waitFor({ state: 'visible', timeout: 5000 });
         await this.page.waitForTimeout(this.WAIT_MEDIUM);
         await statusSelect.click();
         await this.page.waitForTimeout(this.WAIT_MEDIUM);
-        
+
         const option = this.page.getByRole('option', { name: new RegExp(options.status, 'i') }).first();
         await option.waitFor({ state: 'visible', timeout: 3000 });
         await this.page.waitForTimeout(this.WAIT_SMALL);
@@ -293,4 +287,6 @@ export class TreatmentsPage {
     console.log('✅ Treatment form submitted successfully');
   }
 }
+
+
 

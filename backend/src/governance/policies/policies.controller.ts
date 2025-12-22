@@ -27,6 +27,8 @@ import { CreatePolicyDto } from './dto/create-policy.dto';
 import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { PolicyQueryDto } from './dto/policy-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { Audit } from '../../common/decorators/audit.decorator';
+import { AuditAction } from '../../common/entities/audit-log.entity';
 
 @ApiTags('governance')
 @Controller('governance/policies')
@@ -36,6 +38,7 @@ export class PoliciesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Audit(AuditAction.CREATE, 'Policy')
   create(@Body() createPolicyDto: CreatePolicyDto, @Request() req) {
     return this.policiesService.create(createPolicyDto, req.user.id);
   }
@@ -107,18 +110,21 @@ export class PoliciesController {
   }
 
   @Patch(':id')
+  @Audit(AuditAction.UPDATE, 'Policy')
   update(@Param('id') id: string, @Body() updatePolicyDto: UpdatePolicyDto, @Request() req) {
     return this.policiesService.update(id, updatePolicyDto, req.user.id);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Audit(AuditAction.DELETE, 'Policy')
   remove(@Param('id') id: string) {
     return this.policiesService.remove(id);
   }
 
   @Post(':id/attachments/upload')
   @HttpCode(HttpStatus.CREATED)
+  @Audit(AuditAction.UPDATE, 'Policy', { description: 'Uploaded attachment to policy' })
   @UseInterceptors(
     FileInterceptor('file', {
       dest: './uploads/policies',
@@ -227,6 +233,7 @@ export class PoliciesController {
 
   @Post(':id/publish')
   @HttpCode(HttpStatus.OK)
+  @Audit(AuditAction.PUBLISH, 'Policy')
   async publish(
     @Param('id') id: string,
     @Body() body: {
@@ -252,6 +259,7 @@ export class PoliciesController {
   @Post(':id/reviews')
   @ApiOperation({ summary: 'Initiate a policy review' })
   @ApiResponse({ status: 201, description: 'Review initiated successfully' })
+  @Audit(AuditAction.APPROVE, 'Policy', { description: 'Initiated policy review' })
   async initiateReview(
     @Param('id') id: string,
     @Body() body: { review_date: string },
@@ -281,6 +289,7 @@ export class PoliciesController {
   @Patch('reviews/:reviewId/complete')
   @ApiOperation({ summary: 'Complete a policy review' })
   @ApiResponse({ status: 200, description: 'Review completed successfully' })
+  @Audit(AuditAction.APPROVE, 'Policy', { description: 'Completed policy review' })
   async completeReview(
     @Param('reviewId') reviewId: string,
     @Body() body: {
@@ -302,6 +311,112 @@ export class PoliciesController {
       body.next_review_date ? new Date(body.next_review_date) : undefined,
     );
     return { data: review };
+  }
+
+  // ==================== POLICY HIERARCHY ENDPOINTS (Story 2.1) ====================
+
+  @Get('hierarchy/all')
+  @ApiOperation({ summary: 'Get all policy hierarchies (root policies with trees)' })
+  @ApiResponse({ status: 200, description: 'List of policy hierarchies' })
+  async getAllHierarchies(@Query('includeArchived') includeArchived?: string) {
+    const result = await this.policiesService.getAllHierarchies(includeArchived === 'true');
+    return { data: result };
+  }
+
+  @Get('hierarchy/roots')
+  @ApiOperation({ summary: 'Get root policies (policies with no parents)' })
+  @ApiResponse({ status: 200, description: 'List of root policies' })
+  async getRootPolicies(@Query('includeArchived') includeArchived?: string) {
+    const result = await this.policiesService.getRootPolicies(includeArchived === 'true');
+    return { data: result };
+  }
+
+  @Get(':id/hierarchy')
+  @ApiOperation({ summary: 'Get complete hierarchy information for a policy' })
+  @ApiResponse({ status: 200, description: 'Complete hierarchy information' })
+  async getCompleteHierarchy(@Param('id') id: string) {
+    const result = await this.policiesService.getCompleteHierarchy(id);
+    return { data: result };
+  }
+
+  @Get(':id/hierarchy/tree')
+  @ApiOperation({ summary: 'Get hierarchy tree for a policy (parent and all descendants)' })
+  @ApiResponse({ status: 200, description: 'Hierarchy tree structure' })
+  async getHierarchyTree(
+    @Param('id') id: string,
+    @Query('includeArchived') includeArchived?: string,
+  ) {
+    const result = await this.policiesService.getHierarchyTree(id, includeArchived === 'true');
+    return { data: result };
+  }
+
+  @Get(':id/hierarchy/parent')
+  @ApiOperation({ summary: 'Get parent policy' })
+  @ApiResponse({ status: 200, description: 'Parent policy or null if root' })
+  async getParent(@Param('id') id: string) {
+    const result = await this.policiesService.getParent(id);
+    return { data: result };
+  }
+
+  @Get(':id/hierarchy/children')
+  @ApiOperation({ summary: 'Get immediate child policies' })
+  @ApiResponse({ status: 200, description: 'List of child policies' })
+  async getChildren(
+    @Param('id') id: string,
+    @Query('includeArchived') includeArchived?: string,
+  ) {
+    const result = await this.policiesService.getChildren(id, includeArchived === 'true');
+    return { data: result };
+  }
+
+  @Get(':id/hierarchy/ancestors')
+  @ApiOperation({ summary: 'Get all ancestor policies (up to root)' })
+  @ApiResponse({ status: 200, description: 'List of ancestor policies' })
+  async getAncestors(@Param('id') id: string) {
+    const result = await this.policiesService.getAncestors(id);
+    return { data: result };
+  }
+
+  @Get(':id/hierarchy/descendants')
+  @ApiOperation({ summary: 'Get all descendant policies (all children, grandchildren, etc.)' })
+  @ApiResponse({ status: 200, description: 'List of descendant policies' })
+  async getDescendants(@Param('id') id: string) {
+    const result = await this.policiesService.getAllDescendants(id);
+    return { data: result };
+  }
+
+  @Get(':id/hierarchy/level')
+  @ApiOperation({ summary: 'Get hierarchy level of a policy (0 for root)' })
+  @ApiResponse({ status: 200, description: 'Hierarchy level number' })
+  async getHierarchyLevel(@Param('id') id: string) {
+    const level = await this.policiesService.getHierarchyLevel(id);
+    return { data: { level } };
+  }
+
+  @Get(':id/hierarchy/root')
+  @ApiOperation({ summary: 'Get root policy of the hierarchy' })
+  @ApiResponse({ status: 200, description: 'Root policy' })
+  async getRoot(@Param('id') id: string) {
+    const result = await this.policiesService.getRoot(id);
+    return { data: result };
+  }
+
+  @Patch(':id/hierarchy/parent')
+  @HttpCode(HttpStatus.OK)
+  @Audit(AuditAction.UPDATE, 'Policy Hierarchy')
+  @ApiOperation({ summary: 'Set or update parent policy' })
+  async setParentPolicy(
+    @Param('id') id: string,
+    @Body() body: { parent_policy_id?: string | null; reason?: string },
+    @Request() req,
+  ) {
+    const result = await this.policiesService.setParentPolicy(
+      id,
+      body.parent_policy_id ?? null,
+      req.user.id,
+      body.reason,
+    );
+    return { data: result };
   }
 }
 

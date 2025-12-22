@@ -9,7 +9,6 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "prebuild": "rimraf dist",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -34,7 +33,9 @@
     "seed:report-templates": "ts-node -r tsconfig-paths/register ./src/scripts/seed-report-templates.ts",
     "check:governance": "ts-node -r tsconfig-paths/register ./src/scripts/check-governance-data.ts",
     "fix:policies-schema": "ts-node -r tsconfig-paths/register ./src/scripts/fix-policies-schema.ts",
-    "test:signature": "ts-node -r tsconfig-paths/register ./src/scripts/test-digital-signature.ts"
+    "test:signature": "ts-node -r tsconfig-paths/register ./src/scripts/test-digital-signature.ts",
+    "validate:modules": "ts-node -r tsconfig-paths/register ./src/scripts/validate-modules.ts",
+    "prebuild": "rimraf dist"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.12.2",
@@ -52,7 +53,8 @@
     "@nestjs/throttler": "^5.1.2",
     "@nestjs/typeorm": "^10.0.2",
     "@types/multer": "^2.0.0",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
     "bull": "^4.16.5",
     "cache-manager": "^5.4.0",
     "class-transformer": "^0.5.1",
@@ -78,7 +80,8 @@
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
-    "@types/bcrypt": "^5.0.2",
+    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/bull": "^3.15.9",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.2",

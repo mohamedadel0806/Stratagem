@@ -65,3 +65,5 @@ export class AddSharingFieldsToReportTemplates1705000000004
     await queryRunner.dropColumn('report_templates', 'version');
   }
 }
+
+

@@ -1,5 +1,5 @@
 import { UnifiedControlsService } from './unified-controls.service';
-import { ControlAssetMappingService } from './services/control-asset-mapping.service';
+import { ControlAssetMappingService, AssetCompliancePosture, AssetTypeComplianceOverview } from './services/control-asset-mapping.service';
 import { FrameworkControlMappingService } from './services/framework-control-mapping.service';
 import { CreateUnifiedControlDto } from './dto/create-unified-control.dto';
 import { UnifiedControlQueryDto } from './dto/unified-control-query.dto';
@@ -7,6 +7,8 @@ import { CreateControlAssetMappingDto, BulkCreateControlAssetMappingDto } from '
 import { BulkDeleteControlAssetMappingDto } from './dto/bulk-delete-control-asset-mapping.dto';
 import { UpdateControlAssetMappingDto } from './dto/update-control-asset-mapping.dto';
 import { ControlAssetMappingQueryDto } from './dto/control-asset-mapping-query.dto';
+import { AssetType } from './entities/control-asset-mapping.entity';
+import { ImplementationStatus } from './entities/unified-control.entity';
 import { RiskControlLinkService } from '../../risk/services/risk-control-link.service';
 export declare class UnifiedControlsController {
     private readonly unifiedControlsService;
@@ -47,6 +49,66 @@ export declare class UnifiedControlsController {
         alreadyLinked: string[];
     }>;
     unlinkControlFromAsset(assetType: string, assetId: string, controlId: string): Promise<void>;
+    getAssetCompliancePosture(assetType: string, assetId: string): Promise<AssetCompliancePosture>;
+    getAssetTypeComplianceOverview(assetType: string): Promise<AssetTypeComplianceOverview>;
+    getControlAssetMatrix(assetType?: AssetType, controlDomain?: string, implementationStatus?: ImplementationStatus): Promise<{
+        controls: Array<{
+            id: string;
+            identifier: string;
+            title: string;
+            domain: string;
+            totalAssets: number;
+            implementedAssets: number;
+            partialAssets: number;
+            notImplementedAssets: number;
+        }>;
+        assets: Array<{
+            id: string;
+            type: AssetType;
+            complianceScore: number;
+            totalControls: number;
+        }>;
+        matrix: Array<{
+            controlId: string;
+            assetId: string;
+            implementationStatus: ImplementationStatus;
+            effectivenessScore?: number;
+        }>;
+    }>;
+    getControlEffectivenessSummary(controlId: string): Promise<{
+        controlId: string;
+        totalAssets: number;
+        averageEffectiveness: number;
+        effectivenessDistribution: {
+            excellent: number;
+            good: number;
+            fair: number;
+            poor: number;
+        };
+        assetEffectiveness: Array<{
+            assetId: string;
+            assetType: AssetType;
+            effectivenessScore?: number;
+            lastTestDate?: Date;
+            implementationStatus: ImplementationStatus;
+        }>;
+    }>;
+    bulkUpdateImplementationStatus(updates: Array<{
+        controlId: string;
+        assetType: AssetType;
+        assetId: string;
+        implementationStatus: ImplementationStatus;
+        implementationNotes?: string;
+        effectivenessScore?: number;
+    }>, req: any): Promise<{
+        updated: number;
+        notFound: number;
+        errors: Array<{
+            controlId: string;
+            assetId: string;
+            error: string;
+        }>;
+    }>;
     getRisks(controlId: string): Promise<any[]>;
     getRiskEffectiveness(controlId: string): Promise<{
         total_risks: number;
@@ -76,4 +138,62 @@ export declare class UnifiedControlsController {
         mapping_notes?: string;
     }): Promise<import("./entities/framework-control-mapping.entity").FrameworkControlMapping>;
     deleteFrameworkMapping(mappingId: string): Promise<void>;
+    getCoverageMatrix(frameworkId: string): Promise<{
+        requirementId: string;
+        requirementIdentifier: string;
+        requirementTitle: string;
+        controlId: string;
+        controlIdentifier: string;
+        controlTitle: string;
+        coverageLevel: import("./entities/framework-control-mapping.entity").MappingCoverage;
+    }[]>;
+    getLibraryStatistics(): Promise<{
+        totalControls: number;
+        activeControls: number;
+        draftControls: number;
+        deprecatedControls: number;
+        byType: Record<string, number>;
+        byComplexity: Record<string, number>;
+        implementationRate: number;
+    }>;
+    getDomainTree(): Promise<any[]>;
+    getActiveDomains(): Promise<import("../domains/entities/domain.entity").ControlDomain[]>;
+    getControlTypes(): Promise<string[]>;
+    browseLibrary(domain?: string, type?: string, complexity?: string, status?: string, implementationStatus?: string, search?: string, page?: number, limit?: number): Promise<{
+        data: import("./entities/unified-control.entity").UnifiedControl[];
+        meta: {
+            page: number;
+            limit: number;
+            total: number;
+            totalPages: number;
+        };
+    }>;
+    getControlsDashboard(): Promise<{
+        recentControls: import("./entities/unified-control.entity").UnifiedControl[];
+        draftControls: import("./entities/unified-control.entity").UnifiedControl[];
+        implementedControls: import("./entities/unified-control.entity").UnifiedControl[];
+        deprecatedControls: import("./entities/unified-control.entity").UnifiedControl[];
+    }>;
+    exportControls(domain?: string, type?: string, status?: string): Promise<string>;
+    importControls(importData: any[], req: any): Promise<{
+        created: number;
+        skipped: number;
+        errors: Array<{
+            row: number;
+            error: string;
+        }>;
+    }>;
+    getControlsByDomain(id: string): Promise<import("./entities/unified-control.entity").UnifiedControl[]>;
+    getRelatedControls(id: string, limit?: number): Promise<import("./entities/unified-control.entity").UnifiedControl[]>;
+    getControlEffectiveness(id: string): Promise<{
+        controlId: string;
+        title: string;
+        implementationStatus: string;
+        lastUpdated: Date;
+        avgEffectiveness: number;
+        testHistory: Array<{
+            date: Date;
+            result: string;
+        }>;
+    }>;
 }

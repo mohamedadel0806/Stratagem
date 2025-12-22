@@ -31,6 +31,9 @@ let GovernanceDashboardController = class GovernanceDashboardController {
     async getDashboardTrends() {
         return this.trendService.getTrend();
     }
+    async getEffectivenessTrends(controlId, rangeDays) {
+        return this.trendService.getControlEffectivenessTrend(controlId, rangeDays);
+    }
     async exportDashboard(startDate, endDate) {
         const dashboard = await this.dashboardService.getDashboard(startDate, endDate);
         return {
@@ -64,6 +67,15 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], GovernanceDashboardController.prototype, "getDashboardTrends", null);
+__decorate([
+    (0, common_1.Get)('effectiveness/trends'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get historical control effectiveness trends' }),
+    __param(0, (0, common_1.Query)('controlId')),
+    __param(1, (0, common_1.Query)('rangeDays')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number]),
+    __metadata("design:returntype", Promise)
+], GovernanceDashboardController.prototype, "getEffectivenessTrends", null);
 __decorate([
     (0, common_1.Get)('export'),
     (0, swagger_1.ApiOperation)({ summary: 'Export dashboard to PDF' }),

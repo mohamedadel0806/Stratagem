@@ -4,7 +4,8 @@ export declare enum ReportType {
     CONTROL_IMPLEMENTATION = "control_implementation",
     ASSESSMENT = "assessment",
     FINDINGS = "findings",
-    CONTROL_STATUS = "control_status"
+    CONTROL_STATUS = "control_status",
+    EXECUTIVE_GOVERNANCE = "executive_governance"
 }
 export declare enum ExportFormat {
     CSV = "csv",

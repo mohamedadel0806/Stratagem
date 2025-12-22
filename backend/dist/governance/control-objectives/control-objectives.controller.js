@@ -36,6 +36,15 @@ let ControlObjectivesController = class ControlObjectivesController {
     remove(id) {
         return this.controlObjectivesService.remove(id);
     }
+    linkUnifiedControls(id, controlIds) {
+        return this.controlObjectivesService.linkUnifiedControls(id, controlIds);
+    }
+    unlinkUnifiedControls(id, controlIds) {
+        return this.controlObjectivesService.unlinkUnifiedControls(id, controlIds);
+    }
+    getUnifiedControls(id) {
+        return this.controlObjectivesService.getUnifiedControls(id);
+    }
 };
 exports.ControlObjectivesController = ControlObjectivesController;
 __decorate([
@@ -78,6 +87,29 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], ControlObjectivesController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)(':id/unified-controls'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('control_ids')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Array]),
+    __metadata("design:returntype", void 0)
+], ControlObjectivesController.prototype, "linkUnifiedControls", null);
+__decorate([
+    (0, common_1.Delete)(':id/unified-controls'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('control_ids')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Array]),
+    __metadata("design:returntype", void 0)
+], ControlObjectivesController.prototype, "unlinkUnifiedControls", null);
+__decorate([
+    (0, common_1.Get)(':id/unified-controls'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ControlObjectivesController.prototype, "getUnifiedControls", null);
 exports.ControlObjectivesController = ControlObjectivesController = __decorate([
     (0, common_1.Controller)('governance/control-objectives'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

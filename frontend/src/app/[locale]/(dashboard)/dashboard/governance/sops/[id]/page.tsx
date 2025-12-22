@@ -5,7 +5,7 @@ import { governanceApi, SOP, SOPStatus, SOPCategory } from '@/lib/api/governance
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, ArrowLeft, FileText, Send } from 'lucide-react';
+import { Edit, Trash2, ArrowLeft, FileText, Send, Clock, MessageSquare, Users, GitBranch } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -14,6 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SOPForm } from '@/components/governance/sop-form';
 import { ApprovalSection } from '@/components/governance/approval-section';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { SOPScheduleManager } from '@/components/governance/sop-schedule-manager';
+import { SOPFeedbackForm } from '@/components/governance/sop-feedback-form';
+import { SOPVersionHistory } from '@/components/governance/sop-version-history';
+import { SOPAssignmentDialog } from '@/components/governance/sop-assignment-dialog';
+import { SOPTemplateLibrary } from '@/components/governance/sop-template-library';
 
 const statusLabels: Record<SOPStatus, string> = {
   [SOPStatus.DRAFT]: 'Draft',
@@ -37,6 +42,7 @@ export default function SOPDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
   const sopId = params.id as string;
 
   const { data: sop, isLoading } = useQuery({
@@ -177,6 +183,15 @@ export default function SOPDetailPage() {
               {publishMutation.isPending ? 'Publishing...' : 'Publish'}
             </Button>
           )}
+          {sop.status === SOPStatus.PUBLISHED && (
+            <Button
+              onClick={() => setIsAssignOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Manage Assignments
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setIsEditOpen(true)}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
@@ -200,6 +215,18 @@ export default function SOPDetailPage() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="versions">
+            <GitBranch className="h-4 w-4 mr-2" />
+            Versions
+          </TabsTrigger>
+          <TabsTrigger value="schedule">
+            <Clock className="h-4 w-4 mr-2" />
+            Reviews
+          </TabsTrigger>
+          <TabsTrigger value="feedback">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Feedback
+          </TabsTrigger>
           <TabsTrigger value="approvals">Approvals</TabsTrigger>
         </TabsList>
 
@@ -368,6 +395,48 @@ export default function SOPDetailPage() {
         <TabsContent value="approvals" className="space-y-4">
           <ApprovalSection entityType="sop" entityId={sop.id} />
         </TabsContent>
+
+        <TabsContent value="versions" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Version Control</CardTitle>
+              <CardDescription>
+                Track all versions and their approval status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SOPVersionHistory sopId={sop.id} currentVersion={sop.version} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="schedule" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Review Scheduling</CardTitle>
+              <CardDescription>
+                Manage automated review reminders and schedules
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SOPScheduleManager sopId={sop.id} sop={sop} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="feedback" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Feedback</CardTitle>
+              <CardDescription>
+                Collect and analyze feedback from SOP users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SOPFeedbackForm sopId={sop.id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -390,6 +459,14 @@ export default function SOPDetailPage() {
           />
         </DialogContent>
       </Dialog>
+
+      <SOPAssignmentDialog
+        sopId={sopId}
+        open={isAssignOpen}
+        onOpenChange={setIsAssignOpen}
+      />
     </div>
   );
 }
+
+

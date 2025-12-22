@@ -10,7 +10,9 @@ export declare class CreateInfluencerDto {
     publication_date?: string;
     effective_date?: string;
     last_revision_date?: string;
+    revision_notes?: string;
     next_review_date?: string;
+    review_frequency_days?: number;
     status?: InfluencerStatus;
     applicability_status?: ApplicabilityStatus;
     applicability_justification?: string;

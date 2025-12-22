@@ -6,6 +6,7 @@ import { Assessment } from '../assessments/entities/assessment.entity';
 import { Finding } from '../findings/entities/finding.entity';
 import { Evidence } from '../evidence/entities/evidence.entity';
 import { ControlAssetMapping } from '../unified-controls/entities/control-asset-mapping.entity';
+import { SOP } from '../sops/entities/sop.entity';
 import { GovernanceDashboardDto, GovernanceSummaryDto, AssetComplianceStatsDto } from '../dto/governance-dashboard.dto';
 export declare class GovernanceDashboardService {
     private influencerRepository;
@@ -15,7 +16,8 @@ export declare class GovernanceDashboardService {
     private findingRepository;
     private evidenceRepository;
     private controlAssetMappingRepository;
-    constructor(influencerRepository: Repository<Influencer>, policyRepository: Repository<Policy>, unifiedControlRepository: Repository<UnifiedControl>, assessmentRepository: Repository<Assessment>, findingRepository: Repository<Finding>, evidenceRepository: Repository<Evidence>, controlAssetMappingRepository: Repository<ControlAssetMapping>);
+    private sopRepository;
+    constructor(influencerRepository: Repository<Influencer>, policyRepository: Repository<Policy>, unifiedControlRepository: Repository<UnifiedControl>, assessmentRepository: Repository<Assessment>, findingRepository: Repository<Finding>, evidenceRepository: Repository<Evidence>, controlAssetMappingRepository: Repository<ControlAssetMapping>, sopRepository: Repository<SOP>);
     getDashboard(startDate?: string, endDate?: string): Promise<GovernanceDashboardDto>;
     getSummaryMetrics(): Promise<GovernanceSummaryDto>;
     private getControlStats;

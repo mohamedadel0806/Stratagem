@@ -9,3 +9,5 @@ exec /Users/adelsayed/.nvm/versions/node/v24.11.1/bin/npx -y next-devtools-mcp@l
 
 
 
+
+

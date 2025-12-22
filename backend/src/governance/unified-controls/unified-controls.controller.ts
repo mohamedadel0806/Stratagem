@@ -12,9 +12,9 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UnifiedControlsService } from './unified-controls.service';
-import { ControlAssetMappingService } from './services/control-asset-mapping.service';
+import { ControlAssetMappingService, AssetCompliancePosture, AssetTypeComplianceOverview } from './services/control-asset-mapping.service';
 import { FrameworkControlMappingService } from './services/framework-control-mapping.service';
 import { CreateUnifiedControlDto } from './dto/create-unified-control.dto';
 import { UnifiedControlQueryDto } from './dto/unified-control-query.dto';
@@ -22,8 +22,12 @@ import { CreateControlAssetMappingDto, BulkCreateControlAssetMappingDto } from '
 import { BulkDeleteControlAssetMappingDto } from './dto/bulk-delete-control-asset-mapping.dto';
 import { UpdateControlAssetMappingDto } from './dto/update-control-asset-mapping.dto';
 import { ControlAssetMappingQueryDto } from './dto/control-asset-mapping-query.dto';
+import { AssetType } from './entities/control-asset-mapping.entity';
+import { ImplementationStatus } from './entities/unified-control.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RiskControlLinkService } from '../../risk/services/risk-control-link.service';
+import { Audit } from '../../common/decorators/audit.decorator';
+import { AuditAction } from '../../common/entities/audit-log.entity';
 
 @ApiTags('governance')
 @Controller('governance/unified-controls')
@@ -39,6 +43,7 @@ export class UnifiedControlsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Audit(AuditAction.CREATE, 'UnifiedControl')
   create(@Body() createDto: CreateUnifiedControlDto, @Request() req) {
     return this.unifiedControlsService.create(createDto, req.user.id);
   }
@@ -54,12 +59,14 @@ export class UnifiedControlsController {
   }
 
   @Patch(':id')
+  @Audit(AuditAction.UPDATE, 'UnifiedControl')
   update(@Param('id') id: string, @Body() updateDto: Partial<CreateUnifiedControlDto>, @Request() req) {
     return this.unifiedControlsService.update(id, updateDto, req.user.id);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Audit(AuditAction.DELETE, 'UnifiedControl')
   remove(@Param('id') id: string) {
     return this.unifiedControlsService.remove(id);
   }
@@ -70,6 +77,7 @@ export class UnifiedControlsController {
   @ApiResponse({ status: 201, description: 'Asset linked to control successfully' })
   @ApiResponse({ status: 404, description: 'Control not found' })
   @ApiResponse({ status: 409, description: 'Asset already linked to control' })
+  @Audit(AuditAction.ASSIGN, 'UnifiedControl', { description: 'Linked asset to control' })
   linkAsset(
     @Param('id') controlId: string,
     @Body() createDto: CreateControlAssetMappingDto,
@@ -81,6 +89,7 @@ export class UnifiedControlsController {
   @Post(':id/assets/bulk')
   @ApiOperation({ summary: 'Bulk link assets to a control' })
   @ApiResponse({ status: 201, description: 'Assets linked to control successfully' })
+  @Audit(AuditAction.ASSIGN, 'UnifiedControl', { description: 'Bulk linked assets to control' })
   bulkLinkAssets(
     @Param('id') controlId: string,
     @Body() bulkDto: BulkCreateControlAssetMappingDto,
@@ -182,7 +191,68 @@ export class UnifiedControlsController {
     return this.controlAssetMappingService.removeByAsset(controlId, assetType as any, assetId);
   }
 
-  // ================== Risk Integration Endpoints ==================
+  // ==================== ASSET COMPLIANCE ENDPOINTS (Story 5.1) ====================
+
+  @Get('assets/:assetType/:assetId/compliance')
+  @ApiOperation({ summary: 'Get asset compliance posture' })
+  @ApiResponse({ status: 200, description: 'Asset compliance data retrieved successfully' })
+  getAssetCompliancePosture(
+    @Param('assetType') assetType: string,
+    @Param('assetId') assetId: string,
+  ): Promise<AssetCompliancePosture> {
+    return this.controlAssetMappingService.getAssetCompliancePosture(assetType as any, assetId);
+  }
+
+  @Get('assets/:assetType/compliance-overview')
+  @ApiOperation({ summary: 'Get compliance overview for asset type' })
+  @ApiResponse({ status: 200, description: 'Compliance overview retrieved successfully' })
+  getAssetTypeComplianceOverview(@Param('assetType') assetType: string): Promise<AssetTypeComplianceOverview> {
+    return this.controlAssetMappingService.getAssetTypeComplianceOverview(assetType as any);
+  }
+
+  @Get('matrix')
+  @ApiOperation({ summary: 'Get control-asset matrix data' })
+  @ApiResponse({ status: 200, description: 'Matrix data retrieved successfully' })
+  @ApiQuery({ name: 'assetType', required: false, enum: AssetType })
+  @ApiQuery({ name: 'controlDomain', required: false })
+  @ApiQuery({ name: 'implementationStatus', required: false, enum: ImplementationStatus })
+  getControlAssetMatrix(
+    @Query('assetType') assetType?: AssetType,
+    @Query('controlDomain') controlDomain?: string,
+    @Query('implementationStatus') implementationStatus?: ImplementationStatus,
+  ) {
+    return this.controlAssetMappingService.getControlAssetMatrix({
+      assetType,
+      controlDomain,
+      implementationStatus,
+    });
+  }
+
+  @Get(':id/effectiveness-summary')
+  @ApiOperation({ summary: 'Get control effectiveness summary across assets' })
+  @ApiResponse({ status: 200, description: 'Effectiveness summary retrieved successfully' })
+  getControlEffectivenessSummary(@Param('id') controlId: string) {
+    return this.controlAssetMappingService.getControlEffectivenessSummary(controlId);
+  }
+
+  @Patch('assets/bulk-update-status')
+  @ApiOperation({ summary: 'Bulk update implementation status for asset-control mappings' })
+  @ApiResponse({ status: 200, description: 'Status updates completed successfully' })
+  bulkUpdateImplementationStatus(
+    @Body() updates: Array<{
+      controlId: string;
+      assetType: AssetType;
+      assetId: string;
+      implementationStatus: ImplementationStatus;
+      implementationNotes?: string;
+      effectivenessScore?: number;
+    }>,
+    @Request() req,
+  ) {
+    return this.controlAssetMappingService.bulkUpdateImplementationStatus(updates, req.user.id);
+  }
+
+  // ==================== CONTROL LIBRARY ENDPOINTS (Story 3.1) ====================
 
   @Get(':id/risks')
   @ApiOperation({ summary: 'Get all risks linked to this control' })
@@ -209,6 +279,7 @@ export class UnifiedControlsController {
   @Post(':id/framework-mappings')
   @ApiOperation({ summary: 'Map a control to a framework requirement' })
   @ApiResponse({ status: 201, description: 'Mapping created successfully' })
+  @Audit(AuditAction.ASSIGN, 'UnifiedControl', { description: 'Mapped control to framework requirement' })
   createFrameworkMapping(
     @Param('id') controlId: string,
     @Body() body: { requirement_id: string; coverage_level: string; mapping_notes?: string },
@@ -226,6 +297,7 @@ export class UnifiedControlsController {
   @Post(':id/framework-mappings/bulk')
   @ApiOperation({ summary: 'Bulk map a control to multiple framework requirements' })
   @ApiResponse({ status: 201, description: 'Mappings created successfully' })
+  @Audit(AuditAction.ASSIGN, 'UnifiedControl', { description: 'Bulk mapped control to framework requirements' })
   bulkCreateFrameworkMappings(
     @Param('id') controlId: string,
     @Body() body: { requirement_ids: string[]; coverage_level: string; mapping_notes?: string },
@@ -260,5 +332,118 @@ export class UnifiedControlsController {
   deleteFrameworkMapping(@Param('mappingId') mappingId: string) {
     return this.frameworkControlMappingService.deleteMapping(mappingId);
   }
+
+  @Get('frameworks/:frameworkId/coverage-matrix')
+  @ApiOperation({ summary: 'Get coverage matrix for a framework' })
+  @ApiResponse({ status: 200, description: 'Coverage matrix retrieved successfully' })
+  getCoverageMatrix(@Param('frameworkId') frameworkId: string) {
+    return this.frameworkControlMappingService.getCoverageMatrix(frameworkId);
+  }
+
+  // ==================== CONTROL LIBRARY ENDPOINTS (Story 3.1) ====================
+
+  @Get('library/statistics')
+  @ApiOperation({ summary: 'Get control library statistics' })
+  @ApiResponse({ status: 200, description: 'Library statistics retrieved successfully' })
+  getLibraryStatistics() {
+    return this.unifiedControlsService.getLibraryStatistics();
+  }
+
+  @Get('library/domains/tree')
+  @ApiOperation({ summary: 'Get domain hierarchy tree with control counts' })
+  @ApiResponse({ status: 200, description: 'Domain tree retrieved successfully' })
+  getDomainTree() {
+    return this.unifiedControlsService.getDomainHierarchyTree();
+  }
+
+  @Get('library/domains')
+  @ApiOperation({ summary: 'Get all active control domains' })
+  @ApiResponse({ status: 200, description: 'Domains retrieved successfully' })
+  getActiveDomains() {
+    return this.unifiedControlsService.getActiveDomains();
+  }
+
+  @Get('library/types')
+  @ApiOperation({ summary: 'Get all available control types' })
+  @ApiResponse({ status: 200, description: 'Control types retrieved successfully' })
+  getControlTypes() {
+    return this.unifiedControlsService.getControlTypes();
+  }
+
+  @Get('library/browse')
+  @ApiOperation({ summary: 'Browse control library with filtering' })
+  @ApiResponse({ status: 200, description: 'Controls retrieved successfully' })
+  browseLibrary(
+    @Query('domain') domain?: string,
+    @Query('type') type?: string,
+    @Query('complexity') complexity?: string,
+    @Query('status') status?: string,
+    @Query('implementationStatus') implementationStatus?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.unifiedControlsService.browseLibrary({
+      domain,
+      type,
+      complexity,
+      status,
+      implementationStatus,
+      search,
+      page,
+      limit,
+    });
+  }
+
+  @Get('library/dashboard')
+  @ApiOperation({ summary: 'Get control library dashboard data' })
+  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
+  getControlsDashboard() {
+    return this.unifiedControlsService.getControlsDashboard();
+  }
+
+  @Get('library/export')
+  @ApiOperation({ summary: 'Export controls to CSV' })
+  @ApiResponse({ status: 200, description: 'Controls exported successfully' })
+  exportControls(
+    @Query('domain') domain?: string,
+    @Query('type') type?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.unifiedControlsService.exportControls({ domain, type, status });
+  }
+
+  @Post('library/import')
+  @HttpCode(HttpStatus.CREATED)
+  @Audit(AuditAction.CREATE, 'UnifiedControl')
+  @ApiOperation({ summary: 'Import controls from CSV data' })
+  @ApiResponse({ status: 201, description: 'Controls imported successfully' })
+  importControls(@Body() importData: any[], @Request() req) {
+    return this.unifiedControlsService.importControls(importData, req.user.id);
+  }
+
+  @Get(':id/domain')
+  @ApiOperation({ summary: 'Get all controls in the same domain' })
+  @ApiResponse({ status: 200, description: 'Controls retrieved successfully' })
+  getControlsByDomain(@Param('id') id: string) {
+    return this.unifiedControlsService.findOne(id).then((control) =>
+      this.unifiedControlsService.getControlsByDomain(control.domain),
+    );
+  }
+
+  @Get(':id/related')
+  @ApiOperation({ summary: 'Get related controls (similar domain/type)' })
+  @ApiResponse({ status: 200, description: 'Related controls retrieved successfully' })
+  getRelatedControls(@Param('id') id: string, @Query('limit') limit: number = 5) {
+    return this.unifiedControlsService.getRelatedControls(id, limit);
+  }
+
+  @Get(':id/effectiveness')
+  @ApiOperation({ summary: 'Get control effectiveness metrics' })
+  @ApiResponse({ status: 200, description: 'Effectiveness data retrieved successfully' })
+  getControlEffectiveness(@Param('id') id: string) {
+    return this.unifiedControlsService.getControlEffectiveness(id);
+  }
 }
+
 

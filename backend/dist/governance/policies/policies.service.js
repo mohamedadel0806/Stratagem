@@ -581,6 +581,149 @@ let PoliciesService = PoliciesService_1 = class PoliciesService {
             };
         }
     }
+    async setParentPolicy(policyId, parentPolicyId, userId, reason) {
+        const policy = await this.findOne(policyId);
+        if (parentPolicyId && parentPolicyId === policyId) {
+            throw new Error('A policy cannot be its own parent');
+        }
+        if (parentPolicyId) {
+            const parentPolicy = await this.findOne(parentPolicyId);
+            if (!parentPolicy) {
+                throw new common_1.NotFoundException(`Parent policy with ID ${parentPolicyId} not found`);
+            }
+            if (await this.isDescendantOf(parentPolicyId, policyId)) {
+                throw new Error('Setting this parent would create a circular hierarchy');
+            }
+        }
+        policy.parent_policy_id = parentPolicyId || null;
+        policy.updated_by = userId;
+        const savedPolicy = await this.policyRepository.save(policy);
+        this.logger.log(`Policy hierarchy changed for ${policyId}: parent set to ${parentPolicyId}${reason ? ` (${reason})` : ''}`);
+        return savedPolicy;
+    }
+    async isDescendantOf(ancestorId, potentialDescendantId) {
+        const descendants = await this.getAllDescendants(ancestorId);
+        return descendants.some((d) => d.id === potentialDescendantId);
+    }
+    async getParent(policyId) {
+        const policy = await this.findOne(policyId);
+        if (!policy.parent_policy_id) {
+            return null;
+        }
+        return this.findOne(policy.parent_policy_id);
+    }
+    async getChildren(policyId, includeArchived = false) {
+        const query = this.policyRepository
+            .createQueryBuilder('policy')
+            .where('policy.parent_policy_id = :policyId', { policyId });
+        if (!includeArchived) {
+            query.andWhere('policy.status != :archived', { archived: policy_entity_1.PolicyStatus.ARCHIVED });
+        }
+        return query.orderBy('policy.created_at', 'ASC').getMany();
+    }
+    async getAncestors(policyId) {
+        const ancestors = [];
+        let currentPolicy = await this.findOne(policyId);
+        while (currentPolicy.parent_policy_id) {
+            const parent = await this.findOne(currentPolicy.parent_policy_id);
+            ancestors.unshift(parent);
+            currentPolicy = parent;
+        }
+        return ancestors;
+    }
+    async getAllDescendants(policyId) {
+        const descendants = [];
+        const children = await this.getChildren(policyId);
+        for (const child of children) {
+            descendants.push(child);
+            const grandChildren = await this.getAllDescendants(child.id);
+            descendants.push(...grandChildren);
+        }
+        return descendants;
+    }
+    async getRoot(policyId) {
+        const ancestors = await this.getAncestors(policyId);
+        return ancestors.length > 0 ? ancestors[0] : this.findOne(policyId);
+    }
+    async getHierarchyTree(policyId, includeArchived = false) {
+        const policy = await this.findOne(policyId);
+        return this.buildHierarchyTree(policy, includeArchived);
+    }
+    async buildHierarchyTree(policy, includeArchived) {
+        const children = await this.getChildren(policy.id, includeArchived);
+        return {
+            id: policy.id,
+            title: policy.title,
+            policy_type: policy.policy_type,
+            status: policy.status,
+            version: policy.version,
+            parent_policy_id: policy.parent_policy_id,
+            created_at: policy.created_at,
+            children: await Promise.all(children.map((child) => this.buildHierarchyTree(child, includeArchived))),
+        };
+    }
+    async getRootPolicies(includeArchived = false) {
+        const query = this.policyRepository
+            .createQueryBuilder('policy')
+            .where('policy.parent_policy_id IS NULL');
+        if (!includeArchived) {
+            query.andWhere('policy.status != :archived', { archived: policy_entity_1.PolicyStatus.ARCHIVED });
+        }
+        return query.orderBy('policy.created_at', 'ASC').getMany();
+    }
+    async getAllHierarchies(includeArchived = false) {
+        const rootPolicies = await this.getRootPolicies(includeArchived);
+        return Promise.all(rootPolicies.map((policy) => this.buildHierarchyTree(policy, includeArchived)));
+    }
+    async getHierarchyLevel(policyId) {
+        const ancestors = await this.getAncestors(policyId);
+        return ancestors.length;
+    }
+    async getCompleteHierarchy(policyId) {
+        const policy = await this.findOne(policyId);
+        const ancestors = await this.getAncestors(policyId);
+        const children = await this.getChildren(policyId);
+        const allDescendants = await this.getAllDescendants(policyId);
+        const level = ancestors.length;
+        const maxDepth = await this.getMaxDepth(policyId);
+        return {
+            id: policy.id,
+            title: policy.title,
+            policy_type: policy.policy_type,
+            status: policy.status,
+            version: policy.version,
+            parent_policy_id: policy.parent_policy_id,
+            level,
+            isRoot: ancestors.length === 0,
+            hasChildren: children.length > 0,
+            ancestors: ancestors.map((a) => ({
+                id: a.id,
+                title: a.title,
+                level: ancestors.indexOf(a),
+            })),
+            children: children.map((c) => ({
+                id: c.id,
+                title: c.title,
+                policy_type: c.policy_type,
+                status: c.status,
+            })),
+            descendants: allDescendants.map((d) => ({
+                id: d.id,
+                title: d.title,
+                depth: 1,
+            })),
+            descendantCount: allDescendants.length,
+            maxDepth,
+        };
+    }
+    async getMaxDepth(policyId, currentDepth = 0) {
+        const children = await this.getChildren(policyId);
+        if (children.length === 0) {
+            return currentDepth;
+        }
+        const childDepths = await Promise.all(children.map((child) => this.getMaxDepth(child.id, currentDepth + 1)));
+        return Math.max(...childDepths, currentDepth);
+    }
 };
 exports.PoliciesService = PoliciesService;
 exports.PoliciesService = PoliciesService = PoliciesService_1 = __decorate([

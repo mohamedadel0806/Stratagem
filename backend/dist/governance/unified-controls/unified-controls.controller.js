@@ -24,8 +24,12 @@ const create_control_asset_mapping_dto_1 = require("./dto/create-control-asset-m
 const bulk_delete_control_asset_mapping_dto_1 = require("./dto/bulk-delete-control-asset-mapping.dto");
 const update_control_asset_mapping_dto_1 = require("./dto/update-control-asset-mapping.dto");
 const control_asset_mapping_query_dto_1 = require("./dto/control-asset-mapping-query.dto");
+const control_asset_mapping_entity_1 = require("./entities/control-asset-mapping.entity");
+const unified_control_entity_1 = require("./entities/unified-control.entity");
 const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
 const risk_control_link_service_1 = require("../../risk/services/risk-control-link.service");
+const audit_decorator_1 = require("../../common/decorators/audit.decorator");
+const audit_log_entity_1 = require("../../common/entities/audit-log.entity");
 let UnifiedControlsController = class UnifiedControlsController {
     constructor(unifiedControlsService, controlAssetMappingService, frameworkControlMappingService, riskControlLinkService) {
         this.unifiedControlsService = unifiedControlsService;
@@ -78,6 +82,25 @@ let UnifiedControlsController = class UnifiedControlsController {
     unlinkControlFromAsset(assetType, assetId, controlId) {
         return this.controlAssetMappingService.removeByAsset(controlId, assetType, assetId);
     }
+    getAssetCompliancePosture(assetType, assetId) {
+        return this.controlAssetMappingService.getAssetCompliancePosture(assetType, assetId);
+    }
+    getAssetTypeComplianceOverview(assetType) {
+        return this.controlAssetMappingService.getAssetTypeComplianceOverview(assetType);
+    }
+    getControlAssetMatrix(assetType, controlDomain, implementationStatus) {
+        return this.controlAssetMappingService.getControlAssetMatrix({
+            assetType,
+            controlDomain,
+            implementationStatus,
+        });
+    }
+    getControlEffectivenessSummary(controlId) {
+        return this.controlAssetMappingService.getControlEffectivenessSummary(controlId);
+    }
+    bulkUpdateImplementationStatus(updates, req) {
+        return this.controlAssetMappingService.bulkUpdateImplementationStatus(updates, req.user.id);
+    }
     getRisks(controlId) {
         return this.riskControlLinkService.getRisksForControl(controlId);
     }
@@ -99,11 +122,57 @@ let UnifiedControlsController = class UnifiedControlsController {
     deleteFrameworkMapping(mappingId) {
         return this.frameworkControlMappingService.deleteMapping(mappingId);
     }
+    getCoverageMatrix(frameworkId) {
+        return this.frameworkControlMappingService.getCoverageMatrix(frameworkId);
+    }
+    getLibraryStatistics() {
+        return this.unifiedControlsService.getLibraryStatistics();
+    }
+    getDomainTree() {
+        return this.unifiedControlsService.getDomainHierarchyTree();
+    }
+    getActiveDomains() {
+        return this.unifiedControlsService.getActiveDomains();
+    }
+    getControlTypes() {
+        return this.unifiedControlsService.getControlTypes();
+    }
+    browseLibrary(domain, type, complexity, status, implementationStatus, search, page, limit) {
+        return this.unifiedControlsService.browseLibrary({
+            domain,
+            type,
+            complexity,
+            status,
+            implementationStatus,
+            search,
+            page,
+            limit,
+        });
+    }
+    getControlsDashboard() {
+        return this.unifiedControlsService.getControlsDashboard();
+    }
+    exportControls(domain, type, status) {
+        return this.unifiedControlsService.exportControls({ domain, type, status });
+    }
+    importControls(importData, req) {
+        return this.unifiedControlsService.importControls(importData, req.user.id);
+    }
+    getControlsByDomain(id) {
+        return this.unifiedControlsService.findOne(id).then((control) => this.unifiedControlsService.getControlsByDomain(control.domain));
+    }
+    getRelatedControls(id, limit = 5) {
+        return this.unifiedControlsService.getRelatedControls(id, limit);
+    }
+    getControlEffectiveness(id) {
+        return this.unifiedControlsService.getControlEffectiveness(id);
+    }
 };
 exports.UnifiedControlsController = UnifiedControlsController;
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.CREATE, 'UnifiedControl'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -126,6 +195,7 @@ __decorate([
 ], UnifiedControlsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.UPDATE, 'UnifiedControl'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -136,6 +206,7 @@ __decorate([
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.DELETE, 'UnifiedControl'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -147,6 +218,7 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Asset linked to control successfully' }),
     (0, swagger_1.ApiResponse)({ status: 404, description: 'Control not found' }),
     (0, swagger_1.ApiResponse)({ status: 409, description: 'Asset already linked to control' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.ASSIGN, 'UnifiedControl', { description: 'Linked asset to control' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -158,6 +230,7 @@ __decorate([
     (0, common_1.Post)(':id/assets/bulk'),
     (0, swagger_1.ApiOperation)({ summary: 'Bulk link assets to a control' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Assets linked to control successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.ASSIGN, 'UnifiedControl', { description: 'Bulk linked assets to control' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -261,6 +334,58 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], UnifiedControlsController.prototype, "unlinkControlFromAsset", null);
 __decorate([
+    (0, common_1.Get)('assets/:assetType/:assetId/compliance'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get asset compliance posture' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Asset compliance data retrieved successfully' }),
+    __param(0, (0, common_1.Param)('assetType')),
+    __param(1, (0, common_1.Param)('assetId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], UnifiedControlsController.prototype, "getAssetCompliancePosture", null);
+__decorate([
+    (0, common_1.Get)('assets/:assetType/compliance-overview'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get compliance overview for asset type' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Compliance overview retrieved successfully' }),
+    __param(0, (0, common_1.Param)('assetType')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], UnifiedControlsController.prototype, "getAssetTypeComplianceOverview", null);
+__decorate([
+    (0, common_1.Get)('matrix'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get control-asset matrix data' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Matrix data retrieved successfully' }),
+    (0, swagger_1.ApiQuery)({ name: 'assetType', required: false, enum: control_asset_mapping_entity_1.AssetType }),
+    (0, swagger_1.ApiQuery)({ name: 'controlDomain', required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'implementationStatus', required: false, enum: unified_control_entity_1.ImplementationStatus }),
+    __param(0, (0, common_1.Query)('assetType')),
+    __param(1, (0, common_1.Query)('controlDomain')),
+    __param(2, (0, common_1.Query)('implementationStatus')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getControlAssetMatrix", null);
+__decorate([
+    (0, common_1.Get)(':id/effectiveness-summary'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get control effectiveness summary across assets' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Effectiveness summary retrieved successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getControlEffectivenessSummary", null);
+__decorate([
+    (0, common_1.Patch)('assets/bulk-update-status'),
+    (0, swagger_1.ApiOperation)({ summary: 'Bulk update implementation status for asset-control mappings' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Status updates completed successfully' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Array, Object]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "bulkUpdateImplementationStatus", null);
+__decorate([
     (0, common_1.Get)(':id/risks'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all risks linked to this control' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'List of linked risks' }),
@@ -291,6 +416,7 @@ __decorate([
     (0, common_1.Post)(':id/framework-mappings'),
     (0, swagger_1.ApiOperation)({ summary: 'Map a control to a framework requirement' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Mapping created successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.ASSIGN, 'UnifiedControl', { description: 'Mapped control to framework requirement' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -302,6 +428,7 @@ __decorate([
     (0, common_1.Post)(':id/framework-mappings/bulk'),
     (0, swagger_1.ApiOperation)({ summary: 'Bulk map a control to multiple framework requirements' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Mappings created successfully' }),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.ASSIGN, 'UnifiedControl', { description: 'Bulk mapped control to framework requirements' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -328,6 +455,122 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], UnifiedControlsController.prototype, "deleteFrameworkMapping", null);
+__decorate([
+    (0, common_1.Get)('frameworks/:frameworkId/coverage-matrix'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get coverage matrix for a framework' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Coverage matrix retrieved successfully' }),
+    __param(0, (0, common_1.Param)('frameworkId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getCoverageMatrix", null);
+__decorate([
+    (0, common_1.Get)('library/statistics'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get control library statistics' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Library statistics retrieved successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getLibraryStatistics", null);
+__decorate([
+    (0, common_1.Get)('library/domains/tree'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get domain hierarchy tree with control counts' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Domain tree retrieved successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getDomainTree", null);
+__decorate([
+    (0, common_1.Get)('library/domains'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all active control domains' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Domains retrieved successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getActiveDomains", null);
+__decorate([
+    (0, common_1.Get)('library/types'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all available control types' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Control types retrieved successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getControlTypes", null);
+__decorate([
+    (0, common_1.Get)('library/browse'),
+    (0, swagger_1.ApiOperation)({ summary: 'Browse control library with filtering' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Controls retrieved successfully' }),
+    __param(0, (0, common_1.Query)('domain')),
+    __param(1, (0, common_1.Query)('type')),
+    __param(2, (0, common_1.Query)('complexity')),
+    __param(3, (0, common_1.Query)('status')),
+    __param(4, (0, common_1.Query)('implementationStatus')),
+    __param(5, (0, common_1.Query)('search')),
+    __param(6, (0, common_1.Query)('page')),
+    __param(7, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, Number, Number]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "browseLibrary", null);
+__decorate([
+    (0, common_1.Get)('library/dashboard'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get control library dashboard data' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Dashboard data retrieved successfully' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getControlsDashboard", null);
+__decorate([
+    (0, common_1.Get)('library/export'),
+    (0, swagger_1.ApiOperation)({ summary: 'Export controls to CSV' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Controls exported successfully' }),
+    __param(0, (0, common_1.Query)('domain')),
+    __param(1, (0, common_1.Query)('type')),
+    __param(2, (0, common_1.Query)('status')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "exportControls", null);
+__decorate([
+    (0, common_1.Post)('library/import'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.CREATE, 'UnifiedControl'),
+    (0, swagger_1.ApiOperation)({ summary: 'Import controls from CSV data' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Controls imported successfully' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Array, Object]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "importControls", null);
+__decorate([
+    (0, common_1.Get)(':id/domain'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all controls in the same domain' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Controls retrieved successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getControlsByDomain", null);
+__decorate([
+    (0, common_1.Get)(':id/related'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get related controls (similar domain/type)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Related controls retrieved successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getRelatedControls", null);
+__decorate([
+    (0, common_1.Get)(':id/effectiveness'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get control effectiveness metrics' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Effectiveness data retrieved successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], UnifiedControlsController.prototype, "getControlEffectiveness", null);
 exports.UnifiedControlsController = UnifiedControlsController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
     (0, common_1.Controller)('governance/unified-controls'),

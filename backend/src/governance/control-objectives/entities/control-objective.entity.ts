@@ -8,9 +8,12 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   Index,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { User } from '../../../users/entities/user.entity';
 import { Policy } from '../../policies/entities/policy.entity';
+import { UnifiedControl } from '../../unified-controls/entities/unified-control.entity';
 
 export enum ImplementationStatus {
   NOT_IMPLEMENTED = 'not_implemented',
@@ -104,7 +107,18 @@ export class ControlObjective {
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deleted_at: Date;
+
+  // Many-to-many relationship with unified controls
+  @ManyToMany(() => UnifiedControl)
+  @JoinTable({
+    name: 'control_objective_unified_controls',
+    joinColumn: { name: 'control_objective_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'unified_control_id', referencedColumnName: 'id' },
+  })
+  unified_controls: UnifiedControl[];
 }
+
+
 
 
 

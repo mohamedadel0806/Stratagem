@@ -26,4 +26,11 @@ export declare class EvidenceController {
     getLinkedEvidence(linkType: EvidenceLinkType, linkedEntityId: string): Promise<import("./entities/evidence.entity").Evidence[]>;
     uploadFile(file: Express.Multer.File, body: any, req: any): Promise<any>;
     downloadFile(filename: string, res: Response): Promise<void>;
+    generatePackage(options: {
+        evidenceIds?: string[];
+        controlId?: string;
+        assessmentId?: string;
+        startDate?: string;
+        endDate?: string;
+    }, res: Response): Promise<void>;
 }

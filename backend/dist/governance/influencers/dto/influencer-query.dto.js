@@ -60,4 +60,9 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], InfluencerQueryDto.prototype, "sort", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], InfluencerQueryDto.prototype, "tags", void 0);
 //# sourceMappingURL=influencer-query.dto.js.map

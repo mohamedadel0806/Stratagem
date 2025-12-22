@@ -360,3 +360,5 @@ export class EnhanceRisksTable1702000000002 implements MigrationInterface {
 
 
 
+
+

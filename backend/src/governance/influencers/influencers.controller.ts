@@ -25,7 +25,11 @@ import { InfluencersService } from './influencers.service';
 import { CreateInfluencerDto } from './dto/create-influencer.dto';
 import { UpdateInfluencerDto } from './dto/update-influencer.dto';
 import { InfluencerQueryDto } from './dto/influencer-query.dto';
+import { ReviewInfluencerDto } from './dto/review-influencer.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { Audit } from '../../common/decorators/audit.decorator';
+import { AuditAction } from '../../common/entities/audit-log.entity';
+import { parse } from 'csv-parse/sync';
 
 @Controller('governance/influencers')
 @UseGuards(JwtAuthGuard)
@@ -34,6 +38,7 @@ export class InfluencersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Audit(AuditAction.CREATE, 'Influencer')
   create(@Body() createInfluencerDto: CreateInfluencerDto, @Request() req) {
     return this.influencersService.create(createInfluencerDto, req.user.id);
   }
@@ -49,18 +54,21 @@ export class InfluencersController {
   }
 
   @Patch(':id')
+  @Audit(AuditAction.UPDATE, 'Influencer')
   update(@Param('id') id: string, @Body() updateInfluencerDto: UpdateInfluencerDto, @Request() req) {
     return this.influencersService.update(id, updateInfluencerDto, req.user.id);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Audit(AuditAction.DELETE, 'Influencer')
   remove(@Param('id') id: string) {
     return this.influencersService.remove(id);
   }
 
   @Post(':id/upload-document')
   @HttpCode(HttpStatus.CREATED)
+  @Audit(AuditAction.UPDATE, 'Influencer', { description: 'Uploaded document to influencer' })
   @UseInterceptors(
     FileInterceptor('file', {
       dest: './uploads/influencers',
@@ -138,6 +146,73 @@ export class InfluencersController {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
     res.sendFile(path.resolve(filePath));
+  }
+
+  @Get('tags/all')
+  async getAllTags() {
+    return this.influencersService.getAllTags();
+  }
+
+  @Get('tags/statistics')
+  async getTagStatistics() {
+    return this.influencersService.getTagStatistics();
+  }
+
+  @Post(':id/review')
+  @Audit(AuditAction.APPROVE, 'Influencer', { description: 'Reviewed influencer' })
+  async reviewInfluencer(
+    @Param('id') id: string,
+    @Body() reviewDto: ReviewInfluencerDto,
+    @Request() req,
+  ) {
+    return this.influencersService.reviewInfluencer(
+      id,
+      {
+        revision_notes: reviewDto.revision_notes,
+        next_review_date: reviewDto.next_review_date ? new Date(reviewDto.next_review_date) : undefined,
+        review_frequency_days: reviewDto.review_frequency_days,
+        impact_assessment: reviewDto.impact_assessment,
+      },
+      req.user.id,
+    );
+  }
+
+  @Get(':id/revisions')
+  async getRevisionHistory(@Param('id') id: string) {
+    return this.influencersService.getRevisionHistory(id);
+  }
+
+  @Post('import')
+  @UseInterceptors(FileInterceptor('file'))
+  @Audit(AuditAction.IMPORT, 'Influencer', { description: 'Bulk imported influencers' })
+  async importInfluencers(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    let items: any[] = [];
+
+    // Handle CSV
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      const csvContent = file.buffer.toString('utf-8');
+      items = parse(csvContent, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      });
+    } 
+    // Handle JSON
+    else if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
+      items = JSON.parse(file.buffer.toString('utf-8'));
+    }
+    else {
+      throw new BadRequestException('Unsupported file type. Please upload CSV or JSON.');
+    }
+
+    return this.influencersService.bulkImport(items, req.user.id);
   }
 }
 

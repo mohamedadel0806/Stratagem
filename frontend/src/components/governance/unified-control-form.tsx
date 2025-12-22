@@ -21,9 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DomainSelector } from './domain-selector';
 import {
   governanceApi,
+  ControlDomain,
   CreateUnifiedControlData,
   UnifiedControl,
   ControlType,
@@ -62,6 +64,11 @@ interface UnifiedControlFormProps {
 export function UnifiedControlForm({ control, onSuccess, onCancel }: UnifiedControlFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const { data: hierarchy = [] } = useQuery({
+    queryKey: ['domain-hierarchy'],
+    queryFn: () => governanceApi.getDomainHierarchy(),
+  });
 
   const form = useForm<UnifiedControlFormData>({
     resolver: zodResolver(unifiedControlSchema),
@@ -265,15 +272,51 @@ export function UnifiedControlForm({ control, onSuccess, onCancel }: UnifiedCont
           <FormField
             control={form.control}
             name="domain"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Domain</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="e.g., IAM, Network Security" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const findDomainById = (domains: ControlDomain[], id: string): ControlDomain | null => {
+                for (const d of domains) {
+                  if (d.id === id) return d;
+                  if (d.children) {
+                    const found = findDomainById(d.children, id);
+                    if (found) return found;
+                  }
+                }
+                return null;
+              };
+
+              const findDomainByName = (domains: ControlDomain[], name: string): ControlDomain | null => {
+                for (const d of domains) {
+                  if (d.name === name) return d;
+                  if (d.children) {
+                    const found = findDomainByName(d.children, name);
+                    if (found) return found;
+                  }
+                }
+                return null;
+              };
+
+              // Try to find domain by name (for backward compatibility) or by ID
+              const currentDomain = field.value
+                ? findDomainByName(hierarchy, field.value) || findDomainById(hierarchy, field.value)
+                : null;
+
+              return (
+                <FormItem>
+                  <FormLabel>Domain</FormLabel>
+                  <FormControl>
+                    <DomainSelector
+                      value={currentDomain?.id || ''}
+                      onValueChange={(domainId) => {
+                        const selectedDomain = findDomainById(hierarchy, domainId);
+                        field.onChange(selectedDomain?.name || '');
+                      }}
+                      placeholder="Select domain..."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <FormField
@@ -342,6 +385,8 @@ export function UnifiedControlForm({ control, onSuccess, onCancel }: UnifiedCont
     </Form>
   );
 }
+
+
 
 
 

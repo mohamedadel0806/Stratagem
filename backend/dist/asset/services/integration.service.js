@@ -19,6 +19,7 @@ const schedule_1 = require("@nestjs/schedule");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const integration_config_entity_1 = require("../entities/integration-config.entity");
+const typeorm_3 = require("typeorm");
 const integration_sync_log_entity_1 = require("../entities/integration-sync-log.entity");
 const physical_asset_service_1 = require("./physical-asset.service");
 const notification_service_1 = require("../../common/services/notification.service");
@@ -352,7 +353,7 @@ let IntegrationService = IntegrationService_1 = class IntegrationService {
         const dueConfigs = await this.integrationConfigRepository.find({
             where: {
                 status: integration_config_entity_1.IntegrationStatus.ACTIVE,
-                nextSyncAt: { $lte: now },
+                nextSyncAt: (0, typeorm_3.LessThanOrEqual)(now),
             },
         });
         if (!dueConfigs.length) {

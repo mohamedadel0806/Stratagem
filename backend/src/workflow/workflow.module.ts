@@ -3,12 +3,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bull';
 import { WorkflowController } from './controllers/workflow.controller';
+import { WorkflowTriggerRulesController } from './controllers/workflow-trigger-rules.controller';
 import { WorkflowService } from './services/workflow.service';
 import { WorkflowTemplatesService } from './services/workflow-templates.service';
+import { WorkflowTriggerRulesService } from './services/workflow-trigger-rules.service';
 import { DeadlineWorkflowScheduler } from './schedulers/deadline-workflow.scheduler';
 import { Workflow } from './entities/workflow.entity';
 import { WorkflowExecution } from './entities/workflow-execution.entity';
 import { WorkflowApproval } from './entities/workflow-approval.entity';
+import { WorkflowTriggerRule } from './entities/workflow-trigger-rule.entity';
 import { Policy } from '../policy/entities/policy.entity';
 import { Risk } from '../risk/entities/risk.entity';
 import { ComplianceRequirement } from '../common/entities/compliance-requirement.entity';
@@ -24,6 +27,7 @@ import { User } from '../users/entities/user.entity';
       Workflow,
       WorkflowExecution,
       WorkflowApproval,
+      WorkflowTriggerRule,
       Policy,
       Risk,
       ComplianceRequirement,
@@ -35,8 +39,8 @@ import { User } from '../users/entities/user.entity';
     // It's accessible via @InjectQueue decorator in WorkflowService
     // Using @Optional() to handle cases where queue might not be available
   ],
-  controllers: [WorkflowController],
-  providers: [WorkflowService, WorkflowTemplatesService, DeadlineWorkflowScheduler, NotificationService],
-  exports: [WorkflowService, WorkflowTemplatesService],
+  controllers: [WorkflowController, WorkflowTriggerRulesController],
+  providers: [WorkflowService, WorkflowTemplatesService, WorkflowTriggerRulesService, DeadlineWorkflowScheduler, NotificationService],
+  exports: [WorkflowService, WorkflowTemplatesService, WorkflowTriggerRulesService],
 })
 export class WorkflowModule {}

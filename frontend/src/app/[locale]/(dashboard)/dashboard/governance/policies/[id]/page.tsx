@@ -5,7 +5,7 @@ import { governanceApi, Policy, PolicyStatus, ReviewFrequency } from '@/lib/api/
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, ArrowLeft, FileText, Send } from 'lucide-react';
+import { Edit, Trash2, ArrowLeft, FileText, Send, AlertCircle } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -18,6 +18,9 @@ import { ControlObjectivesSection } from '@/components/governance/control-object
 import { PolicyVersionComparison } from '@/components/governance/policy-version-comparison';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { PolicyPublishDialog } from '@/components/governance/policy-publish-dialog';
+import { PolicyExceptionForm } from '@/components/governance/policy-exception-form';
+import { PolicyImpactSimulator } from '@/components/governance/policy-impact-simulator';
+import { AuditLogList } from '@/components/governance/audit-log-list';
 
 const statusLabels: Record<PolicyStatus, string> = {
   [PolicyStatus.DRAFT]: 'Draft',
@@ -44,6 +47,7 @@ export default function PolicyDetailPage() {
   const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
+  const [isExceptionOpen, setIsExceptionOpen] = useState(false);
   const policyId = params.id as string;
 
   const { data: policy, isLoading } = useQuery({
@@ -163,6 +167,10 @@ export default function PolicyDetailPage() {
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
+          <Button variant="outline" onClick={() => setIsExceptionOpen(true)} className="text-orange-600 border-orange-200 hover:bg-orange-50">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            Request Exception
+          </Button>
           <Button
             variant="destructive"
             onClick={() => {
@@ -186,6 +194,8 @@ export default function PolicyDetailPage() {
           <TabsTrigger value="approvals">Approvals</TabsTrigger>
           <TabsTrigger value="control-objectives">Control Objectives</TabsTrigger>
           <TabsTrigger value="versions">Version Comparison</TabsTrigger>
+          <TabsTrigger value="simulator">Impact Simulator</TabsTrigger>
+          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -360,6 +370,14 @@ export default function PolicyDetailPage() {
             />
           )}
         </TabsContent>
+
+        <TabsContent value="simulator" className="space-y-4">
+          <PolicyImpactSimulator policy={policy} />
+        </TabsContent>
+
+        <TabsContent value="audit" className="space-y-4">
+          <AuditLogList entityType="Policy" entityId={policyId} title="Policy Audit Trail" />
+        </TabsContent>
       </Tabs>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -393,6 +411,26 @@ export default function PolicyDetailPage() {
           }}
         />
       )}
+
+      <Dialog open={isExceptionOpen} onOpenChange={setIsExceptionOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Request Policy Exception</DialogTitle>
+            <DialogDescription>
+              Submit a request for a deviation from policy: <strong>{policy.title}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <PolicyExceptionForm
+            exception={{
+              entity_id: policyId,
+              entity_type: 'policy',
+              exception_type: 'policy' as any,
+            } as any}
+            onSuccess={() => setIsExceptionOpen(false)}
+            onCancel={() => setIsExceptionOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -25,3 +25,5 @@ export class CreateGovernancePermissionDto {
   @IsObject()
   conditions?: Record<string, any>;
 }
+
+

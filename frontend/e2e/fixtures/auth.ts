@@ -174,4 +174,4 @@ export const test = base.extend<AuthFixtures>({
   },
 });
 
-export { expect } from '@playwright/test';
+// Note: test files should import expect directly from @playwright/test
