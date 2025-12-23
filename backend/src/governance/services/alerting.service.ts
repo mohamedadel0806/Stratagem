@@ -1,46 +1,36 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, MoreThan, In } from 'typeorm';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Repository, FindOptionsWhere, ILike, In } from 'typeorm';
 import { Alert, AlertSeverity, AlertStatus, AlertType } from '../entities/alert.entity';
 import { AlertRule, AlertRuleTriggerType, AlertRuleCondition } from '../entities/alert-rule.entity';
-import { AlertSubscription, NotificationChannel, NotificationFrequency } from '../entities/alert-subscription.entity';
-import { AlertLog, AlertLogAction } from '../entities/alert-log.entity';
-import { DashboardEmailService } from './dashboard-email.service';
+import { User } from '../../users/entities/user.entity';
+import {
+  CreateAlertDto,
+  UpdateAlertDto,
+  AlertDto,
+  CreateAlertRuleDto,
+  UpdateAlertRuleDto,
+  AlertRuleDto,
+} from '../dto/alert.dto';
+import { AlertEscalationService } from './alert-escalation.service';
 
-export interface CreateAlertDto {
-  title: string;
-  description: string;
-  type: AlertType;
-  severity: AlertSeverity;
-  relatedEntityId?: string;
-  relatedEntityType?: string;
-  metadata?: Record<string, any>;
-}
-
-export interface CreateAlertRuleDto {
-  name: string;
-  description?: string;
-  isActive: boolean;
-  triggerType: AlertRuleTriggerType;
-  entityType: string;
-  fieldName?: string;
-  condition: AlertRuleCondition;
-  conditionValue?: string;
-  thresholdValue?: number;
-  severityScore: number;
-  alertMessage?: string;
-  filters?: Record<string, any>;
-}
-
-export interface CreateAlertSubscriptionDto {
-  userId: string;
-  alertType?: AlertType;
+interface AlertFilterParams {
+  page?: number;
+  limit?: number;
+  status?: AlertStatus;
   severity?: AlertSeverity;
-  channels: NotificationChannel[];
-  frequency?: NotificationFrequency;
-  isActive: boolean;
-  filters?: Record<string, any>;
+  type?: AlertType;
+  search?: string;
+}
+
+interface AlertStatistics {
+  active: number;
+  acknowledged: number;
+  resolved: number;
+  dismissed: number;
+  total: number;
+  by_severity: Record<AlertSeverity, number>;
+  by_type: Record<AlertType, number>;
 }
 
 @Injectable()
@@ -49,410 +39,598 @@ export class AlertingService {
 
   constructor(
     @InjectRepository(Alert)
-    private alertRepository: Repository<Alert>,
+    private readonly alertRepository: Repository<Alert>,
     @InjectRepository(AlertRule)
-    private alertRuleRepository: Repository<AlertRule>,
-    @InjectRepository(AlertSubscription)
-    private alertSubscriptionRepository: Repository<AlertSubscription>,
-    @InjectRepository(AlertLog)
-    private alertLogRepository: Repository<AlertLog>,
-    private dashboardEmailService: DashboardEmailService,
+    private readonly alertRuleRepository: Repository<AlertRule>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly escalationService: AlertEscalationService,
   ) {}
 
-  // Alert Management
-  async createAlert(dto: CreateAlertDto, userId: string): Promise<Alert> {
+  // ============================================================================
+  // ALERT MANAGEMENT METHODS
+  // ============================================================================
+
+  /**
+   * Create a new alert
+   */
+  async createAlert(createAlertDto: CreateAlertDto, userId: string): Promise<AlertDto> {
+    this.logger.log(`Creating alert: ${createAlertDto.title}`);
+
+    const creator = await this.userRepository.findOne({ where: { id: userId } });
+    if (!creator) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
     const alert = this.alertRepository.create({
-      ...dto,
-      status: AlertStatus.ACTIVE,
+      ...createAlertDto,
       createdById: userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      status: AlertStatus.ACTIVE,
     });
 
-    const savedAlert = await this.alertRepository.save(alert);
+    const saved = await this.alertRepository.save(alert);
 
-    // Log alert creation
-    await this.logAlertAction(savedAlert.id, AlertLogAction.CREATED, 'Alert created');
+    // Auto-escalate critical alerts
+    if (saved.severity === AlertSeverity.CRITICAL) {
+      try {
+        const escalationChain = await this.escalationService.createEscalationChain(
+          {
+            alertId: saved.id,
+            escalationRules: [
+              {
+                level: 1,
+                delayMinutes: 15, // Escalate to manager if not acknowledged in 15 min
+                roles: ['manager'],
+                notifyChannels: ['email', 'in_app'],
+                description: 'Escalate critical alert to manager',
+              },
+              {
+                level: 2,
+                delayMinutes: 30, // Escalate to CISO if still unresolved in 30 min
+                roles: ['ciso'],
+                notifyChannels: ['email', 'sms', 'in_app'],
+                description: 'Escalate critical alert to CISO',
+              },
+            ],
+            escalationNotes: `Auto-escalation created for ${saved.severity} alert`,
+          },
+          userId,
+        );
 
-    // Trigger notifications
-    await this.notifySubscribers(savedAlert);
+        // Update alert to link to escalation chain
+        saved.escalationChainId = escalationChain.id;
+        saved.hasEscalation = true;
+        await this.alertRepository.save(saved);
 
-    return savedAlert;
-  }
-
-  async getAlerts(
-    status?: AlertStatus,
-    severity?: AlertSeverity,
-    limit: number = 50,
-    offset: number = 0,
-  ): Promise<[Alert[], number]> {
-    const query = this.alertRepository.createQueryBuilder('alert')
-      .orderBy('alert.createdAt', 'DESC');
-
-    if (status) {
-      query.andWhere('alert.status = :status', { status });
+        this.logger.log(`Created auto-escalation chain ${escalationChain.id} for critical alert ${saved.id}`);
+      } catch (err) {
+        this.logger.error(`Failed to create escalation chain for alert ${saved.id}: ${err.message}`);
+        // Continue without escalation - it's not critical to alert creation
+      }
     }
 
-    if (severity) {
-      query.andWhere('alert.severity = :severity', { severity });
-    }
-
-    return query.skip(offset).take(limit).getManyAndCount();
+    return this.mapAlertToDto(saved);
   }
 
-  async getAlertById(id: string): Promise<Alert> {
+  /**
+   * Get a single alert by ID
+   */
+  async getAlert(id: string): Promise<AlertDto> {
     const alert = await this.alertRepository.findOne({
       where: { id },
+      relations: ['createdBy', 'acknowledgedBy', 'resolvedBy'],
     });
 
     if (!alert) {
-      throw new Error(`Alert with ID ${id} not found`);
+      throw new NotFoundException(`Alert ${id} not found`);
     }
 
-    return alert;
+    return this.mapAlertToDto(alert);
   }
 
-  async acknowledgeAlert(id: string, userId: string): Promise<Alert> {
-    const alert = await this.getAlertById(id);
+  /**
+   * Get all alerts with pagination and filtering
+   */
+  async getAlerts(params?: AlertFilterParams): Promise<{ alerts: AlertDto[]; total: number }> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 10;
+    const skip = (page - 1) * limit;
 
-    alert.status = AlertStatus.ACKNOWLEDGED;
-    alert.acknowledgedAt = new Date();
-    alert.acknowledgedById = userId;
-    alert.updatedAt = new Date();
+    const where: FindOptionsWhere<Alert> = {};
 
-    const updatedAlert = await this.alertRepository.save(alert);
+    if (params?.status) {
+      where.status = params.status;
+    }
 
-    // Log acknowledgment
-    await this.logAlertAction(id, AlertLogAction.ACKNOWLEDGED, `Alert acknowledged by user ${userId}`);
+    if (params?.severity) {
+      where.severity = params.severity;
+    }
 
-    return updatedAlert;
-  }
+    if (params?.type) {
+      where.type = params.type;
+    }
 
-  async resolveAlert(id: string, userId: string, resolution?: string): Promise<Alert> {
-    const alert = await this.getAlertById(id);
+    if (params?.search) {
+      where.title = ILike(`%${params.search}%`);
+    }
 
-    alert.status = AlertStatus.RESOLVED;
-    alert.resolvedAt = new Date();
-    alert.resolvedById = userId;
-    alert.resolutionNotes = resolution;
-    alert.updatedAt = new Date();
-
-    const updatedAlert = await this.alertRepository.save(alert);
-
-    // Log resolution
-    await this.logAlertAction(id, AlertLogAction.RESOLVED, `Alert resolved by user ${userId}`);
-
-    return updatedAlert;
-  }
-
-  // Alert Rule Management
-  async createAlertRule(dto: CreateAlertRuleDto): Promise<AlertRule> {
-    const rule = this.alertRuleRepository.create({
-      ...dto,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const [alerts, total] = await this.alertRepository.findAndCount({
+      where,
+      relations: ['createdBy', 'acknowledgedBy', 'resolvedBy'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
     });
 
-    return this.alertRuleRepository.save(rule);
+    return {
+      alerts: alerts.map(a => this.mapAlertToDto(a)),
+      total,
+    };
   }
 
-  async getAlertRules(isActive?: boolean): Promise<AlertRule[]> {
-    const query = this.alertRuleRepository.createQueryBuilder('rule');
+  /**
+   * Get recent critical alerts (for widget)
+   */
+  async getRecentCriticalAlerts(limit: number = 5): Promise<AlertDto[]> {
+    const alerts = await this.alertRepository.find({
+      where: { status: In([AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED]) },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
 
-    if (isActive !== undefined) {
-      query.andWhere('rule.isActive = :isActive', { isActive });
+    // Filter for critical and high severity
+    return alerts
+      .filter(a => a.severity === AlertSeverity.CRITICAL || a.severity === AlertSeverity.HIGH)
+      .slice(0, limit)
+      .map(a => this.mapAlertToDto(a));
+  }
+
+  /**
+   * Acknowledge an alert
+   */
+  async acknowledgeAlert(id: string, userId: string): Promise<AlertDto> {
+    const alert = await this.alertRepository.findOne({ where: { id } });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert ${id} not found`);
     }
 
-    return query.orderBy('rule.createdAt', 'DESC').getMany();
+    if (alert.status === AlertStatus.RESOLVED || alert.status === AlertStatus.DISMISSED) {
+      throw new BadRequestException(`Cannot acknowledge ${alert.status} alert`);
+    }
+
+    alert.status = AlertStatus.ACKNOWLEDGED;
+    alert.acknowledgedById = userId;
+    alert.acknowledgedAt = new Date();
+
+    const saved = await this.alertRepository.save(alert);
+    this.logger.log(`Alert ${id} acknowledged by user ${userId}`);
+
+    return this.mapAlertToDto(saved);
   }
 
-  async updateAlertRule(id: string, dto: Partial<CreateAlertRuleDto>): Promise<AlertRule> {
+  /**
+   * Resolve an alert
+   */
+  async resolveAlert(id: string, userId: string, resolutionNotes?: string): Promise<AlertDto> {
+    const alert = await this.alertRepository.findOne({ where: { id } });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert ${id} not found`);
+    }
+
+    if (alert.status === AlertStatus.DISMISSED) {
+      throw new BadRequestException('Cannot resolve dismissed alert');
+    }
+
+    alert.status = AlertStatus.RESOLVED;
+    alert.resolvedById = userId;
+    alert.resolvedAt = new Date();
+    if (resolutionNotes) {
+      alert.resolutionNotes = resolutionNotes;
+    }
+
+    const saved = await this.alertRepository.save(alert);
+
+    // Also resolve associated escalation chain
+    if (alert.escalationChainId) {
+      try {
+        await this.escalationService.resolveEscalationChain(alert.escalationChainId, resolutionNotes || 'Alert resolved', userId);
+        this.logger.log(`Resolved escalation chain ${alert.escalationChainId} for alert ${id}`);
+      } catch (err) {
+        this.logger.error(`Failed to resolve escalation chain ${alert.escalationChainId}: ${err.message}`);
+        // Continue even if escalation resolution fails
+      }
+    }
+
+    this.logger.log(`Alert ${id} resolved by user ${userId}`);
+
+    return this.mapAlertToDto(saved);
+  }
+
+  /**
+   * Dismiss an alert
+   */
+  async dismissAlert(id: string): Promise<AlertDto> {
+    const alert = await this.alertRepository.findOne({ where: { id } });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert ${id} not found`);
+    }
+
+    alert.status = AlertStatus.DISMISSED;
+
+    const saved = await this.alertRepository.save(alert);
+    this.logger.log(`Alert ${id} dismissed`);
+
+    return this.mapAlertToDto(saved);
+  }
+
+  /**
+   * Mark all active alerts as acknowledged
+   */
+  async markAllAlertsAsAcknowledged(userId: string): Promise<{ updated: number }> {
+    const result = await this.alertRepository.update(
+      { status: AlertStatus.ACTIVE },
+      {
+        status: AlertStatus.ACKNOWLEDGED,
+        acknowledgedById: userId,
+        acknowledgedAt: new Date(),
+      },
+    );
+
+    this.logger.log(`Marked ${result.affected || 0} alerts as acknowledged`);
+
+    return { updated: result.affected || 0 };
+  }
+
+  /**
+   * Delete an alert permanently
+   */
+  async deleteAlert(id: string): Promise<{ deleted: boolean }> {
+    const alert = await this.alertRepository.findOne({ where: { id } });
+
+    if (!alert) {
+      throw new NotFoundException(`Alert ${id} not found`);
+    }
+
+    await this.alertRepository.remove(alert);
+    this.logger.log(`Alert ${id} deleted`);
+
+    return { deleted: true };
+  }
+
+  /**
+   * Get alert statistics
+   */
+  async getAlertStatistics(): Promise<AlertStatistics> {
+    const alerts = await this.alertRepository.find();
+
+    const stats: AlertStatistics = {
+      active: 0,
+      acknowledged: 0,
+      resolved: 0,
+      dismissed: 0,
+      total: alerts.length,
+      by_severity: {
+        [AlertSeverity.LOW]: 0,
+        [AlertSeverity.MEDIUM]: 0,
+        [AlertSeverity.HIGH]: 0,
+        [AlertSeverity.CRITICAL]: 0,
+      },
+      by_type: {
+        [AlertType.POLICY_REVIEW_OVERDUE]: 0,
+        [AlertType.CONTROL_ASSESSMENT_PAST_DUE]: 0,
+        [AlertType.SOP_EXECUTION_FAILURE]: 0,
+        [AlertType.AUDIT_FINDING]: 0,
+        [AlertType.COMPLIANCE_VIOLATION]: 0,
+        [AlertType.RISK_THRESHOLD_EXCEEDED]: 0,
+        [AlertType.CUSTOM]: 0,
+      },
+    };
+
+    for (const alert of alerts) {
+      // Count by status
+      if (alert.status === AlertStatus.ACTIVE) stats.active++;
+      else if (alert.status === AlertStatus.ACKNOWLEDGED) stats.acknowledged++;
+      else if (alert.status === AlertStatus.RESOLVED) stats.resolved++;
+      else if (alert.status === AlertStatus.DISMISSED) stats.dismissed++;
+
+      // Count by severity
+      stats.by_severity[alert.severity]++;
+
+      // Count by type
+      stats.by_type[alert.type]++;
+    }
+
+    return stats;
+  }
+
+  // ============================================================================
+  // ALERT RULE MANAGEMENT METHODS
+  // ============================================================================
+
+  /**
+   * Create a new alert rule
+   */
+  async createAlertRule(
+    createRuleDto: CreateAlertRuleDto,
+    userId: string,
+  ): Promise<AlertRuleDto> {
+    this.logger.log(`Creating alert rule: ${createRuleDto.name}`);
+
+    const creator = await this.userRepository.findOne({ where: { id: userId } });
+    if (!creator) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const rule = this.alertRuleRepository.create({
+      ...createRuleDto,
+      createdById: userId,
+    });
+
+    const saved = await this.alertRuleRepository.save(rule);
+    return this.mapAlertRuleToDto(saved);
+  }
+
+  /**
+   * Get a single alert rule by ID
+   */
+  async getAlertRule(id: string): Promise<AlertRuleDto> {
+    const rule = await this.alertRuleRepository.findOne({
+      where: { id },
+      relations: ['createdBy'],
+    });
+
+    if (!rule) {
+      throw new NotFoundException(`Alert rule ${id} not found`);
+    }
+
+    return this.mapAlertRuleToDto(rule);
+  }
+
+  /**
+   * Get all alert rules with pagination and filtering
+   */
+  async getAlertRules(
+    params?: AlertFilterParams,
+  ): Promise<{ rules: AlertRuleDto[]; total: number }> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: FindOptionsWhere<AlertRule> = {};
+
+    // Filter by active status if provided
+    if (params?.status === AlertStatus.ACTIVE) {
+      where.isActive = true;
+    } else if (params?.status === AlertStatus.ACKNOWLEDGED) {
+      where.isActive = false;
+    }
+
+    if (params?.search) {
+      where.name = ILike(`%${params.search}%`);
+    }
+
+    const [rules, total] = await this.alertRuleRepository.findAndCount({
+      where,
+      relations: ['createdBy'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      rules: rules.map(r => this.mapAlertRuleToDto(r)),
+      total,
+    };
+  }
+
+  /**
+   * Update an alert rule
+   */
+  async updateAlertRule(
+    id: string,
+    updateRuleDto: UpdateAlertRuleDto,
+  ): Promise<AlertRuleDto> {
     const rule = await this.alertRuleRepository.findOne({ where: { id } });
 
     if (!rule) {
-      throw new Error(`Alert rule with ID ${id} not found`);
+      throw new NotFoundException(`Alert rule ${id} not found`);
     }
 
-    Object.assign(rule, dto, { updatedAt: new Date() });
+    Object.assign(rule, updateRuleDto);
+    const saved = await this.alertRuleRepository.save(rule);
 
-    return this.alertRuleRepository.save(rule);
+    this.logger.log(`Alert rule ${id} updated`);
+    return this.mapAlertRuleToDto(saved);
   }
 
-  async deleteAlertRule(id: string): Promise<void> {
-    const result = await this.alertRuleRepository.delete(id);
+  /**
+   * Toggle alert rule active status
+   */
+  async toggleAlertRule(id: string, isActive: boolean): Promise<AlertRuleDto> {
+    const rule = await this.alertRuleRepository.findOne({ where: { id } });
 
-    if (result.affected === 0) {
-      throw new Error(`Alert rule with ID ${id} not found`);
-    }
-  }
-
-  // Alert Subscription Management
-  async createAlertSubscription(dto: CreateAlertSubscriptionDto): Promise<AlertSubscription> {
-    const subscription = this.alertSubscriptionRepository.create({
-      ...dto,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    return this.alertSubscriptionRepository.save(subscription);
-  }
-
-  async getUserSubscriptions(userId: string): Promise<AlertSubscription[]> {
-    return this.alertSubscriptionRepository.find({
-      where: { userId },
-      relations: ['rule'],
-      order: { createdAt: 'DESC' },
-    });
-  }
-
-  async updateAlertSubscription(id: string, dto: Partial<CreateAlertSubscriptionDto>): Promise<AlertSubscription> {
-    const subscription = await this.alertSubscriptionRepository.findOne({ where: { id } });
-
-    if (!subscription) {
-      throw new Error(`Alert subscription with ID ${id} not found`);
+    if (!rule) {
+      throw new NotFoundException(`Alert rule ${id} not found`);
     }
 
-    Object.assign(subscription, dto, { updatedAt: new Date() });
+    rule.isActive = isActive;
+    const saved = await this.alertRuleRepository.save(rule);
 
-    return this.alertSubscriptionRepository.save(subscription);
+    this.logger.log(`Alert rule ${id} toggled to ${isActive ? 'active' : 'inactive'}`);
+    return this.mapAlertRuleToDto(saved);
   }
 
-  async deleteAlertSubscription(id: string): Promise<void> {
-    const result = await this.alertSubscriptionRepository.delete(id);
+  /**
+   * Delete an alert rule
+   */
+  async deleteAlertRule(id: string): Promise<{ deleted: boolean }> {
+    const rule = await this.alertRuleRepository.findOne({ where: { id } });
 
-    if (result.affected === 0) {
-      throw new Error(`Alert subscription with ID ${id} not found`);
-    }
-  }
-
-  // Rule Evaluation Engine
-  async evaluateAlertRules(): Promise<void> {
-    this.logger.log('Starting alert rule evaluation');
-
-    const enabledRules = await this.getAlertRules(true);
-
-    for (const rule of enabledRules) {
-      try {
-        await this.evaluateRule(rule);
-      } catch (error) {
-        this.logger.error(`Error evaluating rule ${rule.id}: ${error.message}`);
-      }
+    if (!rule) {
+      throw new NotFoundException(`Alert rule ${id} not found`);
     }
 
-    this.logger.log('Alert rule evaluation completed');
+    await this.alertRuleRepository.remove(rule);
+    this.logger.log(`Alert rule ${id} deleted`);
+
+    return { deleted: true };
   }
 
-  private async evaluateRule(rule: AlertRule): Promise<void> {
-    // This is a simplified evaluation engine
-    // In a real implementation, this would evaluate specific conditions
-    // based on the rule's triggerType, entityType, fieldName, and condition
+  /**
+   * Get alert rule statistics
+   */
+  async getAlertRuleStatistics(): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+  }> {
+    const rules = await this.alertRuleRepository.find();
 
-    let shouldTrigger = false;
-    let alertData: Partial<CreateAlertDto> = {
-      title: rule.name,
-      description: rule.alertMessage || rule.description || 'Alert triggered by rule evaluation',
-      type: this.mapRuleToAlertType(rule),
-      severity: this.mapSeverityScoreToSeverity(rule.severityScore),
+    return {
+      total: rules.length,
+      active: rules.filter(r => r.isActive).length,
+      inactive: rules.filter(r => !r.isActive).length,
     };
+  }
 
-    // Simple evaluation based on rule type - this would be much more sophisticated
-    switch (rule.triggerType) {
-      case AlertRuleTriggerType.TIME_BASED:
-        shouldTrigger = await this.checkTimeBasedRule(rule);
-        break;
+  /**
+   * Test an alert rule - simulates matching logic
+   */
+  async testAlertRule(ruleId: string): Promise<{
+    matches: number;
+    sampleMatches: Array<{ id: string; reason: string }>;
+  }> {
+    const rule = await this.alertRuleRepository.findOne({ where: { id: ruleId } });
 
-      case AlertRuleTriggerType.THRESHOLD_BASED:
-        shouldTrigger = await this.checkThresholdBasedRule(rule);
-        break;
-
-      case AlertRuleTriggerType.STATUS_CHANGE:
-        shouldTrigger = await this.checkStatusChangeRule(rule);
-        break;
-
-      case AlertRuleTriggerType.CUSTOM_CONDITION:
-        shouldTrigger = await this.checkCustomConditionRule(rule);
-        break;
-
-      default:
-        this.logger.warn(`Unknown alert rule trigger type: ${rule.triggerType}`);
-        return;
+    if (!rule) {
+      throw new NotFoundException(`Alert rule ${ruleId} not found`);
     }
 
-    if (shouldTrigger) {
-      // Check if similar alert already exists and is active
-      const existingAlert = await this.alertRepository.findOne({
-        where: {
-          relatedEntityId: rule.id, // Link to the rule that triggered it
-          relatedEntityType: 'alert_rule',
-          status: In([AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED]),
-          createdAt: MoreThan(new Date(Date.now() - 24 * 60 * 60 * 1000)), // Last 24 hours
-        },
+    this.logger.log(`Testing alert rule ${ruleId}`);
+
+    // Simulate matching logic - in production this would evaluate against actual data
+    const sampleMatches: Array<{ id: string; reason: string }> = [];
+
+    // Example: time-based trigger
+    if (rule.triggerType === AlertRuleTriggerType.TIME_BASED) {
+      sampleMatches.push({
+        id: 'sample-1',
+        reason: `Entity overdue by ${rule.thresholdValue || 0} days`,
       });
-
-      if (!existingAlert) {
-        await this.createAlert(alertData as CreateAlertDto, 'system');
-        this.logger.log(`Alert triggered for rule: ${rule.name}`);
-      }
     }
+
+    // Example: threshold-based trigger
+    if (rule.triggerType === AlertRuleTriggerType.THRESHOLD_BASED) {
+      sampleMatches.push({
+        id: 'sample-2',
+        reason: `Value exceeded threshold of ${rule.thresholdValue}`,
+      });
+    }
+
+    // Example: status change trigger
+    if (rule.triggerType === AlertRuleTriggerType.STATUS_CHANGE) {
+      sampleMatches.push({
+        id: 'sample-3',
+        reason: `Entity status changed to ${rule.conditionValue}`,
+      });
+    }
+
+    return {
+      matches: sampleMatches.length,
+      sampleMatches,
+    };
   }
 
-  private mapRuleToAlertType(rule: AlertRule): AlertType {
-    // Map rule entity type to alert type
-    switch (rule.entityType.toLowerCase()) {
-      case 'policy':
-        return AlertType.POLICY_REVIEW_OVERDUE;
-      case 'control':
-        return AlertType.CONTROL_ASSESSMENT_PAST_DUE;
-      case 'sop':
-        return AlertType.SOP_EXECUTION_FAILURE;
-      case 'audit':
-        return AlertType.AUDIT_FINDING;
-      case 'compliance':
-        return AlertType.COMPLIANCE_VIOLATION;
-      case 'risk':
-        return AlertType.RISK_THRESHOLD_EXCEEDED;
+  // ============================================================================
+  // HELPER METHODS
+  // ============================================================================
+
+  /**
+   * Map Alert entity to DTO
+   */
+  private mapAlertToDto(alert: Alert): AlertDto {
+    return {
+      id: alert.id,
+      title: alert.title,
+      description: alert.description,
+      type: alert.type,
+      severity: alert.severity,
+      status: alert.status,
+      relatedEntityId: alert.relatedEntityId,
+      relatedEntityType: alert.relatedEntityType,
+      metadata: alert.metadata,
+      createdAt: alert.createdAt,
+      updatedAt: alert.updatedAt,
+      acknowledgedAt: alert.acknowledgedAt,
+      acknowledgedById: alert.acknowledgedById,
+      resolvedAt: alert.resolvedAt,
+      resolvedById: alert.resolvedById,
+      resolutionNotes: alert.resolutionNotes,
+    };
+  }
+
+  /**
+   * Map AlertRule entity to DTO
+   */
+  private mapAlertRuleToDto(rule: AlertRule): AlertRuleDto {
+    return {
+      id: rule.id,
+      name: rule.name,
+      description: rule.description,
+      isActive: rule.isActive,
+      triggerType: rule.triggerType,
+      entityType: rule.entityType,
+      fieldName: rule.fieldName,
+      condition: rule.condition,
+      conditionValue: rule.conditionValue,
+      thresholdValue: rule.thresholdValue,
+      severityScore: rule.severityScore,
+      alertMessage: rule.alertMessage,
+      filters: rule.filters,
+      createdAt: rule.createdAt,
+      updatedAt: rule.updatedAt,
+    };
+  }
+
+  /**
+   * Evaluate if data matches a rule condition
+   * (Helper for external rule evaluation)
+   */
+  evaluateCondition(
+    fieldValue: any,
+    condition: AlertRuleCondition,
+    conditionValue: string | number,
+  ): boolean {
+    switch (condition) {
+      case AlertRuleCondition.EQUALS:
+        return fieldValue === conditionValue;
+      case AlertRuleCondition.NOT_EQUALS:
+        return fieldValue !== conditionValue;
+      case AlertRuleCondition.GREATER_THAN:
+        return Number(fieldValue) > Number(conditionValue);
+      case AlertRuleCondition.LESS_THAN:
+        return Number(fieldValue) < Number(conditionValue);
+      case AlertRuleCondition.CONTAINS:
+        return String(fieldValue).includes(String(conditionValue));
+      case AlertRuleCondition.NOT_CONTAINS:
+        return !String(fieldValue).includes(String(conditionValue));
+      case AlertRuleCondition.IS_NULL:
+        return fieldValue === null || fieldValue === undefined;
+      case AlertRuleCondition.IS_NOT_NULL:
+        return fieldValue !== null && fieldValue !== undefined;
+      case AlertRuleCondition.DAYS_OVERDUE:
+        // Assumes fieldValue is a date, compares days difference
+        if (!fieldValue) return false;
+        const daysOverdue =
+          (new Date().getTime() - new Date(fieldValue).getTime()) / (1000 * 60 * 60 * 24);
+        return daysOverdue > Number(conditionValue);
+      case AlertRuleCondition.STATUS_EQUALS:
+        return String(fieldValue).toLowerCase() === String(conditionValue).toLowerCase();
       default:
-        return AlertType.CUSTOM;
+        return false;
     }
-  }
-
-  private mapSeverityScoreToSeverity(score: number): AlertSeverity {
-    if (score >= 4) return AlertSeverity.CRITICAL;
-    if (score >= 3) return AlertSeverity.HIGH;
-    if (score >= 2) return AlertSeverity.MEDIUM;
-    return AlertSeverity.LOW;
-  }
-
-  // Placeholder methods for rule evaluation - these would be implemented based on specific business logic
-  private async checkTimeBasedRule(rule: AlertRule): Promise<boolean> {
-    // Implementation would check time-based conditions
-    return false;
-  }
-
-  private async checkThresholdBasedRule(rule: AlertRule): Promise<boolean> {
-    // Implementation would check threshold-based conditions
-    return false;
-  }
-
-  private async checkStatusChangeRule(rule: AlertRule): Promise<boolean> {
-    // Implementation would check status change conditions
-    return false;
-  }
-
-  private async checkCustomConditionRule(rule: AlertRule): Promise<boolean> {
-    // Implementation would check custom conditions
-    return false;
-  }
-
-  // Notification System
-  private async notifySubscribers(alert: Alert): Promise<void> {
-    const subscriptions = await this.alertSubscriptionRepository.find({
-      where: {
-        isActive: true,
-      },
-      relations: ['user'],
-    });
-
-    for (const subscription of subscriptions) {
-      // Check if subscription matches the alert type and severity
-      if (subscription.alertType && subscription.alertType !== alert.type) {
-        continue;
-      }
-
-      if (subscription.severity && subscription.severity !== alert.severity) {
-        continue;
-      }
-
-      try {
-        await this.sendNotification(subscription, alert);
-      } catch (error) {
-        this.logger.error(`Failed to send notification to user ${subscription.userId}: ${error.message}`);
-      }
-    }
-  }
-
-  private async sendNotification(subscription: AlertSubscription, alert: Alert): Promise<void> {
-    const channels = subscription.channels;
-
-    if (channels.includes(NotificationChannel.EMAIL)) {
-      await this.sendEmailNotification(subscription.userId, alert);
-    }
-
-    if (channels.includes(NotificationChannel.IN_APP)) {
-      // In-app notification would be handled by a separate service
-      this.logger.log(`In-app notification sent to user ${subscription.userId} for alert ${alert.id}`);
-    }
-
-    if (channels.includes(NotificationChannel.SLACK)) {
-      // Slack notification would be handled by a separate service
-      this.logger.log(`Slack notification sent to user ${subscription.userId} for alert ${alert.id}`);
-    }
-  }
-
-  private async sendEmailNotification(userId: string, alert: Alert): Promise<void> {
-    // This would integrate with the existing email service
-    // For now, we'll use the dashboard email service as a placeholder
-    try {
-      // Get user email - this would come from a user service
-      const userEmail = await this.getUserEmail(userId);
-
-      const emailContent = {
-        to: [userEmail],
-        subject: `Alert: ${alert.title}`,
-        html: `
-          <h2>${alert.title}</h2>
-          <p><strong>Severity:</strong> ${alert.severity}</p>
-          <p><strong>Description:</strong> ${alert.description}</p>
-          <p><strong>Created:</strong> ${alert.createdAt.toISOString()}</p>
-          ${alert.relatedEntityType ? `<p><strong>Entity Type:</strong> ${alert.relatedEntityType}</p>` : ''}
-          ${alert.relatedEntityId ? `<p><strong>Entity ID:</strong> ${alert.relatedEntityId}</p>` : ''}
-          <br>
-          <p>Please log in to the platform to acknowledge this alert.</p>
-        `,
-      };
-
-      // This is a placeholder - actual email sending would be implemented
-      this.logger.log(`Email notification sent to ${userEmail} for alert ${alert.id}`);
-    } catch (error) {
-      this.logger.error(`Failed to send email notification: ${error.message}`);
-    }
-  }
-
-  private async getUserEmail(userId: string): Promise<string> {
-    // This would query the user service to get the email
-    // For now, return a placeholder
-    return `user${userId}@example.com`;
-  }
-
-  // Logging
-  private async logAlertAction(alertId: string, action: AlertLogAction, details: string): Promise<void> {
-    const log = this.alertLogRepository.create({
-      alertId,
-      action,
-      details,
-      createdAt: new Date(),
-    });
-
-    await this.alertLogRepository.save(log);
-  }
-
-  // Scheduled rule evaluation - runs every 5 minutes
-  @Cron(CronExpression.EVERY_5_MINUTES)
-  async handleScheduledRuleEvaluation(): Promise<void> {
-    await this.evaluateAlertRules();
-  }
-
-  // Clean up old resolved alerts - runs daily
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async cleanupOldAlerts(): Promise<void> {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const result = await this.alertRepository.delete({
-      status: AlertStatus.RESOLVED,
-      resolvedAt: LessThan(thirtyDaysAgo),
-    });
-
-    this.logger.log(`Cleaned up ${result.affected} old resolved alerts`);
   }
 }

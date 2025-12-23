@@ -81,12 +81,18 @@ export class Alert {
   @Column({ type: 'timestamp', nullable: true })
   resolvedAt: Date;
 
-  @Column({ type: 'text', nullable: true })
-  resolutionNotes: string;
+   @Column({ type: 'text', nullable: true })
+   resolutionNotes: string;
 
-  @CreateDateColumn()
-  createdAt: Date;
+   @Column({ type: 'uuid', nullable: true })
+   escalationChainId: string; // Reference to escalation chain if escalated
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+   @Column({ type: 'boolean', default: false })
+   hasEscalation: boolean; // Flag indicating this alert has an active escalation
+
+   @CreateDateColumn()
+   createdAt: Date;
+
+   @UpdateDateColumn()
+   updatedAt: Date;
 }
