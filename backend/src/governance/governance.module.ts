@@ -9,9 +9,13 @@ import { InfluencersController } from './influencers/influencers.controller';
 import { InfluencersService } from './influencers/influencers.service';
 import { InfluencerRevisionService } from './influencers/services/influencer-revision.service';
 import { Policy } from './policies/entities/policy.entity';
+import { PolicyApproval } from './policies/entities/policy-approval.entity';
+import { PolicyVersion } from './policies/entities/policy-version.entity';
 import { ControlObjective } from './control-objectives/entities/control-objective.entity';
 import { PoliciesController } from './policies/policies.controller';
 import { PoliciesService } from './policies/policies.service';
+import { PolicyApprovalService } from './policies/services/policy-approval.service';
+import { PolicyVersionService } from './policies/services/policy-version.service';
 import { ControlObjectivesController } from './control-objectives/control-objectives.controller';
 import { ControlObjectivesService } from './control-objectives/control-objectives.service';
 import { Assessment } from './assessments/entities/assessment.entity';
@@ -106,6 +110,12 @@ import { Alert } from './entities/alert.entity';
 import { AlertRule } from './entities/alert-rule.entity';
 import { AlertSubscription } from './entities/alert-subscription.entity';
 import { AlertLog } from './entities/alert-log.entity';
+import { GovernanceFrameworkConfig } from './entities/governance-framework-config.entity';
+import { GovernanceFrameworkConfigService } from './framework-config/governance-framework-config.service';
+import { GovernanceFrameworkConfigController } from './framework-config/governance-framework-config.controller';
+import { ComplianceReport } from './compliance-reporting/entities/compliance-report.entity';
+import { ComplianceReportingService } from './compliance-reporting/services/compliance-reporting.service';
+import { ComplianceReportingController } from './compliance-reporting/compliance-reporting.controller';
 
 @Module({
   imports: [
@@ -130,6 +140,8 @@ import { AlertLog } from './entities/alert-log.entity';
       ComplianceFramework,
       WorkflowExecution,
       PolicyAssignment,
+      PolicyApproval,
+      PolicyVersion,
       User,
       BusinessUnit,
       GovernancePermission,
@@ -149,6 +161,8 @@ import { AlertLog } from './entities/alert-log.entity';
       AlertRule,
       AlertSubscription,
       AlertLog,
+      GovernanceFrameworkConfig,
+      ComplianceReport,
     ]),
     MulterModule.register({
       dest: './uploads',
@@ -192,11 +206,15 @@ import { AlertLog } from './entities/alert-log.entity';
     GovernanceAIController,
     DashboardEmailController,
     AlertingController,
+    GovernanceFrameworkConfigController,
+    ComplianceReportingController,
   ],
   providers: [
     InfluencersService,
     InfluencerRevisionService,
     PoliciesService,
+    PolicyApprovalService,
+    PolicyVersionService,
     ControlObjectivesService,
     AssessmentsService,
     GovernanceDashboardService,
@@ -223,10 +241,14 @@ import { AlertLog } from './entities/alert-log.entity';
     GovernanceAIService,
     DashboardEmailService,
     AlertingService,
+    GovernanceFrameworkConfigService,
+    ComplianceReportingService,
   ],
   exports: [
     InfluencersService,
     PoliciesService,
+    PolicyApprovalService,
+    PolicyVersionService,
     ControlObjectivesService,
     AssessmentsService,
     GovernanceDashboardService,
