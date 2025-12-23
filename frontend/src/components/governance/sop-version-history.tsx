@@ -35,14 +35,14 @@ export function SOPVersionHistory({ sopId, currentVersion }: SOPVersionHistoryPr
   // Fetch version history
   const { data: versions, isLoading } = useQuery({
     queryKey: ['sop-versions', sopId],
-    queryFn: () => governanceApi.getSOPVersions?.(sopId),
+    queryFn: () => governanceApi.getSOPVersions(sopId),
     enabled: !!sopId,
   });
 
   // Approve version mutation
   const approveMutation = useMutation({
     mutationFn: async (versionId: string) => {
-      return governanceApi.approveSOPVersion?.({
+      return governanceApi.approveSOPVersion({
         id: versionId,
         status: 'approved',
         approval_comments: approvalComments || undefined,
@@ -69,7 +69,7 @@ export function SOPVersionHistory({ sopId, currentVersion }: SOPVersionHistoryPr
   // Reject version mutation
   const rejectMutation = useMutation({
     mutationFn: async (versionId: string) => {
-      return governanceApi.approveSOPVersion?.({
+      return governanceApi.approveSOPVersion({
         id: versionId,
         status: 'rejected',
         approval_comments: approvalComments || undefined,

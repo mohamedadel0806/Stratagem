@@ -42,19 +42,19 @@ export function SOPAssignmentDialog({ sopId, open, onOpenChange }: SOPAssignment
   // Fetch users for assignment
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ['users', { limit: 100 }],
-    queryFn: () => governanceApi.getUsers?.({ limit: 100 }),
+    queryFn: () => governanceApi.getUsers({ limit: 100 }),
   });
 
   // Fetch roles
   const { data: roles } = useQuery({
     queryKey: ['roles'],
-    queryFn: () => governanceApi.getRoles?.(),
+    queryFn: () => governanceApi.getRoles(),
   });
 
   // Fetch current assignments
   const { data: assignments } = useQuery({
     queryKey: ['sop-assignments', sopId],
-    queryFn: () => governanceApi.getSOPAssignments?.(sopId),
+    queryFn: () => governanceApi.getSOPAssignments(sopId),
     enabled: open && !!sopId,
   });
 
@@ -83,7 +83,7 @@ export function SOPAssignmentDialog({ sopId, open, onOpenChange }: SOPAssignment
 
   // Delete assignment mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => governanceApi.deleteSOPAssignment?.(id),
+    mutationFn: (id: string) => governanceApi.deleteSOPAssignment(id),
     onSuccess: () => {
       toast({
         title: 'Success',

@@ -37,14 +37,14 @@ export function SOPFeedbackForm({ sopId, readOnly = false }: SOPFeedbackFormProp
   // Fetch feedback for this SOP
   const { data: feedbackList, isLoading } = useQuery({
     queryKey: ['sop-feedback', sopId],
-    queryFn: () => governanceApi.getSOPFeedback?.(sopId),
+    queryFn: () => governanceApi.getSOPFeedback(sopId),
     enabled: !!sopId,
   });
 
   // Submit feedback mutation
   const submitMutation = useMutation({
     mutationFn: async () => {
-      return governanceApi.createSOPFeedback?.({
+      return governanceApi.createSOPFeedback({
         sop_id: sopId,
         rating,
         comment: comment || undefined,
@@ -71,7 +71,7 @@ export function SOPFeedbackForm({ sopId, readOnly = false }: SOPFeedbackFormProp
 
   // Delete feedback mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => governanceApi.deleteSOPFeedback?.(id),
+    mutationFn: (id: string) => governanceApi.deleteSOPFeedback(id),
     onSuccess: () => {
       toast({
         title: 'Success',

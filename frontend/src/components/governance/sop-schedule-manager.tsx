@@ -55,7 +55,7 @@ export function SOPScheduleManager({ sopId, sop }: SOPScheduleManagerProps) {
   // Fetch schedules for this SOP
   const { data: schedules, isLoading } = useQuery({
     queryKey: ['sop-schedules', sopId],
-    queryFn: () => governanceApi.getSOPSchedules?.({ sop_id: sopId }),
+    queryFn: () => governanceApi.getSOPSchedules({ sop_id: sopId }),
     enabled: !!sopId,
   });
 
@@ -63,7 +63,7 @@ export function SOPScheduleManager({ sopId, sop }: SOPScheduleManagerProps) {
   const createMutation = useMutation({
     mutationFn: async () => {
       const selectedFreq = frequencyOptions.find((f) => f.value === frequency);
-      return governanceApi.createSOPSchedule?.({
+      return governanceApi.createSOPSchedule({
         sop_id: sopId,
         next_review_date: nextReviewDate ? new Date(nextReviewDate).toISOString() : undefined,
         frequency,
@@ -91,7 +91,7 @@ export function SOPScheduleManager({ sopId, sop }: SOPScheduleManagerProps) {
 
   // Delete schedule mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => governanceApi.deleteSOPSchedule?.(id),
+    mutationFn: (id: string) => governanceApi.deleteSOPSchedule(id),
     onSuccess: () => {
       toast({
         title: 'Success',
