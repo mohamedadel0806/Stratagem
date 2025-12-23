@@ -290,12 +290,18 @@ export function Sidebar({ className }: SidebarProps) {
                   </DropdownMenuItem>
                 </Link>
                 <Link href={`/${locale}/dashboard/governance/policies`}>
-                  <DropdownMenuItem className={pathname?.includes("/governance/policies") ? "bg-accent" : ""}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Policies
-                  </DropdownMenuItem>
-                </Link>
-                <Link href={`/${locale}/dashboard/governance/controls`}>
+                   <DropdownMenuItem className={pathname?.includes("/governance/policies") ? "bg-accent" : ""}>
+                     <FileText className="mr-2 h-4 w-4" />
+                     Policies
+                   </DropdownMenuItem>
+                 </Link>
+                 <Link href={`/${locale}/dashboard/governance/sops`}>
+                   <DropdownMenuItem className={pathname?.includes("/governance/sops") ? "bg-accent" : ""}>
+                     <FileCheck className="mr-2 h-4 w-4" />
+                     SOPs
+                   </DropdownMenuItem>
+                 </Link>
+                 <Link href={`/${locale}/dashboard/governance/controls`}>
                   <DropdownMenuItem className={pathname?.includes("/governance/controls") ? "bg-accent" : ""}>
                     <Shield className="mr-2 h-4 w-4" />
                     Controls
