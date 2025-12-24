@@ -1010,6 +1010,113 @@ export interface ComplianceScorecardResponse {
   };
 }
 
+// Compliance Report Types (Story 6.1)
+export enum ComplianceScore {
+  EXCELLENT = 'EXCELLENT',
+  GOOD = 'GOOD',
+  FAIR = 'FAIR',
+  POOR = 'POOR',
+}
+
+export enum ReportPeriod {
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+  QUARTERLY = 'QUARTERLY',
+  ANNUAL = 'ANNUAL',
+  CUSTOM = 'CUSTOM',
+}
+
+export interface ComplianceReportTrend {
+  date: string;
+  overall_score: number;
+  policies_score: number;
+  controls_score: number;
+  assets_score: number;
+}
+
+export interface DepartmentCompliance {
+  department: string;
+  policies_score: number;
+  controls_score: number;
+  assets_score: number;
+  overall_score: number;
+  total_policies: number;
+  total_controls: number;
+  total_assets: number;
+}
+
+export interface ComplianceGap {
+  gap_id: string;
+  type: string;
+  severity: 'critical' | 'medium' | 'low';
+  description: string;
+  affected_item: string;
+  remediation_steps?: string;
+}
+
+export interface ComplianceReport {
+  id: string;
+  report_name: string;
+  report_period: ReportPeriod;
+  period_start_date: string;
+  period_end_date: string;
+  overall_compliance_score: number;
+  overall_compliance_rating: ComplianceScore;
+  policies_compliance_score: number;
+  controls_compliance_score: number;
+  assets_compliance_score: number;
+  total_policies: number;
+  policies_published: number;
+  policies_acknowledged: number;
+  total_controls: number;
+  controls_implemented: number;
+  controls_partial: number;
+  controls_not_implemented: number;
+  total_assets: number;
+  assets_compliant: number;
+  asset_compliance_percentage: number;
+  critical_gaps: number;
+  medium_gaps: number;
+  low_gaps: number;
+  gap_details: ComplianceGap[];
+  department_breakdown: DepartmentCompliance[];
+  compliance_trend: ComplianceReportTrend[];
+  projected_score_next_period: number;
+  projected_days_to_excellent: number;
+  trend_direction: 'IMPROVING' | 'STABLE' | 'DECLINING';
+  executive_summary: string;
+  key_findings: string;
+  recommendations: string;
+  is_final: boolean;
+  is_archived: boolean;
+  created_by_id?: string;
+  created_by?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  created_at: string;
+  updated_at: string;
+  generated_at: string;
+}
+
+export interface ComplianceDashboardData {
+  latest_report: ComplianceReport | null;
+  current_score: number;
+  current_rating: ComplianceScore;
+  score_trend: number; // percentage change from last report
+  policies_score: number;
+  controls_score: number;
+  assets_score: number;
+  critical_gaps_count: number;
+  policy_completion_rate: number;
+  control_implementation_rate: number;
+  asset_compliance_rate: number;
+  days_since_last_report: number;
+  next_report_due: string;
+}
+
 // Governance Permissions Types
 export enum GovernanceModule {
   INFLUENCERS = 'influencers',
@@ -2214,6 +2321,50 @@ export const governanceApi = {
 
   getControlEffectiveness: async (controlId: string): Promise<any> => {
     const response = await apiClient.get(`/api/v1/governance/unified-controls/${controlId}/effectiveness`);
+    return response.data;
+  },
+
+  // Compliance Reporting (Story 6.1)
+  generateComplianceReport: async (data: {
+    report_period: 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'CUSTOM';
+    period_start_date?: string;
+    period_end_date?: string;
+  }): Promise<{ data: any }> => {
+    const response = await apiClient.post('/api/v1/governance/compliance/reports/generate', data);
+    return response.data;
+  },
+
+  getComplianceReport: async (id: string): Promise<{ data: any }> => {
+    const response = await apiClient.get(`/api/v1/governance/compliance/reports/${id}`);
+    return response.data;
+  },
+
+  getComplianceReports: async (params?: {
+    page?: number;
+    limit?: number;
+    period?: 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'CUSTOM';
+    rating?: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
+    period_start_date?: string;
+    period_end_date?: string;
+    search?: string;
+    sort?: string;
+  }): Promise<{ data: any[]; meta: { page: number; limit: number; total: number; totalPages: number } }> => {
+    const response = await apiClient.get('/api/v1/governance/compliance/reports', { params });
+    return response.data;
+  },
+
+  getLatestComplianceReport: async (): Promise<{ data: any }> => {
+    const response = await apiClient.get('/api/v1/governance/compliance/reports/latest/current');
+    return response.data;
+  },
+
+  getComplianceDashboard: async (): Promise<{ data: any }> => {
+    const response = await apiClient.get('/api/v1/governance/compliance/dashboard');
+    return response.data;
+  },
+
+  archiveComplianceReport: async (id: string): Promise<{ data: any }> => {
+    const response = await apiClient.patch(`/api/v1/governance/compliance/reports/${id}/archive`);
     return response.data;
   },
 };
@@ -4195,4 +4346,608 @@ export const dashboardEmailApi = {
   deleteAlertSubscription: async (id: string): Promise<void> => {
     await apiClient.delete(`/api/v1/governance/alerting/subscriptions/${id}`);
   },
+
+  // SOP Versions
+  getSOPVersions: async (sopId: string): Promise<any[]> => {
+    try {
+      const response = await apiClient.get(
+        `/api/v1/governance/sop-versions/sop/${sopId}/history`
+      );
+      return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching SOP versions:', error);
+      return [];
+    }
+  },
+
+  approveSOPVersion: async (data: {
+    id: string;
+    status: 'approved' | 'rejected';
+    approval_comments?: string;
+  }): Promise<any> => {
+    const endpoint = data.status === 'approved'
+      ? `/api/v1/governance/sop-versions/${data.id}/approve`
+      : `/api/v1/governance/sop-versions/${data.id}/reject`;
+    
+    const response = await apiClient.post(endpoint, {
+      approval_comments: data.approval_comments
+    });
+    return response.data;
+  },
+
+  rejectSOPVersion: async (data: {
+    id: string;
+    rejection_reason?: string;
+  }): Promise<any> => {
+    const response = await apiClient.post(
+      `/api/v1/governance/sop-versions/${data.id}/reject`,
+      { rejection_reason: data.rejection_reason }
+    );
+    return response.data;
+  },
+
+  // SOP Schedules
+  getSOPSchedules: async (params: { sop_id: string }): Promise<any[]> => {
+    try {
+      const response = await apiClient.get(
+        `/api/v1/governance/sop-schedules/sop/${params.sop_id}`
+      );
+      return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching SOP schedules:', error);
+      return [];
+    }
+  },
+
+  createSOPSchedule: async (data: {
+    sop_id: string;
+    frequency: string;
+    next_review_date?: string;
+    cron_expression?: string;
+  }): Promise<any> => {
+    const response = await apiClient.post(
+      '/api/v1/governance/sop-schedules',
+      data
+    );
+    return response.data;
+  },
+
+  updateSOPSchedule: async (id: string, data: any): Promise<any> => {
+    const response = await apiClient.patch(
+      `/api/v1/governance/sop-schedules/${id}`,
+      data
+    );
+    return response.data;
+  },
+
+  deleteSOPSchedule: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/sop-schedules/${id}`);
+  },
+
+
+  // SOP Feedback
+  getSOPFeedback: async (sopId: string): Promise<any[]> => {
+    try {
+      const response = await apiClient.get(
+        `/api/v1/governance/sop-feedback/sop/${sopId}`
+      );
+      return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching SOP feedback:', error);
+      return [];
+    }
+  },
+
+  createSOPFeedback: async (data: {
+    sop_id: string;
+    rating: number;
+    comment?: string;
+  }): Promise<any> => {
+    const response = await apiClient.post(
+      '/api/v1/governance/sop-feedback',
+      data
+    );
+    return response.data;
+  },
+
+  deleteSOPFeedback: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/sop-feedback/${id}`);
+  },
+
+  // SOP Assignments
+  getSOPAssignments: async (sopId: string): Promise<any[]> => {
+    try {
+      const response = await apiClient.get(
+        `/api/v1/governance/sop-assignments/sop/${sopId}`
+      );
+      return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching SOP assignments:', error);
+      return [];
+    }
+  },
+
+  createSOPAssignment: async (data: {
+    sop_id: string;
+    user_id?: string;
+    role_id?: string;
+    assigned_by?: string;
+  }): Promise<any> => {
+    const response = await apiClient.post(
+      '/api/v1/governance/sop-assignments',
+      data
+    );
+    return response.data;
+  },
+
+  deleteSOPAssignment: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/sop-assignments/${id}`);
+  },
+
+  // Helper methods for dropdowns
+  getUsers: async (params?: any): Promise<any[]> => {
+    try {
+      const response = await apiClient.get('/api/v1/governance/users', { params });
+      return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
+  },
+
+   getRoles: async (): Promise<any[]> => {
+     try {
+       const response = await apiClient.get('/api/v1/governance/roles');
+       return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+     } catch (error) {
+       console.error('Error fetching roles:', error);
+       return [];
+     }
+   },
+
+   // ==================== ALERTS & ESCALATIONS (Story 8.3) ====================
+
+   // Alerts
+   createAlert: async (data: CreateAlertDto): Promise<{ data: Alert }> => {
+     const response = await apiClient.post('/api/v1/governance/alerts', data);
+     return response.data;
+   },
+
+   getAlert: async (id: string): Promise<{ data: Alert }> => {
+     const response = await apiClient.get(`/api/v1/governance/alerts/${id}`);
+     return response.data;
+   },
+
+   getAlerts: async (params?: {
+     page?: number;
+     limit?: number;
+     status?: AlertStatus;
+     severity?: AlertSeverity;
+     type?: AlertType;
+     search?: string;
+     sort?: string;
+   }): Promise<AlertListResponse> => {
+     const response = await apiClient.get('/api/v1/governance/alerts', { params });
+     return response.data;
+   },
+
+   getRecentCriticalAlerts: async (limit: number = 5): Promise<Alert[]> => {
+     const response = await apiClient.get('/api/v1/governance/alerts/recent/critical', {
+       params: { limit },
+     });
+     return Array.isArray(response.data) ? response.data : response.data?.data || [];
+   },
+
+   acknowledgeAlert: async (id: string): Promise<{ data: Alert }> => {
+     const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/acknowledge`);
+     return response.data;
+   },
+
+   resolveAlert: async (id: string, resolutionNotes?: string): Promise<{ data: Alert }> => {
+     const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/resolve`, {
+       resolution_notes: resolutionNotes,
+     });
+     return response.data;
+   },
+
+   dismissAlert: async (id: string): Promise<{ data: Alert }> => {
+     const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/dismiss`);
+     return response.data;
+   },
+
+   markAllAlertsAsAcknowledged: async (): Promise<{ updated: number }> => {
+     const response = await apiClient.patch('/api/v1/governance/alerts/mark-all-acknowledged');
+     return response.data;
+   },
+
+   deleteAlert: async (id: string): Promise<void> => {
+     await apiClient.delete(`/api/v1/governance/alerts/${id}`);
+   },
+
+    getAlertStatistics: async (): Promise<{
+      total: number;
+      active: number;
+      acknowledged: number;
+      resolved: number;
+      dismissed: number;
+      by_severity: Record<string, number>;
+      by_type: Record<string, number>;
+    }> => {
+      const response = await apiClient.get('/api/v1/governance/alerts/statistics');
+      return response.data;
+    },
+
+    // Alert Escalation
+    escalateAlert: async (chainId: string): Promise<{ data: any }> => {
+      const response = await apiClient.put(`/api/v1/governance/alert-escalation/chains/${chainId}/escalate`);
+      return response.data;
+    },
+
+    resolveEscalationChain: async (chainId: string, notes?: string): Promise<{ data: any }> => {
+      const response = await apiClient.put(`/api/v1/governance/alert-escalation/chains/${chainId}/resolve`, {
+        resolution_notes: notes,
+      });
+      return response.data;
+    },
+
+    getEscalationChains: async (alertId: string): Promise<{ data: any[] }> => {
+      const response = await apiClient.get(`/api/v1/governance/alert-escalation/alerts/${alertId}/chains`);
+      return response.data;
+    },
+
+    // Alert Rules
+   createAlertRule: async (data: CreateAlertRuleDto): Promise<{ data: AlertRule }> => {
+     const response = await apiClient.post('/api/v1/governance/alert-rules', data);
+     return response.data;
+   },
+
+   getAlertRule: async (id: string): Promise<{ data: AlertRule }> => {
+     const response = await apiClient.get(`/api/v1/governance/alert-rules/${id}`);
+     return response.data;
+   },
+
+   getAlertRules: async (params?: {
+     page?: number;
+     limit?: number;
+     is_active?: boolean;
+     trigger_type?: AlertRuleTriggerType;
+     entity_type?: string;
+     search?: string;
+     sort?: string;
+   }): Promise<AlertRuleListResponse> => {
+     const response = await apiClient.get('/api/v1/governance/alert-rules', { params });
+     return response.data;
+   },
+
+   updateAlertRule: async (id: string, data: Partial<CreateAlertRuleDto>): Promise<{ data: AlertRule }> => {
+     const response = await apiClient.patch(`/api/v1/governance/alert-rules/${id}`, data);
+     return response.data;
+   },
+
+   toggleAlertRule: async (id: string, isActive: boolean): Promise<{ data: AlertRule }> => {
+     const response = await apiClient.patch(`/api/v1/governance/alert-rules/${id}/toggle`, {
+       is_active: isActive,
+     });
+     return response.data;
+   },
+
+   deleteAlertRule: async (id: string): Promise<void> => {
+     await apiClient.delete(`/api/v1/governance/alert-rules/${id}`);
+   },
+
+   getAlertRuleStatistics: async (): Promise<{
+     total: number;
+     active: number;
+     inactive: number;
+     by_trigger_type: Record<string, number>;
+     by_entity_type: Record<string, number>;
+   }> => {
+     const response = await apiClient.get('/api/v1/governance/alert-rules/statistics');
+     return response.data;
+   },
+
+    testAlertRule: async (ruleId: string): Promise<{ matched_count: number; sample_alerts: any[] }> => {
+      const response = await apiClient.post(`/api/v1/governance/alert-rules/${ruleId}/test`);
+      return response.data;
+    },
+
+    // Asset-Control Integration
+    mapControlToAsset: async (
+      controlId: string,
+      data: {
+        asset_id: string;
+        asset_type: AssetType;
+        implementation_status?: ImplementationStatus;
+        implementation_notes?: string;
+        is_automated?: boolean;
+      },
+    ): Promise<any> => {
+      const response = await apiClient.post(
+        `/api/v1/governance/asset-control/controls/${controlId}/map-asset`,
+        data,
+      );
+      return response.data;
+    },
+
+    mapControlToAssets: async (
+      controlId: string,
+      data: {
+        asset_ids: string[];
+        asset_type: AssetType;
+      },
+    ): Promise<any[]> => {
+      const response = await apiClient.post(
+        `/api/v1/governance/asset-control/controls/${controlId}/map-assets`,
+        data,
+      );
+      return response.data;
+    },
+
+    getAssetControls: async (
+      assetId: string,
+      assetType: AssetType,
+      params?: { page?: number; limit?: number },
+    ): Promise<{ mappings: any[]; total: number }> => {
+      const response = await apiClient.get(
+        `/api/v1/governance/asset-control/assets/${assetId}/controls`,
+        { params: { assetType, ...params } },
+      );
+      return response.data;
+    },
+
+    getControlAssets: async (
+      controlId: string,
+      params?: { page?: number; limit?: number },
+    ): Promise<{ mappings: any[]; total: number }> => {
+      const response = await apiClient.get(
+        `/api/v1/governance/asset-control/controls/${controlId}/assets`,
+        { params },
+      );
+      return response.data;
+    },
+
+    updateAssetControlMapping: async (
+      controlId: string,
+      assetId: string,
+      data: {
+        implementation_status?: ImplementationStatus;
+        implementation_notes?: string;
+        last_test_date?: Date;
+        last_test_result?: string;
+        effectiveness_score?: number;
+      },
+    ): Promise<any> => {
+      const response = await apiClient.put(
+        `/api/v1/governance/asset-control/controls/${controlId}/assets/${assetId}`,
+        data,
+      );
+      return response.data;
+    },
+
+    deleteAssetControlMapping: async (controlId: string, assetId: string): Promise<void> => {
+      await apiClient.delete(
+        `/api/v1/governance/asset-control/controls/${controlId}/assets/${assetId}`,
+      );
+    },
+
+    getAssetComplianceScore: async (
+      assetId: string,
+      assetType: AssetType,
+    ): Promise<{
+      asset_id: string;
+      asset_type: AssetType;
+      total_controls: number;
+      implemented_controls: number;
+      compliance_percentage: number;
+      implementation_status_breakdown: Record<string, number>;
+    }> => {
+      const response = await apiClient.get(
+        `/api/v1/governance/asset-control/assets/${assetId}/compliance-score`,
+        { params: { assetType } },
+      );
+      return response.data;
+    },
+
+    getControlEffectiveness: async (
+      controlId: string,
+    ): Promise<{
+      control_id: string;
+      control_identifier: string;
+      total_assets: number;
+      average_effectiveness: number;
+      implementation_status_breakdown: Record<string, number>;
+    }> => {
+      const response = await apiClient.get(
+        `/api/v1/governance/asset-control/controls/${controlId}/effectiveness`,
+      );
+      return response.data;
+    },
+
+    getAssetControlMatrix: async (params?: {
+      assetType?: AssetType;
+      domain?: string;
+      status?: ImplementationStatus;
+    }): Promise<any[]> => {
+      const response = await apiClient.get('/api/v1/governance/asset-control/matrix', {
+        params,
+      });
+      return response.data;
+    },
+
+    getMatrixStatistics: async (): Promise<{
+      total_mappings: number;
+      by_implementation_status: Record<string, number>;
+      by_asset_type: Record<string, number>;
+      average_effectiveness: number;
+      unmapped_controls_count: number;
+      unmapped_assets_count: number;
+    }> => {
+      const response = await apiClient.get('/api/v1/governance/asset-control/matrix/statistics');
+      return response.data;
+    },
+
+    bulkUpdateAssetControlStatus: async (data: {
+      mapping_ids: string[];
+      implementation_status: ImplementationStatus;
+    }): Promise<{ updated: number }> => {
+      const response = await apiClient.post(
+        '/api/v1/governance/asset-control/mappings/bulk-update-status',
+        data,
+      );
+      return response.data;
+    },
+
+    getUnmappedControls: async (params?: {
+      page?: number;
+      limit?: number;
+    }): Promise<{ controls: any[]; total: number }> => {
+      const response = await apiClient.get('/api/v1/governance/asset-control/controls/unmapped', {
+        params,
+      });
+      return response.data;
+    },
+
+    getAssetControlStatistics: async (): Promise<{
+      total_controls: number;
+      total_mappings: number;
+      average_compliance_score: number;
+      average_effectiveness_score: number;
+      implementation_distribution: Record<string, number>;
+    }> => {
+      const response = await apiClient.get('/api/v1/governance/asset-control/statistics/comprehensive');
+      return response.data;
+    },
+
+    getComplianceByAssetType: async (): Promise<
+      Array<{
+        asset_type: AssetType;
+        total_mappings: number;
+        implemented: number;
+        compliance_percentage: number;
+      }>
+    > => {
+      const response = await apiClient.get(
+        '/api/v1/governance/asset-control/statistics/by-asset-type',
+      );
+      return response.data;
+    },
+
+    // Framework Configuration API
+    createFrameworkConfig: async (data: {
+      name: string;
+      description?: string;
+      framework_type: string;
+      scope?: string;
+      linked_framework_id?: string;
+      is_active?: boolean;
+      metadata?: {
+        require_policy_approval?: boolean;
+        require_control_testing?: boolean;
+        policy_review_frequency?: string;
+        control_review_frequency?: string;
+        risk_assessment_required?: boolean;
+        audit_required?: boolean;
+        integration_points?: string[];
+      };
+    }): Promise<any> => {
+      const response = await apiClient.post('/api/v1/governance/framework-configs', data);
+      return response.data;
+    },
+
+    getFrameworkConfigs: async (params?: {
+      page?: number;
+      limit?: number;
+      framework_type?: string;
+      is_active?: boolean;
+      search?: string;
+      sort?: string;
+    }): Promise<{ data: any[]; total: number; page: number; limit: number }> => {
+      const response = await apiClient.get('/api/v1/governance/framework-configs', { params });
+      return response.data;
+    },
+
+    getFrameworkConfig: async (id: string): Promise<any> => {
+      const response = await apiClient.get(`/api/v1/governance/framework-configs/${id}`);
+      return response.data;
+    },
+
+    getFrameworkConfigsByType: async (frameworkType: string): Promise<any[]> => {
+      const response = await apiClient.get(
+        `/api/v1/governance/framework-configs/by-type/${frameworkType}`,
+      );
+      return response.data;
+    },
+
+    getActiveFrameworkConfigs: async (): Promise<any[]> => {
+      const response = await apiClient.get('/api/v1/governance/framework-configs/active/all');
+      return response.data;
+    },
+
+    updateFrameworkConfig: async (
+      id: string,
+      data: {
+        name?: string;
+        description?: string;
+        scope?: string;
+        is_active?: boolean;
+        linked_framework_id?: string;
+        metadata?: {
+          require_policy_approval?: boolean;
+          require_control_testing?: boolean;
+          policy_review_frequency?: string;
+          control_review_frequency?: string;
+          risk_assessment_required?: boolean;
+          audit_required?: boolean;
+          integration_points?: string[];
+        };
+      },
+    ): Promise<any> => {
+      const response = await apiClient.patch(`/api/v1/governance/framework-configs/${id}`, data);
+      return response.data;
+    },
+
+    activateFrameworkConfig: async (id: string): Promise<any> => {
+      const response = await apiClient.post(`/api/v1/governance/framework-configs/${id}/activate`);
+      return response.data;
+    },
+
+    deactivateFrameworkConfig: async (id: string): Promise<any> => {
+      const response = await apiClient.post(
+        `/api/v1/governance/framework-configs/${id}/deactivate`,
+      );
+      return response.data;
+    },
+
+    deleteFrameworkConfig: async (id: string): Promise<void> => {
+      await apiClient.delete(`/api/v1/governance/framework-configs/${id}`);
+    },
+
+    hardDeleteFrameworkConfig: async (id: string): Promise<void> => {
+       await apiClient.delete(`/api/v1/governance/framework-configs/${id}/hard`);
+     },
+
+    // Get all available frameworks (ComplianceFramework entities)
+    getAllFrameworks: async (): Promise<
+      Array<{
+        id: string;
+        framework_code: string;
+        name: string;
+        version?: string;
+        issuing_authority?: string;
+        description?: string;
+        effective_date?: string;
+        url?: string;
+        status: string;
+        tags?: string[];
+      }>
+    > => {
+      const response = await apiClient.get('/api/v1/governance/frameworks');
+      return response.data;
+    },
+
+    getFramework: async (id: string): Promise<any> => {
+      const response = await apiClient.get(`/api/v1/governance/frameworks/${id}`);
+      return response.data;
+    },
+
 };
