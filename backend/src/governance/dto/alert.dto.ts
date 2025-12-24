@@ -4,6 +4,7 @@ import { Type } from 'class-transformer';
 import { AlertSeverity, AlertStatus, AlertType } from '../entities/alert.entity';
 import { AlertRuleTriggerType, AlertRuleCondition } from '../entities/alert-rule.entity';
 import { NotificationChannel, NotificationFrequency } from '../entities/alert-subscription.entity';
+import { AlertLogAction } from '../entities/alert-log.entity';
 
 export class CreateAlertDto {
   @ApiProperty({ description: 'Alert title' })
@@ -386,6 +387,3 @@ export class AlertLogDto {
   @ApiProperty({ description: 'Action timestamp' })
   timestamp: Date;
 }
-
-// Import the enum for proper typing
-import { AlertLogAction } from '../entities/alert-log.entity';

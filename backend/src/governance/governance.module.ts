@@ -21,6 +21,7 @@ import { ControlObjectivesService } from './control-objectives/control-objective
 import { Assessment } from './assessments/entities/assessment.entity';
 import { AssessmentResult } from './assessments/entities/assessment-result.entity';
 import { WorkflowExecution } from '../workflow/entities/workflow-execution.entity';
+import { Workflow } from '../workflow/entities/workflow.entity';
 import { AssessmentsController } from './assessments/assessments.controller';
 import { AssessmentsService } from './assessments/assessments.service';
 import { GovernanceDashboardController } from './controllers/governance-dashboard.controller';
@@ -44,6 +45,7 @@ import { GovernanceMetricSnapshot } from './metrics/entities/governance-metric-s
 import { DashboardEmailService } from './services/dashboard-email.service';
 import { RemediationTrackingController } from './controllers/remediation-tracking.controller';
 import { AlertingService } from './services/alerting.service';
+import { AlertRuleService } from './services/alert-rule.service';
 import { AlertingController } from './controllers/alerting.controller';
 import { GovernanceQueuesModule } from './queues/governance-queues.module';
 import { WorkflowModule } from '../workflow/workflow.module';
@@ -116,6 +118,9 @@ import { GovernanceFrameworkConfigController } from './framework-config/governan
 import { ComplianceReport } from './compliance-reporting/entities/compliance-report.entity';
 import { ComplianceReportingService } from './compliance-reporting/services/compliance-reporting.service';
 import { ComplianceReportingController } from './compliance-reporting/compliance-reporting.controller';
+import { AlertEscalationChain } from './entities/alert-escalation-chain.entity';
+import { AlertEscalationService } from './services/alert-escalation.service';
+import { AlertEscalationController } from './controllers/alert-escalation.controller';
 
 @Module({
   imports: [
@@ -138,6 +143,7 @@ import { ComplianceReportingController } from './compliance-reporting/compliance
       SOPStep,
       SOPVersion,
       ComplianceFramework,
+      Workflow,
       WorkflowExecution,
       PolicyAssignment,
       PolicyApproval,
@@ -156,14 +162,15 @@ import { ComplianceReportingController } from './compliance-reporting/compliance
       Finding,
       RemediationTracker,
       Evidence,
-      DashboardEmailSchedule,
-      Alert,
-      AlertRule,
-      AlertSubscription,
-      AlertLog,
-      GovernanceFrameworkConfig,
-      ComplianceReport,
-    ]),
+       DashboardEmailSchedule,
+       GovernanceFrameworkConfig,
+       ComplianceReport,
+        Alert,
+        AlertRule,
+        AlertSubscription,
+        AlertLog,
+        AlertEscalationChain,
+     ]),
     MulterModule.register({
       dest: './uploads',
     }),
@@ -180,6 +187,7 @@ import { ComplianceReportingController } from './compliance-reporting/compliance
     EvidenceModule,
     FindingsModule,
     UnifiedControlsModule,
+    // AlertsModule, // TODO: Create alerts module in Story 8.3 backend phase
   ],
   controllers: [
     InfluencersController,
@@ -205,9 +213,10 @@ import { ComplianceReportingController } from './compliance-reporting/compliance
     BulkDataController,
     GovernanceAIController,
     DashboardEmailController,
-    AlertingController,
     GovernanceFrameworkConfigController,
     ComplianceReportingController,
+    AlertingController,
+    AlertEscalationController,
   ],
   providers: [
     InfluencersService,
@@ -240,9 +249,11 @@ import { ComplianceReportingController } from './compliance-reporting/compliance
     BulkDataService,
     GovernanceAIService,
     DashboardEmailService,
-    AlertingService,
     GovernanceFrameworkConfigService,
     ComplianceReportingService,
+    AlertingService,
+    AlertRuleService,
+    AlertEscalationService,
   ],
   exports: [
     InfluencersService,
@@ -277,6 +288,8 @@ import { ComplianceReportingController } from './compliance-reporting/compliance
     FindingsModule,
     UnifiedControlsModule,
     AlertingService,
+    AlertRuleService,
+    AlertEscalationService,
   ],
 })
 export class GovernanceModule {}
