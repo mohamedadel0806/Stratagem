@@ -12,6 +12,8 @@ import {
 } from 'typeorm';
 import { User } from '../../../users/entities/user.entity';
 import { ControlObjective } from '../../control-objectives/entities/control-objective.entity';
+import { PolicyApproval } from './policy-approval.entity';
+import { PolicyVersion } from './policy-version.entity';
 
 export enum PolicyStatus {
   DRAFT = 'draft',
@@ -136,6 +138,16 @@ export class Policy {
 
   @OneToMany(() => ControlObjective, (co) => co.policy)
   control_objectives: ControlObjective[];
+
+  @OneToMany(() => PolicyApproval, (approval) => approval.policy, {
+    cascade: ['remove'],
+  })
+  approvals: PolicyApproval[];
+
+  @OneToMany(() => PolicyVersion, (version) => version.policy, {
+    cascade: ['remove'],
+  })
+  versions: PolicyVersion[];
 
   @Column({ type: 'uuid', nullable: true, name: 'created_by' })
   created_by: string;

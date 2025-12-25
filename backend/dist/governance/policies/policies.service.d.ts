@@ -2,6 +2,8 @@ import { Repository } from 'typeorm';
 import { Policy } from './entities/policy.entity';
 import { PolicyAssignment } from './entities/policy-assignment.entity';
 import { PolicyReview, ReviewOutcome } from './entities/policy-review.entity';
+import { PolicyApproval } from './entities/policy-approval.entity';
+import { PolicyVersion } from './entities/policy-version.entity';
 import { User } from '../../users/entities/user.entity';
 import { BusinessUnit } from '../../common/entities/business-unit.entity';
 import { CreatePolicyDto } from './dto/create-policy.dto';
@@ -10,17 +12,23 @@ import { PolicyQueryDto } from './dto/policy-query.dto';
 import { WorkflowService } from '../../workflow/services/workflow.service';
 import { NotificationService } from '../../common/services/notification.service';
 import { WorkflowExecution } from '../../workflow/entities/workflow-execution.entity';
+import { PolicyApprovalService } from './services/policy-approval.service';
+import { PolicyVersionService } from './services/policy-version.service';
 export declare class PoliciesService {
     private policyRepository;
     private workflowExecutionRepository;
     private policyAssignmentRepository;
+    private policyApprovalRepository;
+    private policyVersionRepository;
     private userRepository;
     private businessUnitRepository;
     private policyReviewRepository;
     private workflowService?;
     private notificationService?;
+    private policyApprovalService?;
+    private policyVersionService?;
     private readonly logger;
-    constructor(policyRepository: Repository<Policy>, workflowExecutionRepository: Repository<WorkflowExecution>, policyAssignmentRepository: Repository<PolicyAssignment>, userRepository: Repository<User>, businessUnitRepository: Repository<BusinessUnit>, policyReviewRepository: Repository<PolicyReview>, workflowService?: WorkflowService, notificationService?: NotificationService);
+    constructor(policyRepository: Repository<Policy>, workflowExecutionRepository: Repository<WorkflowExecution>, policyAssignmentRepository: Repository<PolicyAssignment>, policyApprovalRepository: Repository<PolicyApproval>, policyVersionRepository: Repository<PolicyVersion>, userRepository: Repository<User>, businessUnitRepository: Repository<BusinessUnit>, policyReviewRepository: Repository<PolicyReview>, workflowService?: WorkflowService, notificationService?: NotificationService, policyApprovalService?: PolicyApprovalService, policyVersionService?: PolicyVersionService);
     create(createPolicyDto: CreatePolicyDto, userId: string): Promise<Policy>;
     findAll(queryDto: PolicyQueryDto): Promise<{
         data: Policy[];
@@ -92,4 +100,23 @@ export declare class PoliciesService {
     getHierarchyLevel(policyId: string): Promise<number>;
     getCompleteHierarchy(policyId: string): Promise<any>;
     getMaxDepth(policyId: string, currentDepth?: number): Promise<number>;
+    createVersion(policyId: string, content: string, changeSummary: string, userId: string): Promise<PolicyVersion>;
+    getPolicyVersions(policyId: string): Promise<PolicyVersion[]>;
+    getLatestPolicyVersion(policyId: string): Promise<PolicyVersion>;
+    comparePolicyVersions(versionId1: string, versionId2: string): Promise<{
+        version1: PolicyVersion;
+        version2: PolicyVersion;
+        differences: string[];
+    }>;
+    requestApprovals(policyId: string, approverIds: string[]): Promise<PolicyApproval[]>;
+    getPolicyApprovals(policyId: string): Promise<PolicyApproval[]>;
+    getPendingApprovalsForSystem(): Promise<PolicyApproval[]>;
+    approvePolicy(approvalId: string, comments?: string): Promise<PolicyApproval>;
+    rejectPolicy(approvalId: string, comments?: string): Promise<PolicyApproval>;
+    getApprovalProgress(policyId: string): Promise<{
+        total: number;
+        approved: number;
+        rejected: number;
+        pending: number;
+    }>;
 }

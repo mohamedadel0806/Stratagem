@@ -1,75 +1,75 @@
 import { Repository } from 'typeorm';
 import { Alert, AlertSeverity, AlertStatus, AlertType } from '../entities/alert.entity';
-import { AlertRule, AlertRuleTriggerType, AlertRuleCondition } from '../entities/alert-rule.entity';
-import { AlertSubscription, NotificationChannel, NotificationFrequency } from '../entities/alert-subscription.entity';
-import { AlertLog } from '../entities/alert-log.entity';
-import { DashboardEmailService } from './dashboard-email.service';
-export interface CreateAlertDto {
-    title: string;
-    description: string;
-    type: AlertType;
-    severity: AlertSeverity;
-    relatedEntityId?: string;
-    relatedEntityType?: string;
-    metadata?: Record<string, any>;
-}
-export interface CreateAlertRuleDto {
-    name: string;
-    description?: string;
-    isActive: boolean;
-    triggerType: AlertRuleTriggerType;
-    entityType: string;
-    fieldName?: string;
-    condition: AlertRuleCondition;
-    conditionValue?: string;
-    thresholdValue?: number;
-    severityScore: number;
-    alertMessage?: string;
-    filters?: Record<string, any>;
-}
-export interface CreateAlertSubscriptionDto {
-    userId: string;
-    alertType?: AlertType;
+import { AlertRule, AlertRuleCondition } from '../entities/alert-rule.entity';
+import { User } from '../../users/entities/user.entity';
+import { CreateAlertDto, AlertDto, CreateAlertRuleDto, UpdateAlertRuleDto, AlertRuleDto } from '../dto/alert.dto';
+import { AlertEscalationService } from './alert-escalation.service';
+interface AlertFilterParams {
+    page?: number;
+    limit?: number;
+    status?: AlertStatus;
     severity?: AlertSeverity;
-    channels: NotificationChannel[];
-    frequency?: NotificationFrequency;
-    isActive: boolean;
-    filters?: Record<string, any>;
+    type?: AlertType;
+    search?: string;
+}
+interface AlertStatistics {
+    active: number;
+    acknowledged: number;
+    resolved: number;
+    dismissed: number;
+    total: number;
+    by_severity: Record<AlertSeverity, number>;
+    by_type: Record<AlertType, number>;
 }
 export declare class AlertingService {
-    private alertRepository;
-    private alertRuleRepository;
-    private alertSubscriptionRepository;
-    private alertLogRepository;
-    private dashboardEmailService;
+    private readonly alertRepository;
+    private readonly alertRuleRepository;
+    private readonly userRepository;
+    private readonly escalationService;
     private readonly logger;
-    constructor(alertRepository: Repository<Alert>, alertRuleRepository: Repository<AlertRule>, alertSubscriptionRepository: Repository<AlertSubscription>, alertLogRepository: Repository<AlertLog>, dashboardEmailService: DashboardEmailService);
-    createAlert(dto: CreateAlertDto, userId: string): Promise<Alert>;
-    getAlerts(status?: AlertStatus, severity?: AlertSeverity, limit?: number, offset?: number): Promise<[Alert[], number]>;
-    getAlertById(id: string): Promise<Alert>;
-    acknowledgeAlert(id: string, userId: string): Promise<Alert>;
-    resolveAlert(id: string, userId: string, resolution?: string): Promise<Alert>;
-    createAlertRule(dto: CreateAlertRuleDto): Promise<AlertRule>;
-    getAlertRules(isActive?: boolean): Promise<AlertRule[]>;
-    updateAlertRule(id: string, dto: Partial<CreateAlertRuleDto>): Promise<AlertRule>;
-    deleteAlertRule(id: string): Promise<void>;
-    createAlertSubscription(dto: CreateAlertSubscriptionDto): Promise<AlertSubscription>;
-    getUserSubscriptions(userId: string): Promise<AlertSubscription[]>;
-    updateAlertSubscription(id: string, dto: Partial<CreateAlertSubscriptionDto>): Promise<AlertSubscription>;
-    deleteAlertSubscription(id: string): Promise<void>;
-    evaluateAlertRules(): Promise<void>;
-    private evaluateRule;
-    private mapRuleToAlertType;
-    private mapSeverityScoreToSeverity;
-    private checkTimeBasedRule;
-    private checkThresholdBasedRule;
-    private checkStatusChangeRule;
-    private checkCustomConditionRule;
-    private notifySubscribers;
-    private sendNotification;
-    private sendEmailNotification;
-    private getUserEmail;
-    private logAlertAction;
-    handleScheduledRuleEvaluation(): Promise<void>;
-    cleanupOldAlerts(): Promise<void>;
+    constructor(alertRepository: Repository<Alert>, alertRuleRepository: Repository<AlertRule>, userRepository: Repository<User>, escalationService: AlertEscalationService);
+    createAlert(createAlertDto: CreateAlertDto, userId: string): Promise<AlertDto>;
+    getAlert(id: string): Promise<AlertDto>;
+    getAlerts(params?: AlertFilterParams): Promise<{
+        alerts: AlertDto[];
+        total: number;
+    }>;
+    getRecentCriticalAlerts(limit?: number): Promise<AlertDto[]>;
+    acknowledgeAlert(id: string, userId: string): Promise<AlertDto>;
+    resolveAlert(id: string, userId: string, resolutionNotes?: string): Promise<AlertDto>;
+    dismissAlert(id: string): Promise<AlertDto>;
+    markAllAlertsAsAcknowledged(userId: string): Promise<{
+        updated: number;
+    }>;
+    deleteAlert(id: string): Promise<{
+        deleted: boolean;
+    }>;
+    getAlertStatistics(): Promise<AlertStatistics>;
+    createAlertRule(createRuleDto: CreateAlertRuleDto, userId: string): Promise<AlertRuleDto>;
+    getAlertRule(id: string): Promise<AlertRuleDto>;
+    getAlertRules(params?: AlertFilterParams): Promise<{
+        rules: AlertRuleDto[];
+        total: number;
+    }>;
+    updateAlertRule(id: string, updateRuleDto: UpdateAlertRuleDto): Promise<AlertRuleDto>;
+    toggleAlertRule(id: string, isActive: boolean): Promise<AlertRuleDto>;
+    deleteAlertRule(id: string): Promise<{
+        deleted: boolean;
+    }>;
+    getAlertRuleStatistics(): Promise<{
+        total: number;
+        active: number;
+        inactive: number;
+    }>;
+    testAlertRule(ruleId: string): Promise<{
+        matches: number;
+        sampleMatches: Array<{
+            id: string;
+            reason: string;
+        }>;
+    }>;
+    private mapAlertToDto;
+    private mapAlertRuleToDto;
+    evaluateCondition(fieldValue: any, condition: AlertRuleCondition, conditionValue: string | number): boolean;
 }
+export {};

@@ -130,10 +130,11 @@ export default function TreatmentsPage() {
       {/* Filters */}
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <DataTableFilters
-            searchPlaceholder="Search treatments..."
-            onSearchChange={() => {}}
-            filters={[
+      <DataTableFilters
+        searchPlaceholder="Search treatments..."
+        onSearchChange={() => {}}
+        dataTestId="treatments-search-input"
+        filters={[
               {
                 label: 'Status',
                 value: statusFilter,

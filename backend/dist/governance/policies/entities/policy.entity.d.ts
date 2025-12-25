@@ -1,5 +1,7 @@
 import { User } from '../../../users/entities/user.entity';
 import { ControlObjective } from '../../control-objectives/entities/control-objective.entity';
+import { PolicyApproval } from './policy-approval.entity';
+import { PolicyVersion } from './policy-version.entity';
 export declare enum PolicyStatus {
     DRAFT = "draft",
     IN_REVIEW = "in_review",
@@ -50,6 +52,8 @@ export declare class Policy {
     requires_acknowledgment: boolean;
     acknowledgment_due_days: number;
     control_objectives: ControlObjective[];
+    approvals: PolicyApproval[];
+    versions: PolicyVersion[];
     created_by: string;
     creator: User;
     created_at: Date;

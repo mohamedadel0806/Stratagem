@@ -31,10 +31,18 @@ export const test = base.extend<AuthFixtures>({
     if (hasAuthCookies) {
       try {
         await page.goto(`${baseURL}/en/dashboard`, { timeout: 15000 });
-        await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+        const userMenu = page.getByTestId('user-menu-trigger');
+        const loginBtn = page.getByRole('link', { name: 'Login' });
+
+        await Promise.race([
+          userMenu.waitFor({ state: 'visible', timeout: 5000 }).catch(() => { }),
+          loginBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => { })
+        ]);
 
         const currentUrl = page.url();
-        if (currentUrl.includes('/dashboard')) {
+        const hasUserMenu = await userMenu.isVisible();
+
+        if (currentUrl.includes('/dashboard') && hasUserMenu) {
           console.log('Using existing authenticated session');
           await use(page);
           return;
@@ -52,29 +60,19 @@ export const test = base.extend<AuthFixtures>({
       // Wait for dynamic content
       await page.waitForTimeout(2000);
 
-      // Check if already authenticated
-      const currentUrl = page.url();
-      console.log(`Current URL: ${currentUrl}`);
+      // Check if already authenticated on current or dashboard URL
+      const userMenu = page.getByTestId('user-menu-trigger');
+      const loginBtn = page.getByRole('link', { name: 'Login' });
 
-      if (currentUrl.includes('/dashboard')) {
+      await Promise.race([
+        userMenu.waitFor({ state: 'visible', timeout: 5000 }).catch(() => { }),
+        loginBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => { })
+      ]);
+
+      if (await userMenu.isVisible()) {
         console.log('Already authenticated, using current session');
         await use(page);
         return;
-      }
-
-      // Try to access dashboard directly
-      try {
-        await page.goto(`${baseURL}/en/dashboard`, { timeout: 10000 });
-        await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-
-        const dashboardUrl = page.url();
-        if (dashboardUrl.includes('/dashboard')) {
-          console.log('Successfully accessed dashboard - already authenticated');
-          await use(page);
-          return;
-        }
-      } catch (dashboardError) {
-        console.log('Cannot access dashboard - proceeding with login');
       }
 
     } catch (error) {
@@ -83,6 +81,9 @@ export const test = base.extend<AuthFixtures>({
 
     // Perform login
     console.log('Proceeding with login...');
+    await page.goto(`${baseURL}/en/login`, { timeout: 15000 });
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
 
     const email = process.env.TEST_USER_EMAIL || 'admin@grcplatform.com';
     const password = process.env.TEST_USER_PASSWORD || 'password123';

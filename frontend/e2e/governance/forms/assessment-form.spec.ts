@@ -1,190 +1,47 @@
-import { test, expect } from '../../fixtures/auth';
+import { test } from '../../fixtures/auth';
+import { expect } from '@playwright/test';
+import { AssessmentsPage } from '../../pages/assessments.page';
+import { TEST_STATUS, TEST_ASSESSMENT_TYPE, TEST_TIMEOUTS } from '../../constants';
+import { getTodayDate, getFutureDate, generateUniqueIdentifier, generateUniqueName } from '../../form-helpers';
 
-/**
- * Assessment Form E2E Tests
- * Tests the assessment form creation and submission following PLAYWRIGHT_TESTING_ADVISORY.md guidelines
- */
 test.describe('Assessment Form', () => {
-  test.use({ timeout: 120000 });
+  test('should fill assessment form and create record', async ({ authenticatedPage }) => {    const assessmentName = generateUniqueName('Assessment');
+    const assessmentIdentifier = generateUniqueIdentifier('ASSESS');
+    const today = getTodayDate();
+    const futureDate = getFutureDate(30);
 
-  test('should fill assessment form and create record', async ({ authenticatedPage }) => {
-    const uniqueIdentifier = `ASSESS-${Date.now()}`;
-    const uniqueName = `E2E Test Assessment ${Date.now()}`;
-    
-    // Navigate to assessments page
-    await authenticatedPage.goto('/en/dashboard/governance/assessments', { waitUntil: 'domcontentloaded' });
-    await authenticatedPage.waitForLoadState('domcontentloaded');
-    await authenticatedPage.waitForTimeout(500);
+    const assessmentsPage = new AssessmentsPage(authenticatedPage);
+    await assessmentsPage.goto();
 
-    // Click New Assessment button
-    const addButton = authenticatedPage.locator('button:has-text("New Assessment"), button:has-text("Add Assessment"), button:has-text("Create")').first();
-    await addButton.waitFor({ state: 'visible', timeout: 10000 });
-    await addButton.click();
-    await authenticatedPage.waitForTimeout(500);
-
-    // Wait for form dialog
-    await authenticatedPage.waitForSelector('form, [role="dialog"]', { timeout: 10000 });
-    await authenticatedPage.waitForTimeout(300);
-
-    console.log('===== FILLING ASSESSMENT FORM =====');
-
-    // Fill required fields
-    console.log('Filling required fields...');
-    await authenticatedPage.locator('input[name="assessment_identifier"]').fill(uniqueIdentifier);
-    await authenticatedPage.waitForTimeout(200);
-    console.log(`✅ Assessment Identifier filled: "${uniqueIdentifier}"`);
-
-    await authenticatedPage.locator('input[name="name"]').fill(uniqueName);
-    await authenticatedPage.waitForTimeout(200);
-    console.log(`✅ Name filled: "${uniqueName}"`);
-
-    // Fill optional fields
-    await authenticatedPage.locator('textarea[name="description"]').fill('Test assessment description for E2E testing');
-    await authenticatedPage.waitForTimeout(200);
-    console.log('✅ Description filled');
-
-    // Assessment Type dropdown
-    const assessmentTypeField = authenticatedPage.locator('label:has-text("Assessment Type")').locator('..').locator('button').first();
-    const assessmentTypeExists = await assessmentTypeField.isVisible({ timeout: 2000 }).catch(() => false);
-    if (assessmentTypeExists) {
-      await assessmentTypeField.click();
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.locator('[role="option"]:has-text("Operating Effectiveness")').first().click();
-      await authenticatedPage.waitForTimeout(200);
-      console.log('✅ Assessment Type selected');
-    }
-
-    // Status dropdown
-    const statusField = authenticatedPage.locator('label:has-text("Status")').locator('..').locator('button').first();
-    const statusExists = await statusField.isVisible({ timeout: 2000 }).catch(() => false);
-    if (statusExists) {
-      await statusField.click();
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.locator('[role="option"]:has-text("Not Started")').first().click();
-      await authenticatedPage.waitForTimeout(200);
-      console.log('✅ Status selected');
-    }
-
-    // Scope Description
-    await authenticatedPage.locator('textarea[name="scope_description"]').fill('Test assessment scope description');
-    await authenticatedPage.waitForTimeout(200);
-    console.log('✅ Scope Description filled');
-
-    // Dates
-    const today = new Date().toISOString().split('T')[0];
-    const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    
-    await authenticatedPage.locator('input[name="start_date"]').fill(today);
-    await authenticatedPage.waitForTimeout(200);
-    await authenticatedPage.locator('input[name="end_date"]').fill(futureDate);
-    await authenticatedPage.waitForTimeout(200);
-    console.log('✅ Dates filled');
-
-    // Assessment Procedures
-    await authenticatedPage.locator('textarea[name="assessment_procedures"]').fill('Test assessment procedures description');
-    await authenticatedPage.waitForTimeout(200);
-    console.log('✅ Assessment Procedures filled');
-
-    // Take screenshot before submit
-    await authenticatedPage.screenshot({ path: 'test-results/assessment-form-before-submit.png', fullPage: true });
-    console.log('📸 Screenshot taken before submit');
-
-    // Submit form
-    console.log('Submitting form...');
-    const submitButton = authenticatedPage.locator('button[type="submit"]:has-text("Create"), button:has-text("Save")').first();
-    await submitButton.waitFor({ state: 'visible', timeout: 5000 });
-    await submitButton.click();
-    await authenticatedPage.waitForTimeout(1000);
-
-    // Wait for form to close (with timeout)
-    const waitForSubmission = Promise.race([
-      authenticatedPage.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 10000 }),
-      authenticatedPage.waitForURL(/\/assessments/, { timeout: 10000 }),
-      authenticatedPage.waitForTimeout(5000)
-    ]).catch(() => {
-      console.log('⚠️ Form submission wait timeout, continuing...');
+    await assessmentsPage.openCreateForm();
+    await assessmentsPage.fillForm({
+      identifier: assessmentIdentifier,
+      name: assessmentName,
+      description: 'Test assessment description for E2E testing',
+      assessmentType: TEST_ASSESSMENT_TYPE.OPERATING_EFFECTIVENESS,
+      status: TEST_STATUS.NOT_STARTED,
+      scopeDescription: 'Test assessment scope description',
+      startDate: today,
+      endDate: futureDate,
+      assessmentProcedures: 'Test assessment procedures description',
     });
-    
-    await waitForSubmission;
-    await authenticatedPage.waitForTimeout(1000);
+    await assessmentsPage.submitForm();
 
-    // Check for error messages (only if there's actual error text)
-    const errorMsg = authenticatedPage.locator('[role="alert"]:has-text("Error"), .text-destructive, .text-red-500').first();
-    const hasError = await errorMsg.isVisible({ timeout: 2000 }).catch(() => false);
-    if (hasError) {
-      const errorText = await errorMsg.textContent().catch(() => '');
-      if (errorText && errorText.trim().length > 0 && !errorText.toLowerCase().includes('success')) {
-        console.log(`❌ Error message found: ${errorText}`);
-        await authenticatedPage.screenshot({ path: 'test-results/assessment-form-error.png', fullPage: true });
-        throw new Error(`Form submission failed: ${errorText}`);
-      }
-    }
-
-    // Check for success - dialog closure is a good indicator
-    const dialogStillOpen = await authenticatedPage.locator('[role="dialog"]').isVisible({ timeout: 1000 }).catch(() => false);
-    if (!dialogStillOpen) {
-      console.log('✅ Dialog closed - form submission successful');
-      console.log('✅ Form submission successful - TEST COMPLETE');
-      return;
-    }
-
-    const successMsg = authenticatedPage.locator('text=/success|created|saved/i').or(authenticatedPage.locator('[role="alert"]:has-text("Success")'));
-    const hasSuccess = await successMsg.isVisible({ timeout: 3000 }).catch(() => false);
-    if (hasSuccess) {
-      console.log('✅ Success message appeared');
-      console.log('✅ Form submission successful - TEST COMPLETE');
-      return;
-    }
-
-    // Quick verification (don't hang)
-    const currentUrl = authenticatedPage.url();
-    if (!currentUrl.includes('/assessments')) {
-      await authenticatedPage.goto('/en/dashboard/governance/assessments', { waitUntil: 'domcontentloaded', timeout: 10000 });
-      await authenticatedPage.waitForLoadState('domcontentloaded', { timeout: 5000 });
-      await authenticatedPage.waitForTimeout(1000);
-    }
-
-    // Quick check for assessment in list (with timeout)
-    const assessmentLocator = authenticatedPage.locator(`text="${uniqueName}"`).first();
-    const assessmentVisible = await Promise.race([
-      assessmentLocator.waitFor({ state: 'visible', timeout: 8000 }),
-      new Promise<boolean>(resolve => setTimeout(() => resolve(false), 8000))
-    ]).catch(() => false);
-    
-    if (assessmentVisible) {
-      console.log('✅ Assessment found in list - RECORD CREATED SUCCESSFULLY!');
-    } else {
-      console.log('✅ Form submission successful (record may need refresh to appear)');
-    }
+    await assessmentsPage.goto();
+    await assessmentsPage.verifyAssessmentExists(assessmentName);
   });
 
   test('should validate required fields', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/en/dashboard/governance/assessments', { waitUntil: 'domcontentloaded' });
-    await authenticatedPage.waitForLoadState('domcontentloaded');
-    await authenticatedPage.waitForTimeout(500);
+    const assessmentsPage = new AssessmentsPage(authenticatedPage);
+    await assessmentsPage.goto();
 
-    // Click New Assessment button
-    const addButton = authenticatedPage.locator('button:has-text("New Assessment"), button:has-text("Add Assessment"), button:has-text("Create")').first();
-    await addButton.waitFor({ state: 'visible', timeout: 10000 });
-    await addButton.click();
-    await authenticatedPage.waitForTimeout(500);
+    await assessmentsPage.openCreateForm();
 
-    // Wait for form
-    await authenticatedPage.waitForSelector('form, [role="dialog"]', { timeout: 10000 });
-    await authenticatedPage.waitForTimeout(300);
-
-    // Try to submit without filling required fields
-    const submitButton = authenticatedPage.locator('button[type="submit"]:has-text("Create"), button:has-text("Save")').first();
+    const submitButton = authenticatedPage.getByRole('button', { name: /Create|Save/i }).first();
     await submitButton.click();
-    await authenticatedPage.waitForTimeout(500);
 
-    // Check for validation errors
     const errorMessages = authenticatedPage.locator('[role="alert"], .text-red-500, .text-destructive');
     const hasErrors = await errorMessages.count() > 0;
-    expect(hasErrors).toBeTruthy();
-    console.log('✅ Validation errors displayed');
+    expect(hasErrors, 'Expected validation errors when submitting empty form').toBeTruthy();
   });
 });
-
-
-

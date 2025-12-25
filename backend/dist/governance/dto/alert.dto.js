@@ -15,6 +15,7 @@ const class_validator_1 = require("class-validator");
 const alert_entity_1 = require("../entities/alert.entity");
 const alert_rule_entity_1 = require("../entities/alert-rule.entity");
 const alert_subscription_entity_1 = require("../entities/alert-subscription.entity");
+const alert_log_entity_1 = require("../entities/alert-log.entity");
 class CreateAlertDto {
 }
 exports.CreateAlertDto = CreateAlertDto;
@@ -502,5 +503,4 @@ __decorate([
     (0, swagger_1.ApiProperty)({ description: 'Action timestamp' }),
     __metadata("design:type", Date)
 ], AlertLogDto.prototype, "timestamp", void 0);
-const alert_log_entity_1 = require("../entities/alert-log.entity");
 //# sourceMappingURL=alert.dto.js.map

@@ -106,17 +106,17 @@ export default function PoliciesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center" data-testid="policies-header">
         <div>
-          <h1 className="text-3xl font-bold">Policies</h1>
+          <h1 className="text-3xl font-bold" data-testid="policies-page-title">Policies</h1>
           <p className="text-muted-foreground">Manage governance policies and control objectives</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.push(`/${locale}/dashboard/governance/policies/my-assigned`)}>
+          <Button variant="outline" onClick={() => router.push(`/${locale}/dashboard/governance/policies/my-assigned`)} data-testid="my-assigned-policies-button">
             <FileText className="h-4 w-4 mr-2" />
             My Assigned Policies
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={() => setIsCreateOpen(true)} data-testid="add-policy-button">
             <Plus className="mr-2 h-4 w-4" />
             Add Policy
           </Button>
@@ -154,26 +154,27 @@ export default function PoliciesPage() {
                   placeholder: 'e.g., Information Security',
                 },
               ]}
+              data-testid="policies-filters"
             />
 
             {/* Table */}
             <div className="border rounded-lg">
-              <table className="w-full">
+              <table className="w-full" data-testid="policies-table">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-semibold">Title</th>
-                    <th className="p-4 text-left font-semibold">Type</th>
-                    <th className="p-4 text-left font-semibold">Version</th>
-                    <th className="p-4 text-left font-semibold">Status</th>
-                    <th className="p-4 text-left font-semibold">Control Objectives</th>
-                    <th className="p-4 text-left font-semibold">Owner</th>
-                    <th className="p-4 text-left font-semibold">Next Review</th>
-                    <th className="p-4 text-right font-semibold">Actions</th>
+                    <th className="p-4 text-left font-semibold" data-testid="policies-table-header-title">Title</th>
+                    <th className="p-4 text-left font-semibold" data-testid="policies-table-header-type">Type</th>
+                    <th className="p-4 text-left font-semibold" data-testid="policies-table-header-version">Version</th>
+                    <th className="p-4 text-left font-semibold" data-testid="policies-table-header-status">Status</th>
+                    <th className="p-4 text-left font-semibold" data-testid="policies-table-header-objectives">Control Objectives</th>
+                    <th className="p-4 text-left font-semibold" data-testid="policies-table-header-owner">Owner</th>
+                    <th className="p-4 text-left font-semibold" data-testid="policies-table-header-next-review">Next Review</th>
+                    <th className="p-4 text-right font-semibold" data-testid="policies-table-header-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.data.map((policy) => (
-                    <tr key={policy.id} className="border-b hover:bg-muted/50">
+                    <tr key={policy.id} className="border-b hover:bg-muted/50" data-testid={`policy-row-${policy.id}`}>
                       <td className="p-4">
                         <div className="font-medium">{policy.title}</div>
                         {policy.purpose && (
@@ -213,13 +214,13 @@ export default function PoliciesPage() {
                       </td>
                       <td className="p-4">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleView(policy.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleView(policy.id)} data-testid={`policy-view-button-${policy.id}`}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(policy)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(policy)} data-testid={`policy-edit-button-${policy.id}`}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(policy.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(policy.id)} data-testid={`policy-delete-button-${policy.id}`}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -244,7 +245,7 @@ export default function PoliciesPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="policy-dialog">
           <DialogHeader>
             <DialogTitle>{editingPolicy ? 'Edit Policy' : 'Create Policy'}</DialogTitle>
             <DialogDescription>

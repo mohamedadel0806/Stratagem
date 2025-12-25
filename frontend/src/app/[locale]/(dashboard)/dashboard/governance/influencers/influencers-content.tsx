@@ -137,28 +137,29 @@ export function InfluencersPageContent() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center" data-testid="influencers-header">
         <div>
-          <h1 className="text-3xl font-bold">Influencers</h1>
+          <h1 className="text-3xl font-bold" data-testid="influencers-page-title">Influencers</h1>
           <p className="text-muted-foreground">Manage governance influencers and regulatory requirements</p>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={() => setShowTagCloud(!showTagCloud)}
+            data-testid="show-tags-button"
           >
             <Hash className="mr-2 h-4 w-4" />
             {showTagCloud ? 'Hide' : 'Show'} Tags
           </Button>
-          <Button variant="outline" onClick={() => router.push(`/${locale}/dashboard/governance/influencers/tags`)}>
+          <Button variant="outline" onClick={() => router.push(`/${locale}/dashboard/governance/influencers/tags`)} data-testid="manage-tags-button">
             <Hash className="mr-2 h-4 w-4" />
             Manage Tags
           </Button>
-          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+          <Button variant="outline" onClick={() => setIsImportOpen(true)} data-testid="import-influencers-button">
             <FileUp className="mr-2 h-4 w-4" />
             Import
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={() => setIsCreateOpen(true)} data-testid="add-influencer-button">
             <Plus className="mr-2 h-4 w-4" />
             Add Influencer
           </Button>
@@ -267,22 +268,22 @@ export function InfluencersPageContent() {
 
             {/* Table */}
             <div className="border rounded-lg">
-              <table className="w-full">
+              <table className="w-full" data-testid="influencers-table">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-semibold">Name</th>
-                    <th className="p-4 text-left font-semibold">Category</th>
-                    <th className="p-4 text-left font-semibold">Status</th>
-                    <th className="p-4 text-left font-semibold">Applicability</th>
-                    <th className="p-4 text-left font-semibold">Tags</th>
-                    <th className="p-4 text-left font-semibold">Issuing Authority</th>
-                    <th className="p-4 text-left font-semibold">Next Review</th>
-                    <th className="p-4 text-right font-semibold">Actions</th>
+                    <th className="p-4 text-left font-semibold" data-testid="influencers-table-header-name">Name</th>
+                    <th className="p-4 text-left font-semibold" data-testid="influencers-table-header-category">Category</th>
+                    <th className="p-4 text-left font-semibold" data-testid="influencers-table-header-status">Status</th>
+                    <th className="p-4 text-left font-semibold" data-testid="influencers-table-header-applicability">Applicability</th>
+                    <th className="p-4 text-left font-semibold" data-testid="influencers-table-header-tags">Tags</th>
+                    <th className="p-4 text-left font-semibold" data-testid="influencers-table-header-authority">Issuing Authority</th>
+                    <th className="p-4 text-left font-semibold" data-testid="influencers-table-header-next-review">Next Review</th>
+                    <th className="p-4 text-right font-semibold" data-testid="influencers-table-header-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.data.map((influencer) => (
-                    <tr key={influencer.id} className="border-b hover:bg-muted/50">
+                    <tr key={influencer.id} className="border-b hover:bg-muted/50" data-testid={`influencer-row-${influencer.id}`}>
                       <td className="p-4">
                         <div className="font-medium">{influencer.name}</div>
                         {influencer.reference_number && (
@@ -361,6 +362,7 @@ export function InfluencersPageContent() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleView(influencer.id)}
+                            data-testid={`influencer-view-button-${influencer.id}`}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -368,6 +370,7 @@ export function InfluencersPageContent() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(influencer)}
+                            data-testid={`influencer-edit-button-${influencer.id}`}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -375,6 +378,7 @@ export function InfluencersPageContent() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(influencer.id)}
+                            data-testid={`influencer-delete-button-${influencer.id}`}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -400,7 +404,7 @@ export function InfluencersPageContent() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="influencer-dialog">
           <DialogHeader>
             <DialogTitle>
               {editingInfluencer ? 'Edit Influencer' : 'Create Influencer'}

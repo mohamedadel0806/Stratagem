@@ -1,4 +1,8 @@
 import { Page, expect } from '@playwright/test';
+import { navigateToAssetsPage as _navigateToAssetsPage } from './governance-helpers';
+
+export const navigateToAssetsPage = _navigateToAssetsPage;
+
 
 /**
  * Helper functions for E2E tests
@@ -17,7 +21,7 @@ export async function waitForApiCalls(page: Page, timeout = 5000): Promise<void>
 export async function waitForToast(page: Page, message?: string): Promise<void> {
   // Adjust selector based on your toast implementation
   const toastSelector = '[role="status"], .toast, [data-testid="toast"]';
-  
+
   if (message) {
     await expect(page.locator(toastSelector)).toContainText(message, { timeout: 5000 });
   } else {
@@ -64,27 +68,27 @@ export async function selectDropdownOption(
 ): Promise<void> {
   // Get the trigger locator
   const triggerLocator = typeof trigger === 'string' ? page.locator(trigger).first() : trigger;
-  
+
   await triggerLocator.waitFor({ state: 'visible', timeout });
   await triggerLocator.click();
-  
+
   // Wait for dropdown menu to appear
   await page.waitForSelector('[role="listbox"], [role="menu"], [data-radix-popper-content-wrapper], [role="option"]', {
     state: 'visible',
     timeout: 5000,
   });
-  
+
   // Wait a bit for the dropdown to fully open
   await page.waitForTimeout(500);
-  
+
   // Find and click the option - try multiple strategies
   const option = page.locator(`[role="option"]:has-text("${optionText}"), text="${optionText}"`).first();
   await option.waitFor({ state: 'visible', timeout: 5000 });
-  
+
   // Scroll into view if needed
   await option.scrollIntoViewIfNeeded();
   await page.waitForTimeout(300);
-  
+
   // Click with force if needed (to bypass overlays)
   try {
     await option.click({ timeout: 3000 });
@@ -92,7 +96,7 @@ export async function selectDropdownOption(
     // If click fails due to interception, try force click
     await option.click({ force: true });
   }
-  
+
   // Wait for dropdown to close
   await page.waitForTimeout(500);
 }
@@ -102,19 +106,19 @@ export async function selectDropdownOption(
  */
 export async function navigateToDetails(page: Page, tableSelector = 'table'): Promise<void> {
   await waitForTable(page, tableSelector);
-  
+
   const firstRow = page.locator(`${tableSelector} tbody tr`).first();
   await firstRow.waitFor({ state: 'visible', timeout: 5000 });
-  
+
   // Try to find a link first (most reliable)
   const rowLink = firstRow.locator('a').first();
   const hasLink = await rowLink.isVisible().catch(() => false);
-  
+
   if (hasLink) {
     await rowLink.click({ timeout: 5000 });
     return;
   }
-  
+
   // Try to find a view/edit button
   const viewButton = firstRow.locator(
     'button[aria-label*="View"], ' +
@@ -123,27 +127,27 @@ export async function navigateToDetails(page: Page, tableSelector = 'table'): Pr
     'button:has-text("Edit"), ' +
     'button[aria-label*="Edit"]'
   ).first();
-  
+
   const hasViewButton = await viewButton.isVisible().catch(() => false);
-  
+
   if (hasViewButton) {
     await viewButton.click({ timeout: 5000 });
     return;
   }
-  
+
   // Try clicking on the first cell (might be a link)
   const firstCell = firstRow.locator('td, th').first();
   const firstCellLink = firstCell.locator('a').first();
   const hasCellLink = await firstCellLink.isVisible().catch(() => false);
-  
+
   if (hasCellLink) {
     await firstCellLink.click({ timeout: 5000 });
     return;
   }
-  
+
   // Last resort: click the row itself
   await firstRow.click({ timeout: 5000 });
-  
+
   // Wait a bit for any navigation to start
   await page.waitForTimeout(1000);
 }

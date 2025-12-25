@@ -90,39 +90,39 @@ export function PolicyForm({ policy, onSuccess, onCancel }: PolicyFormProps) {
 
   const form = useForm<PolicyFormData>({
     resolver: zodResolver(policySchema),
-        defaultValues: policy
+    defaultValues: policy
       ? {
-          policy_type: policy.policy_type,
-          title: policy.title,
-          content: policy.content || '',
-          purpose: policy.purpose || '',
-          scope: policy.scope || '',
-          owner_id: policy.owner_id || '',
-          business_units: policy.business_units || [],
-          status: policy.status,
-          approval_date: formatDateForInput(policy.approval_date),
-          effective_date: formatDateForInput(policy.effective_date) || '',
-          review_frequency: policy.review_frequency,
-          next_review_date: formatDateForInput(policy.next_review_date),
-          linked_influencers: policy.linked_influencers || [],
-          tags: policy.tags || [],
-          requires_acknowledgment: policy.requires_acknowledgment ?? true,
-          acknowledgment_due_days: policy.acknowledgment_due_days ?? 30,
-        }
+        policy_type: policy.policy_type,
+        title: policy.title,
+        content: policy.content || '',
+        purpose: policy.purpose || '',
+        scope: policy.scope || '',
+        owner_id: policy.owner_id || '',
+        business_units: policy.business_units || [],
+        status: policy.status,
+        approval_date: formatDateForInput(policy.approval_date),
+        effective_date: formatDateForInput(policy.effective_date) || '',
+        review_frequency: policy.review_frequency,
+        next_review_date: formatDateForInput(policy.next_review_date),
+        linked_influencers: policy.linked_influencers || [],
+        tags: policy.tags || [],
+        requires_acknowledgment: policy.requires_acknowledgment ?? true,
+        acknowledgment_due_days: policy.acknowledgment_due_days ?? 30,
+      }
       : {
-          status: PolicyStatus.DRAFT,
-          review_frequency: ReviewFrequency.ANNUAL,
-          requires_acknowledgment: true,
-          acknowledgment_due_days: 30,
-          effective_date: '', // Required field, user must fill it
-        },
+        status: PolicyStatus.DRAFT,
+        review_frequency: ReviewFrequency.ANNUAL,
+        requires_acknowledgment: true,
+        acknowledgment_due_days: 30,
+        effective_date: '', // Required field, user must fill it
+      },
   });
 
   const mutation = useMutation({
     mutationFn: async (data: CreatePolicyData) => {
       console.log('Mutation called with data:', data);
       console.log('Policy ID:', policy?.id);
-      
+
       if (policy) {
         console.log('Updating policy:', policy.id);
         return governanceApi.updatePolicy(policy.id, data);
@@ -153,10 +153,12 @@ export function PolicyForm({ policy, onSuccess, onCancel }: PolicyFormProps) {
   const onSubmit = (data: PolicyFormData) => {
     console.log('Form submitted with data:', data);
     console.log('Form validation errors:', form.formState.errors);
-    
+
     // Clean up empty strings, null values, and empty arrays for optional fields
     const cleanedData: CreatePolicyData = {
       ...data,
+      policy_type: data.policy_type,
+      title: data.title,
       owner_id: data.owner_id || undefined,
       approval_date: data.approval_date || undefined,
       next_review_date: data.next_review_date || undefined,
@@ -167,7 +169,7 @@ export function PolicyForm({ policy, onSuccess, onCancel }: PolicyFormProps) {
       scope: data.scope || undefined,
       content: data.content || undefined,
     };
-    
+
     console.log('Cleaned data for submission:', cleanedData);
     mutation.mutate(cleanedData);
   };
@@ -207,7 +209,7 @@ export function PolicyForm({ policy, onSuccess, onCancel }: PolicyFormProps) {
                     <FormLabel>Status</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="status-dropdown">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                       </FormControl>
@@ -306,7 +308,7 @@ export function PolicyForm({ policy, onSuccess, onCancel }: PolicyFormProps) {
                   <FormLabel>Review Frequency</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger data-testid="review-frequency-dropdown">
                         <SelectValue placeholder="Select frequency" />
                       </SelectTrigger>
                     </FormControl>
@@ -441,8 +443,8 @@ export function PolicyForm({ policy, onSuccess, onCancel }: PolicyFormProps) {
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={mutation.isPending || form.formState.isSubmitting}
             onClick={() => {
               // Trigger validation

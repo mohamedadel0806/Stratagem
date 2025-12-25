@@ -13,6 +13,8 @@ exports.Policy = exports.ReviewFrequency = exports.PolicyStatus = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("../../../users/entities/user.entity");
 const control_objective_entity_1 = require("../../control-objectives/entities/control-objective.entity");
+const policy_approval_entity_1 = require("./policy-approval.entity");
+const policy_version_entity_1 = require("./policy-version.entity");
 var PolicyStatus;
 (function (PolicyStatus) {
     PolicyStatus["DRAFT"] = "draft";
@@ -161,6 +163,18 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => control_objective_entity_1.ControlObjective, (co) => co.policy),
     __metadata("design:type", Array)
 ], Policy.prototype, "control_objectives", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => policy_approval_entity_1.PolicyApproval, (approval) => approval.policy, {
+        cascade: ['remove'],
+    }),
+    __metadata("design:type", Array)
+], Policy.prototype, "approvals", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => policy_version_entity_1.PolicyVersion, (version) => version.policy, {
+        cascade: ['remove'],
+    }),
+    __metadata("design:type", Array)
+], Policy.prototype, "versions", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'uuid', nullable: true, name: 'created_by' }),
     __metadata("design:type", String)

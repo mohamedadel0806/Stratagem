@@ -11,6 +11,8 @@ import { ControlAssetMappingService } from './services/control-asset-mapping.ser
 import { FrameworkControlMappingService } from './services/framework-control-mapping.service';
 import { ControlTestsService } from './services/control-tests.service';
 import { ControlTestsController } from './control-tests.controller';
+import { AssetControlService } from './services/asset-control.service';
+import { AssetControlController } from './asset-control.controller';
 import { RiskModule } from '../../risk/risk.module';
 import { ControlDomain } from '../domains/entities/domain.entity';
 import { CommonModule } from '../../common/common.module';
@@ -28,18 +30,20 @@ import { CommonModule } from '../../common/common.module';
     forwardRef(() => RiskModule),
     CommonModule,
   ],
-  controllers: [UnifiedControlsController, ControlTestsController],
+  controllers: [UnifiedControlsController, ControlTestsController, AssetControlController],
   providers: [
     UnifiedControlsService,
     ControlAssetMappingService,
     FrameworkControlMappingService,
     ControlTestsService,
+    AssetControlService,
   ],
   exports: [
     UnifiedControlsService,
     ControlAssetMappingService,
     FrameworkControlMappingService,
     ControlTestsService,
+    AssetControlService,
   ],
 })
 export class UnifiedControlsModule {}

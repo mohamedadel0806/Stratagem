@@ -240,17 +240,18 @@ export default function PhysicalAssetDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportPDF}>
+          <Button variant="outline" onClick={handleExportPDF} data-testid="asset-download-pdf-button">
             <Download className="h-4 w-4 mr-2" />
             Download PDF
           </Button>
-          <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+          <Button variant="outline" onClick={() => setIsEditOpen(true)} data-testid="asset-edit-button">
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
           <Button
             variant="destructive"
             onClick={() => setIsDeleteDialogOpen(true)}
+            data-testid="asset-delete-button"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete

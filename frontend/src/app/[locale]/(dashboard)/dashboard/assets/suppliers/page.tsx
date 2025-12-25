@@ -224,7 +224,7 @@ export default function SuppliersPage() {
                 <Upload className="h-4 w-4 mr-2" />
                 Import
               </Button>
-              <Button onClick={() => setIsCreateOpen(true)}>
+              <Button onClick={() => setIsCreateOpen(true)} data-testid="assets-supplier-new-asset-button">
                 <Plus className="h-4 w-4 mr-2" />
                 New Supplier
               </Button>
@@ -302,7 +302,7 @@ export default function SuppliersPage() {
               {selectedAssets.size} of {data.data.length} selected
             </span>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="assets-supplier-list">
             {data.data.map((supplier: any) => {
               const isSelected = selectedAssets.has(supplier.id);
               return (
@@ -408,7 +408,7 @@ export default function SuppliersPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">No suppliers found</p>
-            <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
+            <Button className="mt-4" onClick={() => setIsCreateOpen(true)} data-testid="assets-supplier-new-asset-button">
               <Plus className="h-4 w-4 mr-2" />
               Create First Supplier
             </Button>

@@ -4,6 +4,8 @@ import { Repository, FindOptionsWhere, ILike, In } from 'typeorm';
 import { Policy, PolicyStatus } from './entities/policy.entity';
 import { PolicyAssignment } from './entities/policy-assignment.entity';
 import { PolicyReview, ReviewStatus, ReviewOutcome } from './entities/policy-review.entity';
+import { PolicyApproval } from './entities/policy-approval.entity';
+import { PolicyVersion } from './entities/policy-version.entity';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { BusinessUnit } from '../../common/entities/business-unit.entity';
 import { CreatePolicyDto } from './dto/create-policy.dto';
@@ -14,6 +16,8 @@ import { EntityType, WorkflowTrigger } from '../../workflow/entities/workflow.en
 import { NotificationService } from '../../common/services/notification.service';
 import { NotificationType, NotificationPriority } from '../../common/entities/notification.entity';
 import { WorkflowExecution } from '../../workflow/entities/workflow-execution.entity';
+import { PolicyApprovalService } from './services/policy-approval.service';
+import { PolicyVersionService } from './services/policy-version.service';
 
 @Injectable()
 export class PoliciesService {
@@ -26,6 +30,10 @@ export class PoliciesService {
     private workflowExecutionRepository: Repository<WorkflowExecution>,
     @InjectRepository(PolicyAssignment)
     private policyAssignmentRepository: Repository<PolicyAssignment>,
+    @InjectRepository(PolicyApproval)
+    private policyApprovalRepository: Repository<PolicyApproval>,
+    @InjectRepository(PolicyVersion)
+    private policyVersionRepository: Repository<PolicyVersion>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(BusinessUnit)
@@ -34,6 +42,8 @@ export class PoliciesService {
     private policyReviewRepository: Repository<PolicyReview>,
     @Optional() private workflowService?: WorkflowService,
     @Optional() private notificationService?: NotificationService,
+    @Optional() private policyApprovalService?: PolicyApprovalService,
+    @Optional() private policyVersionService?: PolicyVersionService,
   ) {}
 
   async create(createPolicyDto: CreatePolicyDto, userId: string): Promise<Policy> {
@@ -1030,6 +1040,187 @@ export class PoliciesService {
     );
 
     return Math.max(...childDepths, currentDepth);
+  }
+
+  // ============ Policy Version Management (Story 2.1) ============
+
+  async createVersion(
+    policyId: string,
+    content: string,
+    changeSummary: string,
+    userId: string,
+  ): Promise<PolicyVersion> {
+    const policy = await this.findOne(policyId);
+    const nextVersionNumber = (policy.version_number || 1) + 1;
+    const nextVersion = `${Math.floor(nextVersionNumber / 10)}.${nextVersionNumber % 10}`;
+
+    if (!this.policyVersionService) {
+      throw new Error('PolicyVersionService is not available');
+    }
+
+    return this.policyVersionService.createVersion(
+      policyId,
+      content,
+      nextVersion,
+      nextVersionNumber,
+      changeSummary,
+      userId,
+    );
+  }
+
+  async getPolicyVersions(policyId: string): Promise<PolicyVersion[]> {
+    if (!this.policyVersionService) {
+      throw new Error('PolicyVersionService is not available');
+    }
+
+    return this.policyVersionService.getVersionsByPolicy(policyId);
+  }
+
+  async getLatestPolicyVersion(policyId: string): Promise<PolicyVersion> {
+    if (!this.policyVersionService) {
+      throw new Error('PolicyVersionService is not available');
+    }
+
+    return this.policyVersionService.getLatestVersion(policyId);
+  }
+
+  async comparePolicyVersions(
+    versionId1: string,
+    versionId2: string,
+  ): Promise<{
+    version1: PolicyVersion;
+    version2: PolicyVersion;
+    differences: string[];
+  }> {
+    if (!this.policyVersionService) {
+      throw new Error('PolicyVersionService is not available');
+    }
+
+    return this.policyVersionService.compareVersions(versionId1, versionId2);
+  }
+
+  // ============ Policy Approval Management (Story 2.2) ============
+
+  async requestApprovals(
+    policyId: string,
+    approverIds: string[],
+  ): Promise<PolicyApproval[]> {
+    if (!this.policyApprovalService) {
+      throw new Error('PolicyApprovalService is not available');
+    }
+
+    const approvals: PolicyApproval[] = [];
+    for (let i = 0; i < approverIds.length; i++) {
+      const approval = await this.policyApprovalService.createApproval(
+        policyId,
+        approverIds[i],
+        i + 1, // sequence order
+      );
+      approvals.push(approval);
+
+      // Send notification to approver
+      if (this.notificationService) {
+        try {
+          const policy = await this.findOne(policyId);
+          await this.notificationService.create({
+            userId: approverIds[i],
+            type: NotificationType.WORKFLOW_APPROVAL_REQUIRED,
+            priority: NotificationPriority.HIGH,
+            title: 'Policy Approval Required',
+            message: `Policy "${policy.title}" requires your approval.`,
+            entityType: 'policy',
+            entityId: policyId,
+            actionUrl: `/dashboard/governance/policies/${policyId}/approvals`,
+          });
+        } catch (error) {
+          this.logger.error(
+            `Failed to send approval notification: ${error.message}`,
+            error.stack,
+          );
+        }
+      }
+    }
+
+    return approvals;
+  }
+
+  async getPolicyApprovals(policyId: string): Promise<PolicyApproval[]> {
+    if (!this.policyApprovalService) {
+      throw new Error('PolicyApprovalService is not available');
+    }
+
+    return this.policyApprovalService.findApprovalsByPolicy(policyId);
+  }
+
+  async getPendingApprovalsForSystem(): Promise<PolicyApproval[]> {
+    if (!this.policyApprovalService) {
+      throw new Error('PolicyApprovalService is not available');
+    }
+
+    return this.policyApprovalService.findPendingApprovals();
+  }
+
+  async approvePolicy(
+    approvalId: string,
+    comments?: string,
+  ): Promise<PolicyApproval> {
+    if (!this.policyApprovalService) {
+      throw new Error('PolicyApprovalService is not available');
+    }
+
+    const approval = await this.policyApprovalService.approvePolicy(
+      approvalId,
+      comments,
+    );
+
+    // Check if all approvals are complete
+    const allApprovals = await this.policyApprovalService.findApprovalsByPolicy(
+      approval.policy_id,
+    );
+    const allApproved = allApprovals.every(
+      (a) =>
+        a.approval_status === 'approved' ||
+        a.approval_status === 'revoked',
+    );
+
+    if (allApproved) {
+      // Update policy status to APPROVED
+      await this.policyRepository.update(approval.policy_id, {
+        status: PolicyStatus.APPROVED,
+      });
+
+      this.logger.log(
+        `All approvals complete for policy: ${approval.policy_id}`,
+      );
+    }
+
+    return approval;
+  }
+
+  async rejectPolicy(
+    approvalId: string,
+    comments?: string,
+  ): Promise<PolicyApproval> {
+    if (!this.policyApprovalService) {
+      throw new Error('PolicyApprovalService is not available');
+    }
+
+    return this.policyApprovalService.rejectPolicy(approvalId, comments);
+  }
+
+  async getApprovalProgress(
+    policyId: string,
+  ): Promise<{
+    total: number;
+    approved: number;
+    rejected: number;
+    pending: number;
+  }> {
+    if (!this.policyApprovalService) {
+      throw new Error('PolicyApprovalService is not available');
+    }
+
+    return this.policyApprovalService.getApprovalProgress(policyId);
   }
 }
 

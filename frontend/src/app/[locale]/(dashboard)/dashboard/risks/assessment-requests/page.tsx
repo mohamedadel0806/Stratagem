@@ -328,7 +328,7 @@ function AssessmentRequestsContent() {
                 : "No assessment requests found. Create your first request to get started."}
             </p>
             {!searchQuery && statusFilter === "all" && (
-              <Button onClick={handleCreate}>
+              <Button onClick={handleCreate} data-testid="assessment-requests-new-button">
                 <Plus className="mr-2 h-4 w-4" />
                 Create First Request
               </Button>

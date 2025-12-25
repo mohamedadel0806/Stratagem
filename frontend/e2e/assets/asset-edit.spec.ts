@@ -6,126 +6,52 @@ import { expect } from '@playwright/test';
 
 test.describe('Asset Edit and Save', () => {
   test('should edit existing physical asset and save changes', async ({ authenticatedPage }) => {
-    console.log('\n🚀 TESTING PHYSICAL ASSET EDIT AND SAVE');
-
     // Step 1: Navigate to physical assets page
-    console.log('📍 Navigating to physical assets page...');
     await authenticatedPage.goto('http://localhost:3000/en/dashboard/assets/physical');
-    await authenticatedPage.waitForLoadState('networkidle');
-    await authenticatedPage.waitForTimeout(5000);
-
-    // Screenshot initial state
-    await authenticatedPage.screenshot({
-      path: 'test-results/physical-assets-before-edit.png',
-      fullPage: true
-    });
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Step 2: Look for Edit buttons
-    console.log('\n🔍 Looking for Edit buttons...');
+    const editButton = authenticatedPage.getByTestId('asset-edit-button');
 
-    const editButtonSelectors = [
-      'button:has-text("Edit")',
-      'text:has-text("Edit")',
-      '[data-testid*="edit"]',
-      '.edit-button',
-      '.btn-edit'
-    ];
-
-    let editButtonFound = false;
-    let editButton = null;
-
-    for (const selector of editButtonSelectors) {
-      try {
-        const buttons = await authenticatedPage.locator(selector).all();
-        console.log(`  Found ${buttons.length} elements with selector: ${selector}`);
-
-        for (const button of buttons) {
-          const isVisible = await button.isVisible();
-          if (isVisible) {
-            const text = await button.textContent();
-            if (text && text.includes('Edit')) {
-              editButton = button;
-              editButtonFound = true;
-              console.log(`✅ Found Edit button: "${text.trim()}"`);
-              break;
-            }
-          }
-        }
-
-        if (editButtonFound) break;
-      } catch (e) {
-        console.log(`  Error with selector ${selector}: ${e}`);
-      }
+    try {
+      await editButton.waitFor({ state: 'visible', timeout: 5000 });
+    } catch (e) {
+      // If Edit button not found, try clicking on an asset row first
     }
 
-    if (!editButtonFound) {
-      console.log('❌ No Edit buttons found');
+    const isEditButtonVisible = await editButton.isVisible().catch(() => false);
 
-      // Look for alternative ways to edit - maybe clicking on the asset row itself
-      console.log('🔍 Trying alternative edit methods...');
-
-      // Try clicking on an asset row to see if it goes to edit mode
+    if (!isEditButtonVisible) {
       const assetRows = await authenticatedPage.locator('table tbody tr, .asset-row').all();
 
       if (assetRows.length > 0) {
-        console.log(`✅ Found ${assetRows.length} asset rows, trying first one...`);
+        await assetRows[0].click();
 
-        try {
-          await assetRows[0].click();
-          await authenticatedPage.waitForTimeout(3000);
-
-          const currentUrl = authenticatedPage.url();
-          console.log(`✅ Clicked asset row, navigated to: ${currentUrl}`);
-
-          if (currentUrl.includes('/assets/physical/')) {
-            editButtonFound = true;
-
-            // Now look for edit button on the details page
-            const detailsEditButtons = await authenticatedPage.locator('button:has-text("Edit")').all();
-            for (const btn of detailsEditButtons) {
-              if (await btn.isVisible()) {
-                editButton = btn;
-                break;
-              }
-            }
-
-            if (editButton) {
-              await editButton.click();
-              await authenticatedPage.waitForTimeout(3000);
-            }
+        const currentUrl = authenticatedPage.url();
+        if (currentUrl.includes('/assets/physical/')) {
+          // Look for edit button on the details page
+          const detailsEditButton = authenticatedPage.getByTestId('asset-edit-button');
+          if (await detailsEditButton.isVisible().catch(() => false)) {
+            await detailsEditButton.click();
           }
-        } catch (e) {
-          console.log(`❌ Could not click asset row: ${e}`);
         }
       }
     }
 
-    if (!editButtonFound || !editButton) {
-      console.log('❌ Could not find any way to edit assets');
-
+    const finalEditButtonVisible = await editButton.isVisible().catch(() => false);
+    if (!finalEditButtonVisible) {
       await authenticatedPage.screenshot({
         path: 'test-results/physical-assets-no-edit-access.png',
         fullPage: true
       });
-
       test.skip();
       return;
     }
 
-    // Step 3: We should now be in edit mode - look for form fields
-    console.log('\n📝 Looking for editable form fields...');
+    // Step 3: Look for editable form fields
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
-    await authenticatedPage.waitForLoadState('networkidle');
-    await authenticatedPage.waitForTimeout(3000);
-
-    // Screenshot edit mode
-    await authenticatedPage.screenshot({
-      path: 'test-results/physical-asset-edit-mode.png',
-      fullPage: true
-    });
-
-    // Look for input fields (excluding search)
-    const allInputs = await authenticatedPage.locator('input, textarea, select').all();
+    const allInputs = await authenticatedPage.locator('input:not([type="search"]), textarea, select').all();
     const editableFields = [];
 
     for (const input of allInputs) {
@@ -138,7 +64,6 @@ test.describe('Asset Edit and Save', () => {
           const isDisabled = await input.isDisabled();
           const isReadOnly = await input.getAttribute('readonly') !== null;
 
-          // Exclude search fields and disabled/readonly fields
           const isSearchField = type === 'search' ||
                               placeholder.toLowerCase().includes('search') ||
                               name.toLowerCase().includes('search') ||
@@ -161,30 +86,20 @@ test.describe('Asset Edit and Save', () => {
           }
         }
       } catch (e) {
-        // Continue
+        continue;
       }
     }
 
-    console.log(`📝 Found ${editableFields.length} editable form fields:`);
-    editableFields.slice(0, 10).forEach((field, index) => {
-      console.log(`  Field ${index}: ${field.tagName.toUpperCase()} - name: "${field.name}", placeholder: "${field.placeholder}", current value: "${field.currentValue.substring(0, 30)}..."`);
-    });
-
     if (editableFields.length === 0) {
-      console.log('❌ No editable fields found - might still be in view mode');
-
       await authenticatedPage.screenshot({
         path: 'test-results/physical-asset-no-editable-fields.png',
         fullPage: true
       });
-
       test.skip();
       return;
     }
 
     // Step 4: Fill form fields with test data
-    console.log('\n✏️ Filling form fields with test data...');
-
     const timestamp = Date.now();
     let fieldsFilled = 0;
 
@@ -193,7 +108,6 @@ test.describe('Asset Edit and Save', () => {
         const field = editableFields[i];
         let testValue = '';
 
-        // Generate appropriate test values
         if (field.name?.toLowerCase().includes('name') ||
             field.placeholder?.toLowerCase().includes('name')) {
           testValue = `E2E Edited Asset ${timestamp}`;
@@ -212,13 +126,10 @@ test.describe('Asset Edit and Save', () => {
         } else if (field.tagName === 'textarea') {
           testValue = `E2E textarea content ${timestamp} - multiline text testing for asset editing functionality`;
         } else if (field.tagName === 'select') {
-          // For select elements, try to select a different option
           const options = await field.element.locator('option').all();
           if (options.length > 1) {
-            // Select second option (skip first which might be placeholder)
             await field.element.selectOption({ index: 1 });
             fieldsFilled++;
-            console.log(`  ✅ Selected different option for ${field.tagName} "${field.name}"`);
             continue;
           }
         } else {
@@ -227,25 +138,15 @@ test.describe('Asset Edit and Save', () => {
 
         if (testValue) {
           await field.element.fill(testValue);
+          await expect(field.element).toHaveValue(testValue);
           fieldsFilled++;
-          console.log(`  ✅ Filled ${field.tagName} "${field.name}": "${testValue.substring(0, 50)}..."`);
         }
       } catch (e) {
-        console.log(`  ❌ Could not fill field ${i}: ${e}`);
+        continue;
       }
     }
 
-    console.log(`✅ Successfully filled ${fieldsFilled} form fields`);
-
-    // Screenshot after filling
-    await authenticatedPage.screenshot({
-      path: 'test-results/physical-asset-form-filled.png',
-      fullPage: true
-    });
-
     // Step 5: Look for and click save/update button
-    console.log('\n💾 Looking for save/update buttons...');
-
     const saveButtonSelectors = [
       'button:has-text("Save")',
       'button:has-text("Update")',
@@ -256,8 +157,7 @@ test.describe('Asset Edit and Save', () => {
       'input[type="submit"]'
     ];
 
-    let saveButtonFound = false;
-    let saveButtonText = '';
+    let saveButton = null;
 
     for (const selector of saveButtonSelectors) {
       try {
@@ -266,130 +166,31 @@ test.describe('Asset Edit and Save', () => {
           const isVisible = await button.isVisible();
           const isEnabled = await button.isEnabled();
           if (isVisible && isEnabled) {
-            const text = await button.textContent();
-            if (text) {
-              saveButtonFound = true;
-              saveButtonText = text.trim();
-              console.log(`✅ Found save button: "${saveButtonText}"`);
-
-              await button.click();
-              console.log(`✅ Clicked save button: "${saveButtonText}"`);
-              break;
-            }
+            saveButton = button;
+            break;
           }
         }
-        if (saveButtonFound) break;
+        if (saveButton) break;
       } catch (e) {
-        console.log(`  Error with save selector ${selector}: ${e}`);
+        continue;
       }
     }
 
-    if (!saveButtonFound) {
-      console.log('❌ No save/update buttons found');
-
+    if (!saveButton) {
       await authenticatedPage.screenshot({
         path: 'test-results/physical-asset-no-save-button.png',
         fullPage: true
       });
-
       test.skip();
       return;
     }
 
-    // Step 6: Wait for save to complete and verify
-    console.log('\n⏳ Waiting for save to complete...');
+    await saveButton.click();
     await authenticatedPage.waitForLoadState('networkidle');
-    await authenticatedPage.waitForTimeout(5000);
 
-    // Look for success messages
-    const successSelectors = [
-      'text:has-text("success")',
-      'text:has-text("saved")',
-      'text:has-text("updated")',
-      'text:has-text("Success")',
-      '.success-message',
-      '.alert-success',
-      '[data-testid="success"]'
-    ];
+    // Verify save completed
+    await expect(authenticatedPage).toHaveURL(/\/assets\/physical\//);
 
-    let successMessageFound = false;
-    for (const selector of successSelectors) {
-      try {
-        const elements = await authenticatedPage.locator(selector).all();
-        for (const element of elements) {
-          const isVisible = await element.isVisible();
-          if (isVisible) {
-            const text = await element.textContent();
-            if (text && (text.toLowerCase().includes('success') ||
-                        text.toLowerCase().includes('saved') ||
-                        text.toLowerCase().includes('updated'))) {
-              console.log(`✅ Success message found: "${text.trim()}"`);
-              successMessageFound = true;
-              break;
-            }
-          }
-        }
-        if (successMessageFound) break;
-      } catch (e) {
-        // Continue
-      }
-    }
-
-    // Check for error messages too
-    const errorSelectors = [
-      'text:has-text("error")',
-      'text:has-text("failed")',
-      'text:has-text("Error")',
-      '.error-message',
-      '.alert-error',
-      '[data-testid="error"]'
-    ];
-
-    let errorMessageFound = false;
-    for (const selector of errorSelectors) {
-      try {
-        const elements = await authenticatedPage.locator(selector).all();
-        for (const element of elements) {
-          const isVisible = await element.isVisible();
-          if (isVisible) {
-            const text = await element.textContent();
-            if (text && (text.toLowerCase().includes('error') ||
-                        text.toLowerCase().includes('failed'))) {
-              console.log(`❌ Error message found: "${text.trim()}"`);
-              errorMessageFound = true;
-              break;
-            }
-          }
-        }
-        if (errorMessageFound) break;
-      } catch (e) {
-        // Continue
-      }
-    }
-
-    // Final screenshot
-    await authenticatedPage.screenshot({
-      path: 'test-results/physical-asset-after-save.png',
-      fullPage: true
-    });
-
-    // Check if we're still on the same page (redirect might indicate success)
-    const finalUrl = authenticatedPage.url();
-    console.log(`Final URL: ${finalUrl}`);
-
-    console.log('\n📊 ASSET EDIT AND SAVE TEST COMPLETE');
-    console.log(`📁 Edit button found: ${editButtonFound}`);
-    console.log(`📁 Editable fields found: ${editableFields.length}`);
-    console.log(`📁 Fields filled: ${fieldsFilled}`);
-    console.log(`📁 Save button found: ${saveButtonFound}`);
-    console.log(`📁 Save button text: "${saveButtonText}"`);
-    console.log(`📁 Success message: ${successMessageFound}`);
-    console.log(`📁 Error message: ${errorMessageFound}`);
-    console.log('📁 Screenshots saved in test-results/');
-
-    expect(editButtonFound).toBe(true);
-    expect(editableFields.length).toBeGreaterThan(0);
     expect(fieldsFilled).toBeGreaterThan(0);
-    expect(saveButtonFound).toBe(true);
   });
 });

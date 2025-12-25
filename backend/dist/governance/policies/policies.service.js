@@ -20,6 +20,8 @@ const typeorm_2 = require("typeorm");
 const policy_entity_1 = require("./entities/policy.entity");
 const policy_assignment_entity_1 = require("./entities/policy-assignment.entity");
 const policy_review_entity_1 = require("./entities/policy-review.entity");
+const policy_approval_entity_1 = require("./entities/policy-approval.entity");
+const policy_version_entity_1 = require("./entities/policy-version.entity");
 const user_entity_1 = require("../../users/entities/user.entity");
 const business_unit_entity_1 = require("../../common/entities/business-unit.entity");
 const workflow_service_1 = require("../../workflow/services/workflow.service");
@@ -27,16 +29,22 @@ const workflow_entity_1 = require("../../workflow/entities/workflow.entity");
 const notification_service_1 = require("../../common/services/notification.service");
 const notification_entity_1 = require("../../common/entities/notification.entity");
 const workflow_execution_entity_1 = require("../../workflow/entities/workflow-execution.entity");
+const policy_approval_service_1 = require("./services/policy-approval.service");
+const policy_version_service_1 = require("./services/policy-version.service");
 let PoliciesService = PoliciesService_1 = class PoliciesService {
-    constructor(policyRepository, workflowExecutionRepository, policyAssignmentRepository, userRepository, businessUnitRepository, policyReviewRepository, workflowService, notificationService) {
+    constructor(policyRepository, workflowExecutionRepository, policyAssignmentRepository, policyApprovalRepository, policyVersionRepository, userRepository, businessUnitRepository, policyReviewRepository, workflowService, notificationService, policyApprovalService, policyVersionService) {
         this.policyRepository = policyRepository;
         this.workflowExecutionRepository = workflowExecutionRepository;
         this.policyAssignmentRepository = policyAssignmentRepository;
+        this.policyApprovalRepository = policyApprovalRepository;
+        this.policyVersionRepository = policyVersionRepository;
         this.userRepository = userRepository;
         this.businessUnitRepository = businessUnitRepository;
         this.policyReviewRepository = policyReviewRepository;
         this.workflowService = workflowService;
         this.notificationService = notificationService;
+        this.policyApprovalService = policyApprovalService;
+        this.policyVersionService = policyVersionService;
         this.logger = new common_1.Logger(PoliciesService_1.name);
     }
     async create(createPolicyDto, userId) {
@@ -724,6 +732,102 @@ let PoliciesService = PoliciesService_1 = class PoliciesService {
         const childDepths = await Promise.all(children.map((child) => this.getMaxDepth(child.id, currentDepth + 1)));
         return Math.max(...childDepths, currentDepth);
     }
+    async createVersion(policyId, content, changeSummary, userId) {
+        const policy = await this.findOne(policyId);
+        const nextVersionNumber = (policy.version_number || 1) + 1;
+        const nextVersion = `${Math.floor(nextVersionNumber / 10)}.${nextVersionNumber % 10}`;
+        if (!this.policyVersionService) {
+            throw new Error('PolicyVersionService is not available');
+        }
+        return this.policyVersionService.createVersion(policyId, content, nextVersion, nextVersionNumber, changeSummary, userId);
+    }
+    async getPolicyVersions(policyId) {
+        if (!this.policyVersionService) {
+            throw new Error('PolicyVersionService is not available');
+        }
+        return this.policyVersionService.getVersionsByPolicy(policyId);
+    }
+    async getLatestPolicyVersion(policyId) {
+        if (!this.policyVersionService) {
+            throw new Error('PolicyVersionService is not available');
+        }
+        return this.policyVersionService.getLatestVersion(policyId);
+    }
+    async comparePolicyVersions(versionId1, versionId2) {
+        if (!this.policyVersionService) {
+            throw new Error('PolicyVersionService is not available');
+        }
+        return this.policyVersionService.compareVersions(versionId1, versionId2);
+    }
+    async requestApprovals(policyId, approverIds) {
+        if (!this.policyApprovalService) {
+            throw new Error('PolicyApprovalService is not available');
+        }
+        const approvals = [];
+        for (let i = 0; i < approverIds.length; i++) {
+            const approval = await this.policyApprovalService.createApproval(policyId, approverIds[i], i + 1);
+            approvals.push(approval);
+            if (this.notificationService) {
+                try {
+                    const policy = await this.findOne(policyId);
+                    await this.notificationService.create({
+                        userId: approverIds[i],
+                        type: notification_entity_1.NotificationType.WORKFLOW_APPROVAL_REQUIRED,
+                        priority: notification_entity_1.NotificationPriority.HIGH,
+                        title: 'Policy Approval Required',
+                        message: `Policy "${policy.title}" requires your approval.`,
+                        entityType: 'policy',
+                        entityId: policyId,
+                        actionUrl: `/dashboard/governance/policies/${policyId}/approvals`,
+                    });
+                }
+                catch (error) {
+                    this.logger.error(`Failed to send approval notification: ${error.message}`, error.stack);
+                }
+            }
+        }
+        return approvals;
+    }
+    async getPolicyApprovals(policyId) {
+        if (!this.policyApprovalService) {
+            throw new Error('PolicyApprovalService is not available');
+        }
+        return this.policyApprovalService.findApprovalsByPolicy(policyId);
+    }
+    async getPendingApprovalsForSystem() {
+        if (!this.policyApprovalService) {
+            throw new Error('PolicyApprovalService is not available');
+        }
+        return this.policyApprovalService.findPendingApprovals();
+    }
+    async approvePolicy(approvalId, comments) {
+        if (!this.policyApprovalService) {
+            throw new Error('PolicyApprovalService is not available');
+        }
+        const approval = await this.policyApprovalService.approvePolicy(approvalId, comments);
+        const allApprovals = await this.policyApprovalService.findApprovalsByPolicy(approval.policy_id);
+        const allApproved = allApprovals.every((a) => a.approval_status === 'approved' ||
+            a.approval_status === 'revoked');
+        if (allApproved) {
+            await this.policyRepository.update(approval.policy_id, {
+                status: policy_entity_1.PolicyStatus.APPROVED,
+            });
+            this.logger.log(`All approvals complete for policy: ${approval.policy_id}`);
+        }
+        return approval;
+    }
+    async rejectPolicy(approvalId, comments) {
+        if (!this.policyApprovalService) {
+            throw new Error('PolicyApprovalService is not available');
+        }
+        return this.policyApprovalService.rejectPolicy(approvalId, comments);
+    }
+    async getApprovalProgress(policyId) {
+        if (!this.policyApprovalService) {
+            throw new Error('PolicyApprovalService is not available');
+        }
+        return this.policyApprovalService.getApprovalProgress(policyId);
+    }
 };
 exports.PoliciesService = PoliciesService;
 exports.PoliciesService = PoliciesService = PoliciesService_1 = __decorate([
@@ -731,18 +835,26 @@ exports.PoliciesService = PoliciesService = PoliciesService_1 = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(policy_entity_1.Policy)),
     __param(1, (0, typeorm_1.InjectRepository)(workflow_execution_entity_1.WorkflowExecution)),
     __param(2, (0, typeorm_1.InjectRepository)(policy_assignment_entity_1.PolicyAssignment)),
-    __param(3, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(4, (0, typeorm_1.InjectRepository)(business_unit_entity_1.BusinessUnit)),
-    __param(5, (0, typeorm_1.InjectRepository)(policy_review_entity_1.PolicyReview)),
-    __param(6, (0, common_1.Optional)()),
-    __param(7, (0, common_1.Optional)()),
+    __param(3, (0, typeorm_1.InjectRepository)(policy_approval_entity_1.PolicyApproval)),
+    __param(4, (0, typeorm_1.InjectRepository)(policy_version_entity_1.PolicyVersion)),
+    __param(5, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(6, (0, typeorm_1.InjectRepository)(business_unit_entity_1.BusinessUnit)),
+    __param(7, (0, typeorm_1.InjectRepository)(policy_review_entity_1.PolicyReview)),
+    __param(8, (0, common_1.Optional)()),
+    __param(9, (0, common_1.Optional)()),
+    __param(10, (0, common_1.Optional)()),
+    __param(11, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         workflow_service_1.WorkflowService,
-        notification_service_1.NotificationService])
+        notification_service_1.NotificationService,
+        policy_approval_service_1.PolicyApprovalService,
+        policy_version_service_1.PolicyVersionService])
 ], PoliciesService);
 //# sourceMappingURL=policies.service.js.map

@@ -39,6 +39,8 @@ export declare class Alert {
     resolvedBy: User;
     resolvedAt: Date;
     resolutionNotes: string;
+    escalationChainId: string;
+    hasEscalation: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
   UseInterceptors,
@@ -23,6 +24,16 @@ import { parse } from 'csv-parse/sync';
 @UseGuards(JwtAuthGuard)
 export class FrameworksController {
   constructor(private readonly frameworksService: FrameworksService) {}
+
+  @Get()
+  getAllFrameworks() {
+    return this.frameworksService.getAllFrameworks();
+  }
+
+  @Get(':id')
+  getFramework(@Param('id') id: string) {
+    return this.frameworksService.getFramework(id);
+  }
 
   @Post(':id/versions')
   @Audit(AuditAction.CREATE, 'FrameworkVersion', { description: 'Created new framework version' })
@@ -116,6 +127,36 @@ export class FrameworksController {
   @Get(':id/structure')
   getFrameworkWithStructure(@Param('id') id: string) {
     return this.frameworksService.getFrameworkWithStructure(id);
+  }
+
+  @Get(':id/requirements')
+  getFrameworkRequirements(@Param('id') id: string) {
+    return this.frameworksService.getFrameworkRequirements(id);
+  }
+
+  @Get(':id/domains')
+  getFrameworkDomains(@Param('id') id: string) {
+    return this.frameworksService.getFrameworkDomains(id);
+  }
+
+  @Get(':id/categories')
+  getFrameworkCategories(@Param('id') id: string, @Query('domain') domain?: string) {
+    return this.frameworksService.getFrameworkCategories(id, domain);
+  }
+
+  @Get(':id/statistics')
+  getFrameworkStatistics(@Param('id') id: string) {
+    return this.frameworksService.getFrameworkStatistics(id);
+  }
+
+  @Get(':id/active')
+  isFrameworkActive(@Param('id') id: string) {
+    return this.frameworksService.isFrameworkActive(id);
+  }
+
+  @Get('search/:query')
+  searchFrameworks(@Param('query') query: string) {
+    return this.frameworksService.searchFrameworks(query);
   }
 
   private async parseCSVToStructure(buffer: Buffer): Promise<{

@@ -42,11 +42,11 @@ export function DashboardHeader() {
           <nav className="flex items-center space-x-2">
             <LanguageSwitcher />
             <NotificationBell />
-            
+
             {!mounted ? null : session?.user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
+                  <Button variant="ghost" size="icon" className="relative" data-testid="user-menu-trigger">
                     <User className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>

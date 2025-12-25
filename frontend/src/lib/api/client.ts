@@ -6,9 +6,22 @@ import { getSession } from 'next-auth/react';
 // Kong routes /api/v1/* to backend, so endpoints should include /api/v1 in the base URL
 // USE_KONG=false: Use Next.js proxy route (/api/proxy/api for the full path with /api endpoints)
 const USE_KONG = process.env.NEXT_PUBLIC_USE_KONG === 'true';
+
 let API_BASE_URL = USE_KONG
   ? (process.env.NEXT_PUBLIC_KONG_URL || 'http://localhost:8000')
   : (process.env.NEXT_PUBLIC_PROXY_URL || '/api/proxy/api');
+
+// Handle Server-Side Rendering (SSR) in Docker
+// When running on the server (Docker container), we cannot reach 'localhost' (which refers to the container itself).
+// We need to use the internal docker network URL (e.g., http://kong:8000).
+if (typeof window === 'undefined' && USE_KONG) {
+  // Check for internal URL overrides
+  const internalUrl = process.env.KONG_INTERNAL_URL || process.env.NEXT_PUBLIC_KONG_INTERNAL_URL;
+  if (internalUrl) {
+    API_BASE_URL = internalUrl;
+    console.log(`[SSR] Using internal Kong URL: ${API_BASE_URL}`);
+  }
+}
 
 // Ensure API_BASE_URL includes /api/v1 for Kong (backend has global prefix /api/v1)
 // This normalizes the URL so endpoints are called correctly
@@ -23,6 +36,7 @@ if (USE_KONG && API_BASE_URL) {
   // Local examples:
   //   http://localhost:8000 -> http://localhost:8000/api/v1
   //   http://localhost:8000/api -> http://localhost:8000/api/v1
+  //   http://kong:8000 -> http://kong:8000/api/v1
 
   if (!API_BASE_URL.endsWith('/api/v1')) {
     if (API_BASE_URL.endsWith('/api')) {
@@ -38,8 +52,14 @@ if (USE_KONG && API_BASE_URL) {
 // Fallback for build time when environment variables aren't set
 const getApiUrl = () => {
   if (typeof window === 'undefined') {
-    // During build time, return a valid URL to prevent URL construction errors
-    return 'http://build-time-dummy-url.com/api';
+    // If we have a valid internal URL in env (even during build), use it?
+    // But during build time we might not have network.
+    // If NEXT_PHASE is build, return dummy.
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      return 'http://build-time-dummy-url.com/api';
+    }
+    // During runtime SSR, return the calculated key
+    return API_BASE_URL;
   }
   return API_BASE_URL;
 };

@@ -162,7 +162,7 @@ export default function InformationAssetsPage() {
             <Upload className="h-4 w-4 mr-2" />
             Import
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={() => setIsCreateOpen(true)} data-testid="assets-information-new-asset-button">
             <Plus className="h-4 w-4 mr-2" />
             New Asset
           </Button>
@@ -248,7 +248,7 @@ export default function InformationAssetsPage() {
               {selectedAssets.size} of {data.data.length} selected
             </span>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="assets-information-list">
             {data.data.map((asset: any) => (
               <Card key={asset.id} className={selectedAssets.has(asset.id) ? 'ring-2 ring-primary' : ''}>
                 <CardHeader>
@@ -344,7 +344,7 @@ export default function InformationAssetsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">No information assets found</p>
-            <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
+            <Button className="mt-4" onClick={() => setIsCreateOpen(true)} data-testid="assets-information-new-asset-button">
               <Plus className="h-4 w-4 mr-2" />
               Create First Asset
             </Button>

@@ -22,6 +22,7 @@ export interface DataTableFiltersProps {
   searchPlaceholder?: string
   searchValue?: string
   onSearchChange?: (value: string) => void
+  "data-testid"?: string
   filters?: Array<{
     key: string
     label: string
@@ -53,17 +54,18 @@ export function DataTableFilters({
   onClear,
   storageKey,
   onLoadPreset,
+  "data-testid": dataTestId,
 }: DataTableFiltersProps) {
   // Support both array and object patterns
   const isArrayPattern = Array.isArray(filters)
   const filterArray = isArrayPattern ? (filters as Array<any>) : []
   const filterValues = !isArrayPattern ? (filters as Record<string, any>) : {}
-  
+
   // Use filterConfig if provided, otherwise use filters array
   const activeFilterConfig = filterConfig || filterArray
-  
-  const hasActiveFilters = searchValue || (isArrayPattern 
-    ? filterArray.some(f => f.value) 
+
+  const hasActiveFilters = searchValue || (isArrayPattern
+    ? filterArray.some(f => f.value)
     : Object.values(filterValues).some(v => v !== undefined && v !== null && v !== ''))
 
   // Build current filters object for saving
@@ -104,6 +106,7 @@ export function DataTableFilters({
                 })
               }
             }}
+            data-testid={dataTestId}
             className="pl-8"
           />
         </div>
@@ -114,10 +117,10 @@ export function DataTableFilters({
           })
           .map((filter, index) => {
             const filterKey = filter.key
-            const currentValue = isArrayPattern 
+            const currentValue = isArrayPattern
               ? (filter as any).value || "all"
               : (filterValues[filterKey] || "all")
-            
+
             const handleChange = (value: string) => {
               const newValue = value === "all" ? "" : value
               if (isArrayPattern) {
@@ -139,7 +142,7 @@ export function DataTableFilters({
                 value={String(currentValue)}
                 onValueChange={handleChange}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px]" data-testid={filterKey ? `filter-${filterKey}` : undefined}>
                   <SelectValue placeholder={filter.label} />
                 </SelectTrigger>
                 <SelectContent>

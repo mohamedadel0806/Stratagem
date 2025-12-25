@@ -826,7 +826,7 @@ export interface CreateStandardData {
   control_objective_ids?: string[];
 }
 
-export interface UpdateStandardData extends Partial<CreateStandardData> {}
+export interface UpdateStandardData extends Partial<CreateStandardData> { }
 
 export interface StandardQueryParams {
   page?: number;
@@ -921,7 +921,7 @@ export interface CreateSOPData {
   tags?: string[];
 }
 
-export interface UpdateSOPData extends Partial<CreateSOPData> {}
+export interface UpdateSOPData extends Partial<CreateSOPData> { }
 
 export interface SOPQueryParams {
   page?: number;
@@ -1383,7 +1383,7 @@ export interface CreateSOPData {
   tags?: string[];
 }
 
-export interface UpdateSOPData extends Partial<CreateSOPData> {}
+export interface UpdateSOPData extends Partial<CreateSOPData> { }
 
 export interface SOPQueryParams {
   page?: number;
@@ -2185,14 +2185,14 @@ export const governanceApi = {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    
+
     const contentDisposition = response.headers['content-disposition'];
     let filename = `evidence_package_${new Date().toISOString().split('T')[0]}.zip`;
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
       if (filenameMatch) filename = filenameMatch[1];
     }
-    
+
     link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
@@ -2365,6 +2365,43 @@ export const governanceApi = {
 
   archiveComplianceReport: async (id: string): Promise<{ data: any }> => {
     const response = await apiClient.patch(`/api/v1/governance/compliance/reports/${id}/archive`);
+    return response.data;
+  },
+
+  // Control Domains
+  getDomains: async (includeInactive?: boolean): Promise<ControlDomain[]> => {
+    const response = await apiClient.get('/api/v1/governance/domains', {
+      params: { includeInactive },
+    });
+    return response.data;
+  },
+
+  getDomainHierarchy: async (): Promise<ControlDomain[]> => {
+    const response = await apiClient.get('/api/v1/governance/domains/hierarchy');
+    return response.data;
+  },
+
+  getDomain: async (id: string): Promise<ControlDomain> => {
+    const response = await apiClient.get(`/api/v1/governance/domains/${id}`);
+    return response.data;
+  },
+
+  createDomain: async (data: CreateDomainData): Promise<ControlDomain> => {
+    const response = await apiClient.post('/api/v1/governance/domains', data);
+    return response.data;
+  },
+
+  updateDomain: async (id: string, data: Partial<CreateDomainData>): Promise<ControlDomain> => {
+    const response = await apiClient.patch(`/api/v1/governance/domains/${id}`, data);
+    return response.data;
+  },
+
+  deleteDomain: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/domains/${id}`);
+  },
+
+  getDomainStatistics: async (): Promise<DomainStatistics> => {
+    const response = await apiClient.get('/api/v1/governance/domains/statistics');
     return response.data;
   },
 };
@@ -2592,24 +2629,24 @@ export const governanceDashboardApi = {
     const params: Record<string, string> = {};
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
-    
+
     const queryParams = new URLSearchParams(params);
     const url = `/api/v1/governance/dashboard${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const response = await apiClient.get<GovernanceDashboard>(url);
     return response.data;
   },
-  
+
   exportDashboard: async (startDate?: string, endDate?: string): Promise<Blob> => {
     const params: Record<string, string> = {};
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
-    
+
     const queryParams = new URLSearchParams(params);
     const url = `/api/v1/governance/dashboard/export${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const response = await apiClient.get(url, { responseType: 'blob' });
     return response.data;
   },
-  
+
   getDashboardOld: async (): Promise<GovernanceDashboard> => {
     const response = await apiClient.get<GovernanceDashboard>('/api/v1/governance/dashboard');
     return response.data;
@@ -2717,7 +2754,7 @@ export const governanceReportingApi = {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-    
+
     // Get filename from Content-Disposition header or use default
     const contentDisposition = response.headers['content-disposition'];
     let filename = `${query.type}_report.csv`;
@@ -2727,7 +2764,7 @@ export const governanceReportingApi = {
         filename = filenameMatch[1];
       }
     }
-    
+
     link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
@@ -3024,9 +3061,8 @@ export const controlAssetMappingApi = {
     if (params?.implementation_status)
       queryParams.append('implementation_status', params.implementation_status);
 
-    const url = `/api/v1/governance/unified-controls/${controlId}/assets${
-      queryParams.toString() ? `?${queryParams.toString()}` : ''
-    }`;
+    const url = `/api/v1/governance/unified-controls/${controlId}/assets${queryParams.toString() ? `?${queryParams.toString()}` : ''
+      }`;
     const response = await apiClient.get<ControlAssetMapping[]>(url);
     return response.data;
   },
@@ -3076,9 +3112,8 @@ export const controlAssetMappingApi = {
     if (params?.implementation_status)
       queryParams.append('implementation_status', params.implementation_status);
 
-    const url = `/api/v1/governance/unified-controls/assets/${assetType}/${assetId}/controls${
-      queryParams.toString() ? `?${queryParams.toString()}` : ''
-    }`;
+    const url = `/api/v1/governance/unified-controls/assets/${assetType}/${assetId}/controls${queryParams.toString() ? `?${queryParams.toString()}` : ''
+      }`;
     const response = await apiClient.get<ControlAssetMapping[]>(url);
     return response.data;
   },
@@ -3284,7 +3319,7 @@ export const controlAssetMappingApi = {
     if (frameworkIds && frameworkIds.length > 0) {
       params.frameworkIds = frameworkIds.join(',');
     }
-    
+
     const queryParams = new URLSearchParams(params);
     const url = `/api/v1/governance/scorecard${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const response = await apiClient.get<ComplianceScorecardResponse>(url);
@@ -3406,42 +3441,6 @@ export const controlAssetMappingApi = {
     return response.data;
   },
 
-  // Control Domains
-  getDomains: async (includeInactive?: boolean): Promise<ControlDomain[]> => {
-    const response = await apiClient.get('/api/v1/governance/domains', {
-      params: { includeInactive },
-    });
-    return response.data;
-  },
-
-  getDomainHierarchy: async (): Promise<ControlDomain[]> => {
-    const response = await apiClient.get('/api/v1/governance/domains/hierarchy');
-    return response.data;
-  },
-
-  getDomain: async (id: string): Promise<ControlDomain> => {
-    const response = await apiClient.get(`/api/v1/governance/domains/${id}`);
-    return response.data;
-  },
-
-  createDomain: async (data: CreateDomainData): Promise<ControlDomain> => {
-    const response = await apiClient.post('/api/v1/governance/domains', data);
-    return response.data;
-  },
-
-  updateDomain: async (id: string, data: Partial<CreateDomainData>): Promise<ControlDomain> => {
-    const response = await apiClient.patch(`/api/v1/governance/domains/${id}`, data);
-    return response.data;
-  },
-
-  deleteDomain: async (id: string): Promise<void> => {
-    await apiClient.delete(`/api/v1/governance/domains/${id}`);
-  },
-
-  getDomainStatistics: async (): Promise<DomainStatistics> => {
-    const response = await apiClient.get('/api/v1/governance/domains/statistics');
-    return response.data;
-  },
 
   // Audit Logs
   getAuditLogs: async (params?: AuditLogQueryParams): Promise<AuditLogListResponse> => {
@@ -4368,7 +4367,7 @@ export const dashboardEmailApi = {
     const endpoint = data.status === 'approved'
       ? `/api/v1/governance/sop-versions/${data.id}/approve`
       : `/api/v1/governance/sop-versions/${data.id}/reject`;
-    
+
     const response = await apiClient.post(endpoint, {
       approval_comments: data.approval_comments
     });
@@ -4495,351 +4494,402 @@ export const dashboardEmailApi = {
     }
   },
 
-   getRoles: async (): Promise<any[]> => {
-     try {
-       const response = await apiClient.get('/api/v1/governance/roles');
-       return Array.isArray(response.data) ? response.data : (response.data?.data || []);
-     } catch (error) {
-       console.error('Error fetching roles:', error);
-       return [];
-     }
-   },
+  getRoles: async (): Promise<any[]> => {
+    try {
+      const response = await apiClient.get('/api/v1/governance/roles');
+      return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      return [];
+    }
+  },
 
-   // ==================== ALERTS & ESCALATIONS (Story 8.3) ====================
+  // ==================== ALERTS & ESCALATIONS (Story 8.3) ====================
 
-   // Alerts
-   createAlert: async (data: CreateAlertDto): Promise<{ data: Alert }> => {
-     const response = await apiClient.post('/api/v1/governance/alerts', data);
-     return response.data;
-   },
+  // Alerts
+  createAlert: async (data: CreateAlertDto): Promise<{ data: Alert }> => {
+    const response = await apiClient.post('/api/v1/governance/alerts', data);
+    return response.data;
+  },
 
-   getAlert: async (id: string): Promise<{ data: Alert }> => {
-     const response = await apiClient.get(`/api/v1/governance/alerts/${id}`);
-     return response.data;
-   },
+  getAlert: async (id: string): Promise<{ data: Alert }> => {
+    const response = await apiClient.get(`/api/v1/governance/alerts/${id}`);
+    return response.data;
+  },
 
-   getAlerts: async (params?: {
-     page?: number;
-     limit?: number;
-     status?: AlertStatus;
-     severity?: AlertSeverity;
-     type?: AlertType;
-     search?: string;
-     sort?: string;
-   }): Promise<AlertListResponse> => {
-     const response = await apiClient.get('/api/v1/governance/alerts', { params });
-     return response.data;
-   },
+  getAlerts: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: AlertStatus;
+    severity?: AlertSeverity;
+    type?: AlertType;
+    search?: string;
+    sort?: string;
+  }): Promise<AlertListResponse> => {
+    const response = await apiClient.get('/api/v1/governance/alerts', { params });
+    return response.data;
+  },
 
-   getRecentCriticalAlerts: async (limit: number = 5): Promise<Alert[]> => {
-     const response = await apiClient.get('/api/v1/governance/alerts/recent/critical', {
-       params: { limit },
-     });
-     return Array.isArray(response.data) ? response.data : response.data?.data || [];
-   },
+  getRecentCriticalAlerts: async (limit: number = 5): Promise<Alert[]> => {
+    const response = await apiClient.get('/api/v1/governance/alerts/recent/critical', {
+      params: { limit },
+    });
+    return Array.isArray(response.data) ? response.data : response.data?.data || [];
+  },
 
-   acknowledgeAlert: async (id: string): Promise<{ data: Alert }> => {
-     const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/acknowledge`);
-     return response.data;
-   },
+  acknowledgeAlert: async (id: string): Promise<{ data: Alert }> => {
+    const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/acknowledge`);
+    return response.data;
+  },
 
-   resolveAlert: async (id: string, resolutionNotes?: string): Promise<{ data: Alert }> => {
-     const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/resolve`, {
-       resolution_notes: resolutionNotes,
-     });
-     return response.data;
-   },
+  resolveAlert: async (id: string, resolutionNotes?: string): Promise<{ data: Alert }> => {
+    const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/resolve`, {
+      resolution_notes: resolutionNotes,
+    });
+    return response.data;
+  },
 
-   dismissAlert: async (id: string): Promise<{ data: Alert }> => {
-     const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/dismiss`);
-     return response.data;
-   },
+  dismissAlert: async (id: string): Promise<{ data: Alert }> => {
+    const response = await apiClient.patch(`/api/v1/governance/alerts/${id}/dismiss`);
+    return response.data;
+  },
 
-   markAllAlertsAsAcknowledged: async (): Promise<{ updated: number }> => {
-     const response = await apiClient.patch('/api/v1/governance/alerts/mark-all-acknowledged');
-     return response.data;
-   },
+  markAllAlertsAsAcknowledged: async (): Promise<{ updated: number }> => {
+    const response = await apiClient.patch('/api/v1/governance/alerts/mark-all-acknowledged');
+    return response.data;
+  },
 
-   deleteAlert: async (id: string): Promise<void> => {
-     await apiClient.delete(`/api/v1/governance/alerts/${id}`);
-   },
+  deleteAlert: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/alerts/${id}`);
+  },
 
-    getAlertStatistics: async (): Promise<{
-      total: number;
-      active: number;
-      acknowledged: number;
-      resolved: number;
-      dismissed: number;
-      by_severity: Record<string, number>;
-      by_type: Record<string, number>;
-    }> => {
-      const response = await apiClient.get('/api/v1/governance/alerts/statistics');
-      return response.data;
-    },
+  getAlertStatistics: async (): Promise<{
+    total: number;
+    active: number;
+    acknowledged: number;
+    resolved: number;
+    dismissed: number;
+    by_severity: Record<string, number>;
+    by_type: Record<string, number>;
+  }> => {
+    const response = await apiClient.get('/api/v1/governance/alerts/statistics');
+    return response.data;
+  },
 
-    // Alert Escalation
-    escalateAlert: async (chainId: string): Promise<{ data: any }> => {
-      const response = await apiClient.put(`/api/v1/governance/alert-escalation/chains/${chainId}/escalate`);
-      return response.data;
-    },
+  // Alert Escalation
+  escalateAlert: async (chainId: string): Promise<{ data: any }> => {
+    const response = await apiClient.put(`/api/v1/governance/alert-escalation/chains/${chainId}/escalate`);
+    return response.data;
+  },
 
-    resolveEscalationChain: async (chainId: string, notes?: string): Promise<{ data: any }> => {
-      const response = await apiClient.put(`/api/v1/governance/alert-escalation/chains/${chainId}/resolve`, {
-        resolution_notes: notes,
-      });
-      return response.data;
-    },
+  resolveEscalationChain: async (chainId: string, notes?: string): Promise<{ data: any }> => {
+    const response = await apiClient.put(`/api/v1/governance/alert-escalation/chains/${chainId}/resolve`, {
+      resolution_notes: notes,
+    });
+    return response.data;
+  },
 
-    getEscalationChains: async (alertId: string): Promise<{ data: any[] }> => {
-      const response = await apiClient.get(`/api/v1/governance/alert-escalation/alerts/${alertId}/chains`);
-      return response.data;
-    },
+  getEscalationChains: async (alertId: string): Promise<{ data: any[] }> => {
+    const response = await apiClient.get(`/api/v1/governance/alert-escalation/alerts/${alertId}/chains`);
+    return response.data;
+  },
 
-    // Alert Rules
-   createAlertRule: async (data: CreateAlertRuleDto): Promise<{ data: AlertRule }> => {
-     const response = await apiClient.post('/api/v1/governance/alert-rules', data);
-     return response.data;
-   },
+  // Alert Rules
+  createAlertRule: async (data: CreateAlertRuleDto): Promise<{ data: AlertRule }> => {
+    const response = await apiClient.post('/api/v1/governance/alert-rules', data);
+    return response.data;
+  },
 
-   getAlertRule: async (id: string): Promise<{ data: AlertRule }> => {
-     const response = await apiClient.get(`/api/v1/governance/alert-rules/${id}`);
-     return response.data;
-   },
+  getAlertRule: async (id: string): Promise<{ data: AlertRule }> => {
+    const response = await apiClient.get(`/api/v1/governance/alert-rules/${id}`);
+    return response.data;
+  },
 
-   getAlertRules: async (params?: {
-     page?: number;
-     limit?: number;
-     is_active?: boolean;
-     trigger_type?: AlertRuleTriggerType;
-     entity_type?: string;
-     search?: string;
-     sort?: string;
-   }): Promise<AlertRuleListResponse> => {
-     const response = await apiClient.get('/api/v1/governance/alert-rules', { params });
-     return response.data;
-   },
+  getAlertRules: async (params?: {
+    page?: number;
+    limit?: number;
+    is_active?: boolean;
+    trigger_type?: AlertRuleTriggerType;
+    entity_type?: string;
+    search?: string;
+    sort?: string;
+  }): Promise<AlertRuleListResponse> => {
+    const response = await apiClient.get('/api/v1/governance/alert-rules', { params });
+    return response.data;
+  },
 
-   updateAlertRule: async (id: string, data: Partial<CreateAlertRuleDto>): Promise<{ data: AlertRule }> => {
-     const response = await apiClient.patch(`/api/v1/governance/alert-rules/${id}`, data);
-     return response.data;
-   },
+  updateAlertRule: async (id: string, data: Partial<CreateAlertRuleDto>): Promise<{ data: AlertRule }> => {
+    const response = await apiClient.patch(`/api/v1/governance/alert-rules/${id}`, data);
+    return response.data;
+  },
 
-   toggleAlertRule: async (id: string, isActive: boolean): Promise<{ data: AlertRule }> => {
-     const response = await apiClient.patch(`/api/v1/governance/alert-rules/${id}/toggle`, {
-       is_active: isActive,
-     });
-     return response.data;
-   },
+  toggleAlertRule: async (id: string, isActive: boolean): Promise<{ data: AlertRule }> => {
+    const response = await apiClient.patch(`/api/v1/governance/alert-rules/${id}/toggle`, {
+      is_active: isActive,
+    });
+    return response.data;
+  },
 
-   deleteAlertRule: async (id: string): Promise<void> => {
-     await apiClient.delete(`/api/v1/governance/alert-rules/${id}`);
-   },
+  deleteAlertRule: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/alert-rules/${id}`);
+  },
 
-   getAlertRuleStatistics: async (): Promise<{
-     total: number;
-     active: number;
-     inactive: number;
-     by_trigger_type: Record<string, number>;
-     by_entity_type: Record<string, number>;
-   }> => {
-     const response = await apiClient.get('/api/v1/governance/alert-rules/statistics');
-     return response.data;
-   },
+  getAlertRuleStatistics: async (): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+    by_trigger_type: Record<string, number>;
+    by_entity_type: Record<string, number>;
+  }> => {
+    const response = await apiClient.get('/api/v1/governance/alert-rules/statistics');
+    return response.data;
+  },
 
-    testAlertRule: async (ruleId: string): Promise<{ matched_count: number; sample_alerts: any[] }> => {
-      const response = await apiClient.post(`/api/v1/governance/alert-rules/${ruleId}/test`);
-      return response.data;
-    },
+  testAlertRule: async (ruleId: string): Promise<{ matched_count: number; sample_alerts: any[] }> => {
+    const response = await apiClient.post(`/api/v1/governance/alert-rules/${ruleId}/test`);
+    return response.data;
+  },
 
-    // Asset-Control Integration
-    mapControlToAsset: async (
-      controlId: string,
-      data: {
-        asset_id: string;
-        asset_type: AssetType;
-        implementation_status?: ImplementationStatus;
-        implementation_notes?: string;
-        is_automated?: boolean;
-      },
-    ): Promise<any> => {
-      const response = await apiClient.post(
-        `/api/v1/governance/asset-control/controls/${controlId}/map-asset`,
-        data,
-      );
-      return response.data;
-    },
-
-    mapControlToAssets: async (
-      controlId: string,
-      data: {
-        asset_ids: string[];
-        asset_type: AssetType;
-      },
-    ): Promise<any[]> => {
-      const response = await apiClient.post(
-        `/api/v1/governance/asset-control/controls/${controlId}/map-assets`,
-        data,
-      );
-      return response.data;
-    },
-
-    getAssetControls: async (
-      assetId: string,
-      assetType: AssetType,
-      params?: { page?: number; limit?: number },
-    ): Promise<{ mappings: any[]; total: number }> => {
-      const response = await apiClient.get(
-        `/api/v1/governance/asset-control/assets/${assetId}/controls`,
-        { params: { assetType, ...params } },
-      );
-      return response.data;
-    },
-
-    getControlAssets: async (
-      controlId: string,
-      params?: { page?: number; limit?: number },
-    ): Promise<{ mappings: any[]; total: number }> => {
-      const response = await apiClient.get(
-        `/api/v1/governance/asset-control/controls/${controlId}/assets`,
-        { params },
-      );
-      return response.data;
-    },
-
-    updateAssetControlMapping: async (
-      controlId: string,
-      assetId: string,
-      data: {
-        implementation_status?: ImplementationStatus;
-        implementation_notes?: string;
-        last_test_date?: Date;
-        last_test_result?: string;
-        effectiveness_score?: number;
-      },
-    ): Promise<any> => {
-      const response = await apiClient.put(
-        `/api/v1/governance/asset-control/controls/${controlId}/assets/${assetId}`,
-        data,
-      );
-      return response.data;
-    },
-
-    deleteAssetControlMapping: async (controlId: string, assetId: string): Promise<void> => {
-      await apiClient.delete(
-        `/api/v1/governance/asset-control/controls/${controlId}/assets/${assetId}`,
-      );
-    },
-
-    getAssetComplianceScore: async (
-      assetId: string,
-      assetType: AssetType,
-    ): Promise<{
+  // Asset-Control Integration
+  mapControlToAsset: async (
+    controlId: string,
+    data: {
       asset_id: string;
       asset_type: AssetType;
-      total_controls: number;
-      implemented_controls: number;
+      implementation_status?: ImplementationStatus;
+      implementation_notes?: string;
+      is_automated?: boolean;
+    },
+  ): Promise<any> => {
+    const response = await apiClient.post(
+      `/api/v1/governance/asset-control/controls/${controlId}/map-asset`,
+      data,
+    );
+    return response.data;
+  },
+
+  mapControlToAssets: async (
+    controlId: string,
+    data: {
+      asset_ids: string[];
+      asset_type: AssetType;
+    },
+  ): Promise<any[]> => {
+    const response = await apiClient.post(
+      `/api/v1/governance/asset-control/controls/${controlId}/map-assets`,
+      data,
+    );
+    return response.data;
+  },
+
+  getAssetControls: async (
+    assetId: string,
+    assetType: AssetType,
+    params?: { page?: number; limit?: number },
+  ): Promise<{ mappings: any[]; total: number }> => {
+    const response = await apiClient.get(
+      `/api/v1/governance/asset-control/assets/${assetId}/controls`,
+      { params: { assetType, ...params } },
+    );
+    return response.data;
+  },
+
+  getControlAssets: async (
+    controlId: string,
+    params?: { page?: number; limit?: number },
+  ): Promise<{ mappings: any[]; total: number }> => {
+    const response = await apiClient.get(
+      `/api/v1/governance/asset-control/controls/${controlId}/assets`,
+      { params },
+    );
+    return response.data;
+  },
+
+  updateAssetControlMapping: async (
+    controlId: string,
+    assetId: string,
+    data: {
+      implementation_status?: ImplementationStatus;
+      implementation_notes?: string;
+      last_test_date?: Date;
+      last_test_result?: string;
+      effectiveness_score?: number;
+    },
+  ): Promise<any> => {
+    const response = await apiClient.put(
+      `/api/v1/governance/asset-control/controls/${controlId}/assets/${assetId}`,
+      data,
+    );
+    return response.data;
+  },
+
+  deleteAssetControlMapping: async (controlId: string, assetId: string): Promise<void> => {
+    await apiClient.delete(
+      `/api/v1/governance/asset-control/controls/${controlId}/assets/${assetId}`,
+    );
+  },
+
+  getAssetComplianceScore: async (
+    assetId: string,
+    assetType: AssetType,
+  ): Promise<{
+    asset_id: string;
+    asset_type: AssetType;
+    total_controls: number;
+    implemented_controls: number;
+    compliance_percentage: number;
+    implementation_status_breakdown: Record<string, number>;
+  }> => {
+    const response = await apiClient.get(
+      `/api/v1/governance/asset-control/assets/${assetId}/compliance-score`,
+      { params: { assetType } },
+    );
+    return response.data;
+  },
+
+  getControlEffectiveness: async (
+    controlId: string,
+  ): Promise<{
+    control_id: string;
+    control_identifier: string;
+    total_assets: number;
+    average_effectiveness: number;
+    implementation_status_breakdown: Record<string, number>;
+  }> => {
+    const response = await apiClient.get(
+      `/api/v1/governance/asset-control/controls/${controlId}/effectiveness`,
+    );
+    return response.data;
+  },
+
+  getAssetControlMatrix: async (params?: {
+    assetType?: AssetType;
+    domain?: string;
+    status?: ImplementationStatus;
+  }): Promise<any[]> => {
+    const response = await apiClient.get('/api/v1/governance/asset-control/matrix', {
+      params,
+    });
+    return response.data;
+  },
+
+  getMatrixStatistics: async (): Promise<{
+    total_mappings: number;
+    by_implementation_status: Record<string, number>;
+    by_asset_type: Record<string, number>;
+    average_effectiveness: number;
+    unmapped_controls_count: number;
+    unmapped_assets_count: number;
+  }> => {
+    const response = await apiClient.get('/api/v1/governance/asset-control/matrix/statistics');
+    return response.data;
+  },
+
+  bulkUpdateAssetControlStatus: async (data: {
+    mapping_ids: string[];
+    implementation_status: ImplementationStatus;
+  }): Promise<{ updated: number }> => {
+    const response = await apiClient.post(
+      '/api/v1/governance/asset-control/mappings/bulk-update-status',
+      data,
+    );
+    return response.data;
+  },
+
+  getUnmappedControls: async (params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<{ controls: any[]; total: number }> => {
+    const response = await apiClient.get('/api/v1/governance/asset-control/controls/unmapped', {
+      params,
+    });
+    return response.data;
+  },
+
+  getAssetControlStatistics: async (): Promise<{
+    total_controls: number;
+    total_mappings: number;
+    average_compliance_score: number;
+    average_effectiveness_score: number;
+    implementation_distribution: Record<string, number>;
+  }> => {
+    const response = await apiClient.get('/api/v1/governance/asset-control/statistics/comprehensive');
+    return response.data;
+  },
+
+  getComplianceByAssetType: async (): Promise<
+    Array<{
+      asset_type: AssetType;
+      total_mappings: number;
+      implemented: number;
       compliance_percentage: number;
-      implementation_status_breakdown: Record<string, number>;
-    }> => {
-      const response = await apiClient.get(
-        `/api/v1/governance/asset-control/assets/${assetId}/compliance-score`,
-        { params: { assetType } },
-      );
-      return response.data;
-    },
+    }>
+  > => {
+    const response = await apiClient.get(
+      '/api/v1/governance/asset-control/statistics/by-asset-type',
+    );
+    return response.data;
+  },
 
-    getControlEffectiveness: async (
-      controlId: string,
-    ): Promise<{
-      control_id: string;
-      control_identifier: string;
-      total_assets: number;
-      average_effectiveness: number;
-      implementation_status_breakdown: Record<string, number>;
-    }> => {
-      const response = await apiClient.get(
-        `/api/v1/governance/asset-control/controls/${controlId}/effectiveness`,
-      );
-      return response.data;
-    },
+  // Framework Configuration API
+  createFrameworkConfig: async (data: {
+    name: string;
+    description?: string;
+    framework_type: string;
+    scope?: string;
+    linked_framework_id?: string;
+    is_active?: boolean;
+    metadata?: {
+      require_policy_approval?: boolean;
+      require_control_testing?: boolean;
+      policy_review_frequency?: string;
+      control_review_frequency?: string;
+      risk_assessment_required?: boolean;
+      audit_required?: boolean;
+      integration_points?: string[];
+    };
+  }): Promise<any> => {
+    const response = await apiClient.post('/api/v1/governance/framework-configs', data);
+    return response.data;
+  },
 
-    getAssetControlMatrix: async (params?: {
-      assetType?: AssetType;
-      domain?: string;
-      status?: ImplementationStatus;
-    }): Promise<any[]> => {
-      const response = await apiClient.get('/api/v1/governance/asset-control/matrix', {
-        params,
-      });
-      return response.data;
-    },
+  getFrameworkConfigs: async (params?: {
+    page?: number;
+    limit?: number;
+    framework_type?: string;
+    is_active?: boolean;
+    search?: string;
+    sort?: string;
+  }): Promise<{ data: any[]; total: number; page: number; limit: number }> => {
+    const response = await apiClient.get('/api/v1/governance/framework-configs', { params });
+    return response.data;
+  },
 
-    getMatrixStatistics: async (): Promise<{
-      total_mappings: number;
-      by_implementation_status: Record<string, number>;
-      by_asset_type: Record<string, number>;
-      average_effectiveness: number;
-      unmapped_controls_count: number;
-      unmapped_assets_count: number;
-    }> => {
-      const response = await apiClient.get('/api/v1/governance/asset-control/matrix/statistics');
-      return response.data;
-    },
+  getFrameworkConfig: async (id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/v1/governance/framework-configs/${id}`);
+    return response.data;
+  },
 
-    bulkUpdateAssetControlStatus: async (data: {
-      mapping_ids: string[];
-      implementation_status: ImplementationStatus;
-    }): Promise<{ updated: number }> => {
-      const response = await apiClient.post(
-        '/api/v1/governance/asset-control/mappings/bulk-update-status',
-        data,
-      );
-      return response.data;
-    },
+  getFrameworkConfigsByType: async (frameworkType: string): Promise<any[]> => {
+    const response = await apiClient.get(
+      `/api/v1/governance/framework-configs/by-type/${frameworkType}`,
+    );
+    return response.data;
+  },
 
-    getUnmappedControls: async (params?: {
-      page?: number;
-      limit?: number;
-    }): Promise<{ controls: any[]; total: number }> => {
-      const response = await apiClient.get('/api/v1/governance/asset-control/controls/unmapped', {
-        params,
-      });
-      return response.data;
-    },
+  getActiveFrameworkConfigs: async (): Promise<any[]> => {
+    const response = await apiClient.get('/api/v1/governance/framework-configs/active/all');
+    return response.data;
+  },
 
-    getAssetControlStatistics: async (): Promise<{
-      total_controls: number;
-      total_mappings: number;
-      average_compliance_score: number;
-      average_effectiveness_score: number;
-      implementation_distribution: Record<string, number>;
-    }> => {
-      const response = await apiClient.get('/api/v1/governance/asset-control/statistics/comprehensive');
-      return response.data;
-    },
-
-    getComplianceByAssetType: async (): Promise<
-      Array<{
-        asset_type: AssetType;
-        total_mappings: number;
-        implemented: number;
-        compliance_percentage: number;
-      }>
-    > => {
-      const response = await apiClient.get(
-        '/api/v1/governance/asset-control/statistics/by-asset-type',
-      );
-      return response.data;
-    },
-
-    // Framework Configuration API
-    createFrameworkConfig: async (data: {
-      name: string;
+  updateFrameworkConfig: async (
+    id: string,
+    data: {
+      name?: string;
       description?: string;
-      framework_type: string;
       scope?: string;
-      linked_framework_id?: string;
       is_active?: boolean;
+      linked_framework_id?: string;
       metadata?: {
         require_policy_approval?: boolean;
         require_control_testing?: boolean;
@@ -4849,105 +4899,54 @@ export const dashboardEmailApi = {
         audit_required?: boolean;
         integration_points?: string[];
       };
-    }): Promise<any> => {
-      const response = await apiClient.post('/api/v1/governance/framework-configs', data);
-      return response.data;
     },
+  ): Promise<any> => {
+    const response = await apiClient.patch(`/api/v1/governance/framework-configs/${id}`, data);
+    return response.data;
+  },
 
-    getFrameworkConfigs: async (params?: {
-      page?: number;
-      limit?: number;
-      framework_type?: string;
-      is_active?: boolean;
-      search?: string;
-      sort?: string;
-    }): Promise<{ data: any[]; total: number; page: number; limit: number }> => {
-      const response = await apiClient.get('/api/v1/governance/framework-configs', { params });
-      return response.data;
-    },
+  activateFrameworkConfig: async (id: string): Promise<any> => {
+    const response = await apiClient.post(`/api/v1/governance/framework-configs/${id}/activate`);
+    return response.data;
+  },
 
-    getFrameworkConfig: async (id: string): Promise<any> => {
-      const response = await apiClient.get(`/api/v1/governance/framework-configs/${id}`);
-      return response.data;
-    },
+  deactivateFrameworkConfig: async (id: string): Promise<any> => {
+    const response = await apiClient.post(
+      `/api/v1/governance/framework-configs/${id}/deactivate`,
+    );
+    return response.data;
+  },
 
-    getFrameworkConfigsByType: async (frameworkType: string): Promise<any[]> => {
-      const response = await apiClient.get(
-        `/api/v1/governance/framework-configs/by-type/${frameworkType}`,
-      );
-      return response.data;
-    },
+  deleteFrameworkConfig: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/framework-configs/${id}`);
+  },
 
-    getActiveFrameworkConfigs: async (): Promise<any[]> => {
-      const response = await apiClient.get('/api/v1/governance/framework-configs/active/all');
-      return response.data;
-    },
+  hardDeleteFrameworkConfig: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/framework-configs/${id}/hard`);
+  },
 
-    updateFrameworkConfig: async (
-      id: string,
-      data: {
-        name?: string;
-        description?: string;
-        scope?: string;
-        is_active?: boolean;
-        linked_framework_id?: string;
-        metadata?: {
-          require_policy_approval?: boolean;
-          require_control_testing?: boolean;
-          policy_review_frequency?: string;
-          control_review_frequency?: string;
-          risk_assessment_required?: boolean;
-          audit_required?: boolean;
-          integration_points?: string[];
-        };
-      },
-    ): Promise<any> => {
-      const response = await apiClient.patch(`/api/v1/governance/framework-configs/${id}`, data);
-      return response.data;
-    },
+  // Get all available frameworks (ComplianceFramework entities)
+  getAllFrameworks: async (): Promise<
+    Array<{
+      id: string;
+      framework_code: string;
+      name: string;
+      version?: string;
+      issuing_authority?: string;
+      description?: string;
+      effective_date?: string;
+      url?: string;
+      status: string;
+      tags?: string[];
+    }>
+  > => {
+    const response = await apiClient.get('/api/v1/governance/frameworks');
+    return response.data;
+  },
 
-    activateFrameworkConfig: async (id: string): Promise<any> => {
-      const response = await apiClient.post(`/api/v1/governance/framework-configs/${id}/activate`);
-      return response.data;
-    },
-
-    deactivateFrameworkConfig: async (id: string): Promise<any> => {
-      const response = await apiClient.post(
-        `/api/v1/governance/framework-configs/${id}/deactivate`,
-      );
-      return response.data;
-    },
-
-    deleteFrameworkConfig: async (id: string): Promise<void> => {
-      await apiClient.delete(`/api/v1/governance/framework-configs/${id}`);
-    },
-
-    hardDeleteFrameworkConfig: async (id: string): Promise<void> => {
-       await apiClient.delete(`/api/v1/governance/framework-configs/${id}/hard`);
-     },
-
-    // Get all available frameworks (ComplianceFramework entities)
-    getAllFrameworks: async (): Promise<
-      Array<{
-        id: string;
-        framework_code: string;
-        name: string;
-        version?: string;
-        issuing_authority?: string;
-        description?: string;
-        effective_date?: string;
-        url?: string;
-        status: string;
-        tags?: string[];
-      }>
-    > => {
-      const response = await apiClient.get('/api/v1/governance/frameworks');
-      return response.data;
-    },
-
-    getFramework: async (id: string): Promise<any> => {
-      const response = await apiClient.get(`/api/v1/governance/frameworks/${id}`);
-      return response.data;
-    },
+  getFramework: async (id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/v1/governance/frameworks/${id}`);
+    return response.data;
+  },
 
 };

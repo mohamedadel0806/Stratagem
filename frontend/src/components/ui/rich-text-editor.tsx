@@ -225,6 +225,7 @@ export function RichTextEditor({
         className
       )}
       style={{ minHeight }}
+      data-testid="rich-text-editor"
     >
       {editable && <MenuBar editor={editor} />}
       <div className="relative">

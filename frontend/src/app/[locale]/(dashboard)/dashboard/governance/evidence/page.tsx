@@ -120,17 +120,17 @@ export default function EvidencePage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center" data-testid="evidence-header">
         <div>
-          <h1 className="text-3xl font-bold">Evidence</h1>
+          <h1 className="text-3xl font-bold" data-testid="evidence-page-title">Evidence</h1>
           <p className="text-muted-foreground">Manage evidence repository for controls and assessments</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsPackageOpen(true)}>
+          <Button variant="outline" onClick={() => setIsPackageOpen(true)} data-testid="generate-evidence-package-button">
             <Archive className="mr-2 h-4 w-4" />
             Generate Package
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={() => setIsCreateOpen(true)} data-testid="add-evidence-button">
             <Plus className="mr-2 h-4 w-4" />
             Add Evidence
           </Button>
@@ -172,24 +172,24 @@ export default function EvidencePage() {
 
             {/* Table */}
             <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[1200px]">
+              <table className="w-full min-w-[1200px]" data-testid="evidence-table">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-semibold whitespace-nowrap">Identifier</th>
-                    <th className="p-4 text-left font-semibold whitespace-nowrap">Title</th>
-                    <th className="p-4 text-left font-semibold whitespace-nowrap">Type</th>
-                    <th className="p-4 text-left font-semibold whitespace-nowrap">Status</th>
-                    <th className="p-4 text-left font-semibold whitespace-nowrap">File</th>
-                    <th className="p-4 text-left font-semibold whitespace-nowrap">Collection Date</th>
-                    <th className="p-4 text-left font-semibold whitespace-nowrap">Valid Until</th>
-                    <th className="p-4 text-left font-semibold whitespace-nowrap">Collector</th>
-                    <th className="p-4 text-right font-semibold whitespace-nowrap">Actions</th>
+                    <th className="p-4 text-left font-semibold whitespace-nowrap" data-testid="evidence-table-header-identifier">Identifier</th>
+                    <th className="p-4 text-left font-semibold whitespace-nowrap" data-testid="evidence-table-header-title">Title</th>
+                    <th className="p-4 text-left font-semibold whitespace-nowrap" data-testid="evidence-table-header-type">Type</th>
+                    <th className="p-4 text-left font-semibold whitespace-nowrap" data-testid="evidence-table-header-status">Status</th>
+                    <th className="p-4 text-left font-semibold whitespace-nowrap" data-testid="evidence-table-header-file">File</th>
+                    <th className="p-4 text-left font-semibold whitespace-nowrap" data-testid="evidence-table-header-collection-date">Collection Date</th>
+                    <th className="p-4 text-left font-semibold whitespace-nowrap" data-testid="evidence-table-header-valid-until">Valid Until</th>
+                    <th className="p-4 text-left font-semibold whitespace-nowrap" data-testid="evidence-table-header-collector">Collector</th>
+                    <th className="p-4 text-right font-semibold whitespace-nowrap" data-testid="evidence-table-header-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.data && data.data.length > 0 ? (
                     data.data.map((evidence) => (
-                      <tr key={evidence.id} className="border-b hover:bg-muted/50">
+                      <tr key={evidence.id} className="border-b hover:bg-muted/50" data-testid={`evidence-row-${evidence.id}`}>
                       <td className="p-4 whitespace-nowrap">
                         <Badge variant="outline">{evidence.evidence_identifier}</Badge>
                       </td>
@@ -261,13 +261,13 @@ export default function EvidencePage() {
                       </td>
                       <td className="p-4 whitespace-nowrap">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleView(evidence.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleView(evidence.id)} data-testid={`evidence-view-button-${evidence.id}`}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(evidence)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(evidence)} data-testid={`evidence-edit-button-${evidence.id}`}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(evidence.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(evidence.id)} data-testid={`evidence-delete-button-${evidence.id}`}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -301,7 +301,7 @@ export default function EvidencePage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="evidence-dialog">
           <DialogHeader>
             <DialogTitle>{editingEvidence ? 'Edit Evidence' : 'Create Evidence'}</DialogTitle>
             <DialogDescription>

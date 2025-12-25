@@ -317,19 +317,19 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
           </TabsList>
 
           <TabsContent value="basic" className="space-y-4">
-            <FormField
-              control={form.control}
-              name="softwareName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Software Name *</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="softwareName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Software Name *</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="software-name-input" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             <FormField
               control={form.control}
@@ -354,7 +354,7 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
                     <FormLabel>Software Type *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="software-type-dropdown-trigger">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -381,7 +381,7 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
                     <FormLabel>Criticality</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="software-criticality-dropdown-trigger">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -406,7 +406,7 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
                   <FormItem>
                     <FormLabel>Version</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} data-testid="software-version-input" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -565,7 +565,7 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
                 <FormItem>
                   <FormLabel>Vendor</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} data-testid="software-vendor-input" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -794,7 +794,7 @@ export function SoftwareAssetForm({ software, onSuccess, onCancel }: SoftwareAss
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid={software ? 'form-submit-update' : 'form-submit-create'}>
             {createMutation.isPending || updateMutation.isPending ? 'Saving...' : software ? 'Update' : 'Create'}
           </Button>
         </div>

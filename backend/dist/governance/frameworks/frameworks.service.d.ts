@@ -9,6 +9,8 @@ export declare class FrameworksService {
     private requirementRepository;
     private versionRepository;
     constructor(frameworkRepository: Repository<ComplianceFramework>, requirementRepository: Repository<FrameworkRequirement>, versionRepository: Repository<FrameworkVersion>);
+    getAllFrameworks(): Promise<ComplianceFramework[]>;
+    getFramework(id: string): Promise<ComplianceFramework>;
     createVersion(frameworkId: string, createDto: CreateFrameworkVersionDto, userId: string): Promise<FrameworkVersion>;
     getVersions(frameworkId: string): Promise<FrameworkVersion[]>;
     getVersion(frameworkId: string, version: string): Promise<FrameworkVersion>;
@@ -21,4 +23,17 @@ export declare class FrameworksService {
     getFrameworkWithStructure(frameworkId: string): Promise<ComplianceFramework & {
         requirements: FrameworkRequirement[];
     }>;
+    getFrameworkRequirements(frameworkId: string): Promise<FrameworkRequirement[]>;
+    getFrameworkDomains(frameworkId: string): Promise<string[]>;
+    getFrameworkCategories(frameworkId: string, domain?: string): Promise<string[]>;
+    getFrameworkStatistics(frameworkId: string): Promise<{
+        totalDomains: number;
+        totalCategories: number;
+        totalRequirements: number;
+        version?: string;
+        status: string;
+    }>;
+    isFrameworkActive(frameworkId: string): Promise<boolean>;
+    getAllActiveFrameworks(): Promise<ComplianceFramework[]>;
+    searchFrameworks(query: string): Promise<ComplianceFramework[]>;
 }

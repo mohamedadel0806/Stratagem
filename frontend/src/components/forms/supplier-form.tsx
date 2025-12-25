@@ -183,7 +183,7 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
                 <FormItem>
                   <FormLabel>Supplier Name *</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} data-testid="supplier-name-input" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -213,7 +213,7 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
                     <FormLabel>Supplier Type *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="supplier-type-dropdown-trigger">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -239,7 +239,7 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
                     <FormLabel>Criticality</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="supplier-criticality-dropdown-trigger">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -296,7 +296,7 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
                     <FormItem>
                       <FormLabel>Contact Name</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} data-testid="supplier-contact-name-input" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -310,7 +310,7 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" {...field} />
+                        <Input type="email" {...field} data-testid="supplier-contact-email-input" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -518,7 +518,7 @@ export function SupplierForm({ supplier, onSuccess, onCancel }: SupplierFormProp
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid={supplier ? 'form-submit-update' : 'form-submit-create'}>
             {createMutation.isPending || updateMutation.isPending ? 'Saving...' : supplier ? 'Update' : 'Create'}
           </Button>
         </div>

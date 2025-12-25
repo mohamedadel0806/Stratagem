@@ -3,7 +3,7 @@
  * Tests complete alert workflow: Rule Creation → Triggering → Notifications → Resolution
  */
 
-import { test } from '../fixtures/auth';
+import { test } from '../fixtures/auth-storage';
 import { expect } from '@playwright/test';
 import { AlertPage } from '../pages/alert.page';
 
@@ -13,7 +13,7 @@ test.describe('Alert System E2E', () => {
 
     // Navigate to alerts page
     await alertPage.goto();
-    await expect(authPage.locator('h1').filter({ hasText: 'Alerts' })).toBeVisible();
+    await expect(authenticatedPage.locator('h1').filter({ hasText: 'Alerts' })).toBeVisible();
 
     // Create a new alert rule
     await alertPage.createAlertRule({
@@ -49,7 +49,7 @@ test.describe('Alert System E2E', () => {
 
     // Navigate to alert subscriptions
     await alertPage.gotoSubscriptions();
-    await expect(authPage.locator('h1').filter({ hasText: 'Alert Subscriptions' })).toBeVisible();
+    await expect(authenticatedPage.locator('h1').filter({ hasText: 'Alert Subscriptions' })).toBeVisible();
 
     // Create alert subscription
     await alertPage.createSubscription({
@@ -61,15 +61,15 @@ test.describe('Alert System E2E', () => {
 
     // Verify subscription was created
     await alertPage.verifySubscriptionExists('POLICY_REVIEW_OVERDUE');
-    await expect(authPage.getByText('IMMEDIATE')).toBeVisible();
+    await expect(authenticatedPage.getByText('IMMEDIATE')).toBeVisible();
 
     // Test subscription management
-    await authPage.getByRole('button', { name: 'Edit Subscription' }).click();
-    await authPage.getByLabel('Frequency').selectOption('DAILY');
-    await authPage.getByRole('button', { name: 'Update Subscription' }).click();
+    await authenticatedPage.getByRole('button', { name: 'Edit Subscription' }).click();
+    await authenticatedPage.getByLabel('Frequency').selectOption('DAILY');
+    await authenticatedPage.getByRole('button', { name: 'Update Subscription' }).click();
 
     // Verify subscription was updated
-    await expect(authPage.getByText('DAILY')).toBeVisible();
+    await expect(authenticatedPage.getByText('DAILY')).toBeVisible();
 
     console.log('✅ Alert subscription and notification E2E test passed');
   });
@@ -79,7 +79,7 @@ test.describe('Alert System E2E', () => {
 
     // Navigate to alerts dashboard
     await alertPage.goto();
-    await expect(authPage.locator('h1').filter({ hasText: 'Alerts' })).toBeVisible();
+    await expect(authenticatedPage.locator('h1').filter({ hasText: 'Alerts' })).toBeVisible();
 
     // Test filtering by status
     await alertPage.filterAlerts({ status: 'ACTIVE' });
@@ -87,11 +87,11 @@ test.describe('Alert System E2E', () => {
 
     // Test filtering by severity
     await alertPage.filterAlerts({ severity: 'HIGH' });
-    await expect(authPage.getByText('High')).toBeVisible();
+    await expect(authenticatedPage.getByText('High')).toBeVisible();
 
     // Test filtering by type
     await alertPage.filterAlerts({ type: 'CUSTOM' });
-    await expect(authPage.getByText('Custom')).toBeVisible();
+    await expect(authenticatedPage.getByText('Custom')).toBeVisible();
 
     // Test bulk actions
     await alertPage.bulkAcknowledge();

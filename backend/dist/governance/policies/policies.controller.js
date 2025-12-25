@@ -95,10 +95,6 @@ let PoliciesController = class PoliciesController {
     findOne(id) {
         return this.policiesService.findOne(id);
     }
-    async getVersions(id) {
-        const versions = await this.policiesService.findVersions(id);
-        return { data: versions };
-    }
     update(id, updatePolicyDto, req) {
         return this.policiesService.update(id, updatePolicyDto, req.user.id);
     }
@@ -226,6 +222,46 @@ let PoliciesController = class PoliciesController {
         const result = await this.policiesService.setParentPolicy(id, (_a = body.parent_policy_id) !== null && _a !== void 0 ? _a : null, req.user.id, body.reason);
         return { data: result };
     }
+    async getVersionsList(id) {
+        const versions = await this.policiesService.getPolicyVersions(id);
+        return { data: versions };
+    }
+    async getLatestVersion(id) {
+        const version = await this.policiesService.getLatestPolicyVersion(id);
+        return { data: version };
+    }
+    async createVersion(id, body, req) {
+        const version = await this.policiesService.createVersion(id, body.content, body.change_summary || '', req.user.id);
+        return { data: version };
+    }
+    async compareVersions(id, body) {
+        const comparison = await this.policiesService.comparePolicyVersions(body.version1_id, body.version2_id);
+        return { data: comparison };
+    }
+    async getPolicyApprovals(id) {
+        const approvals = await this.policiesService.getPolicyApprovals(id);
+        return { data: approvals };
+    }
+    async getApprovalProgress(id) {
+        const progress = await this.policiesService.getApprovalProgress(id);
+        return { data: progress };
+    }
+    async requestApprovals(id, body) {
+        const approvals = await this.policiesService.requestApprovals(id, body.approver_ids);
+        return { data: approvals };
+    }
+    async approvePolicy(approvalId, body) {
+        const approval = await this.policiesService.approvePolicy(approvalId, body.comments);
+        return { data: approval };
+    }
+    async rejectPolicy(approvalId, body) {
+        const approval = await this.policiesService.rejectPolicy(approvalId, body.comments);
+        return { data: approval };
+    }
+    async getPendingApprovalsForSystem() {
+        const approvals = await this.policiesService.getPendingApprovalsForSystem();
+        return { data: approvals };
+    }
 };
 exports.PoliciesController = PoliciesController;
 __decorate([
@@ -297,13 +333,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], PoliciesController.prototype, "findOne", null);
-__decorate([
-    (0, common_1.Get)(':id/versions'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], PoliciesController.prototype, "getVersions", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.UPDATE, 'Policy'),
@@ -537,6 +566,109 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], PoliciesController.prototype, "setParentPolicy", null);
+__decorate([
+    (0, common_1.Get)(':id/versions-list'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all versions of a policy' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of policy versions' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "getVersionsList", null);
+__decorate([
+    (0, common_1.Get)(':id/versions/latest'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get the latest version of a policy' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Latest policy version' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "getLatestVersion", null);
+__decorate([
+    (0, common_1.Post)(':id/versions/create'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.CREATE, 'PolicyVersion'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new version of a policy' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Version created successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "createVersion", null);
+__decorate([
+    (0, common_1.Post)(':id/versions/compare'),
+    (0, swagger_1.ApiOperation)({ summary: 'Compare two policy versions' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Version comparison results' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "compareVersions", null);
+__decorate([
+    (0, common_1.Get)(':id/approvals'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all approvals for a policy' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of policy approvals' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "getPolicyApprovals", null);
+__decorate([
+    (0, common_1.Get)(':id/approvals/progress'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get approval progress for a policy' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Approval progress' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "getApprovalProgress", null);
+__decorate([
+    (0, common_1.Post)(':id/approvals/request'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.CREATE, 'PolicyApproval'),
+    (0, swagger_1.ApiOperation)({ summary: 'Request approvals for a policy' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Approvals requested' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "requestApprovals", null);
+__decorate([
+    (0, common_1.Post)('approvals/:approval_id/approve'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.UPDATE, 'PolicyApproval'),
+    (0, swagger_1.ApiOperation)({ summary: 'Approve a policy' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Policy approved' }),
+    __param(0, (0, common_1.Param)('approval_id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "approvePolicy", null);
+__decorate([
+    (0, common_1.Post)('approvals/:approval_id/reject'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.UPDATE, 'PolicyApproval'),
+    (0, swagger_1.ApiOperation)({ summary: 'Reject a policy approval' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Policy rejected' }),
+    __param(0, (0, common_1.Param)('approval_id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "rejectPolicy", null);
+__decorate([
+    (0, common_1.Get)('approvals/pending/all'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all pending approvals' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'List of pending approvals' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], PoliciesController.prototype, "getPendingApprovalsForSystem", null);
 exports.PoliciesController = PoliciesController = __decorate([
     (0, swagger_1.ApiTags)('governance'),
     (0, common_1.Controller)('governance/policies'),

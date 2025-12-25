@@ -18,14 +18,19 @@ const influencers_controller_1 = require("./influencers/influencers.controller")
 const influencers_service_1 = require("./influencers/influencers.service");
 const influencer_revision_service_1 = require("./influencers/services/influencer-revision.service");
 const policy_entity_1 = require("./policies/entities/policy.entity");
+const policy_approval_entity_1 = require("./policies/entities/policy-approval.entity");
+const policy_version_entity_1 = require("./policies/entities/policy-version.entity");
 const control_objective_entity_1 = require("./control-objectives/entities/control-objective.entity");
 const policies_controller_1 = require("./policies/policies.controller");
 const policies_service_1 = require("./policies/policies.service");
+const policy_approval_service_1 = require("./policies/services/policy-approval.service");
+const policy_version_service_1 = require("./policies/services/policy-version.service");
 const control_objectives_controller_1 = require("./control-objectives/control-objectives.controller");
 const control_objectives_service_1 = require("./control-objectives/control-objectives.service");
 const assessment_entity_1 = require("./assessments/entities/assessment.entity");
 const assessment_result_entity_1 = require("./assessments/entities/assessment-result.entity");
 const workflow_execution_entity_1 = require("../workflow/entities/workflow-execution.entity");
+const workflow_entity_1 = require("../workflow/entities/workflow.entity");
 const assessments_controller_1 = require("./assessments/assessments.controller");
 const assessments_service_1 = require("./assessments/assessments.service");
 const governance_dashboard_controller_1 = require("./controllers/governance-dashboard.controller");
@@ -49,6 +54,7 @@ const governance_metric_snapshot_entity_1 = require("./metrics/entities/governan
 const dashboard_email_service_1 = require("./services/dashboard-email.service");
 const remediation_tracking_controller_1 = require("./controllers/remediation-tracking.controller");
 const alerting_service_1 = require("./services/alerting.service");
+const alert_rule_service_1 = require("./services/alert-rule.service");
 const alerting_controller_1 = require("./controllers/alerting.controller");
 const governance_queues_module_1 = require("./queues/governance-queues.module");
 const workflow_module_1 = require("../workflow/workflow.module");
@@ -115,6 +121,15 @@ const alert_entity_1 = require("./entities/alert.entity");
 const alert_rule_entity_1 = require("./entities/alert-rule.entity");
 const alert_subscription_entity_1 = require("./entities/alert-subscription.entity");
 const alert_log_entity_1 = require("./entities/alert-log.entity");
+const governance_framework_config_entity_1 = require("./entities/governance-framework-config.entity");
+const governance_framework_config_service_1 = require("./framework-config/governance-framework-config.service");
+const governance_framework_config_controller_1 = require("./framework-config/governance-framework-config.controller");
+const compliance_report_entity_1 = require("./compliance-reporting/entities/compliance-report.entity");
+const compliance_reporting_service_1 = require("./compliance-reporting/services/compliance-reporting.service");
+const compliance_reporting_controller_1 = require("./compliance-reporting/compliance-reporting.controller");
+const alert_escalation_chain_entity_1 = require("./entities/alert-escalation-chain.entity");
+const alert_escalation_service_1 = require("./services/alert-escalation.service");
+const alert_escalation_controller_1 = require("./controllers/alert-escalation.controller");
 let GovernanceModule = class GovernanceModule {
 };
 exports.GovernanceModule = GovernanceModule;
@@ -140,8 +155,11 @@ exports.GovernanceModule = GovernanceModule = __decorate([
                 sop_step_entity_1.SOPStep,
                 sop_version_entity_1.SOPVersion,
                 compliance_framework_entity_1.ComplianceFramework,
+                workflow_entity_1.Workflow,
                 workflow_execution_entity_1.WorkflowExecution,
                 policy_assignment_entity_1.PolicyAssignment,
+                policy_approval_entity_1.PolicyApproval,
+                policy_version_entity_1.PolicyVersion,
                 user_entity_1.User,
                 business_unit_entity_1.BusinessUnit,
                 governance_permission_entity_1.GovernancePermission,
@@ -157,10 +175,13 @@ exports.GovernanceModule = GovernanceModule = __decorate([
                 remediation_tracker_entity_1.RemediationTracker,
                 evidence_entity_1.Evidence,
                 dashboard_email_schedule_entity_1.DashboardEmailSchedule,
+                governance_framework_config_entity_1.GovernanceFrameworkConfig,
+                compliance_report_entity_1.ComplianceReport,
                 alert_entity_1.Alert,
                 alert_rule_entity_1.AlertRule,
                 alert_subscription_entity_1.AlertSubscription,
                 alert_log_entity_1.AlertLog,
+                alert_escalation_chain_entity_1.AlertEscalationChain,
             ]),
             platform_express_1.MulterModule.register({
                 dest: './uploads',
@@ -203,12 +224,17 @@ exports.GovernanceModule = GovernanceModule = __decorate([
             bulk_data_controller_1.BulkDataController,
             governance_ai_controller_1.GovernanceAIController,
             dashboard_email_controller_1.DashboardEmailController,
+            governance_framework_config_controller_1.GovernanceFrameworkConfigController,
+            compliance_reporting_controller_1.ComplianceReportingController,
             alerting_controller_1.AlertingController,
+            alert_escalation_controller_1.AlertEscalationController,
         ],
         providers: [
             influencers_service_1.InfluencersService,
             influencer_revision_service_1.InfluencerRevisionService,
             policies_service_1.PoliciesService,
+            policy_approval_service_1.PolicyApprovalService,
+            policy_version_service_1.PolicyVersionService,
             control_objectives_service_1.ControlObjectivesService,
             assessments_service_1.AssessmentsService,
             governance_dashboard_service_1.GovernanceDashboardService,
@@ -234,11 +260,17 @@ exports.GovernanceModule = GovernanceModule = __decorate([
             bulk_data_service_1.BulkDataService,
             governance_ai_service_1.GovernanceAIService,
             dashboard_email_service_1.DashboardEmailService,
+            governance_framework_config_service_1.GovernanceFrameworkConfigService,
+            compliance_reporting_service_1.ComplianceReportingService,
             alerting_service_1.AlertingService,
+            alert_rule_service_1.AlertRuleService,
+            alert_escalation_service_1.AlertEscalationService,
         ],
         exports: [
             influencers_service_1.InfluencersService,
             policies_service_1.PoliciesService,
+            policy_approval_service_1.PolicyApprovalService,
+            policy_version_service_1.PolicyVersionService,
             control_objectives_service_1.ControlObjectivesService,
             assessments_service_1.AssessmentsService,
             governance_dashboard_service_1.GovernanceDashboardService,
@@ -267,6 +299,8 @@ exports.GovernanceModule = GovernanceModule = __decorate([
             findings_module_1.FindingsModule,
             unified_controls_module_1.UnifiedControlsModule,
             alerting_service_1.AlertingService,
+            alert_rule_service_1.AlertRuleService,
+            alert_escalation_service_1.AlertEscalationService,
         ],
     })
 ], GovernanceModule);

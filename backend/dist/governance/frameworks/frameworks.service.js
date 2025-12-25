@@ -25,6 +25,19 @@ let FrameworksService = class FrameworksService {
         this.requirementRepository = requirementRepository;
         this.versionRepository = versionRepository;
     }
+    async getAllFrameworks() {
+        return this.frameworkRepository.find({
+            where: { status: compliance_framework_entity_1.FrameworkStatus.ACTIVE },
+            order: { name: 'ASC' },
+        });
+    }
+    async getFramework(id) {
+        const framework = await this.frameworkRepository.findOne({ where: { id } });
+        if (!framework) {
+            throw new common_1.NotFoundException(`Framework with ID ${id} not found`);
+        }
+        return framework;
+    }
     async createVersion(frameworkId, createDto, userId) {
         const framework = await this.frameworkRepository.findOne({ where: { id: frameworkId } });
         if (!framework) {
@@ -158,6 +171,106 @@ let FrameworksService = class FrameworksService {
             order: { display_order: 'ASC', requirement_identifier: 'ASC' },
         });
         return Object.assign(Object.assign({}, framework), { requirements });
+    }
+    async getFrameworkRequirements(frameworkId) {
+        const framework = await this.frameworkRepository.findOne({ where: { id: frameworkId } });
+        if (!framework) {
+            throw new common_1.NotFoundException(`Framework with ID ${frameworkId} not found`);
+        }
+        return this.requirementRepository.find({
+            where: { framework_id: frameworkId },
+            order: { display_order: 'ASC', requirement_identifier: 'ASC' },
+        });
+    }
+    async getFrameworkDomains(frameworkId) {
+        var _a;
+        const framework = await this.frameworkRepository.findOne({ where: { id: frameworkId } });
+        if (!framework) {
+            throw new common_1.NotFoundException(`Framework with ID ${frameworkId} not found`);
+        }
+        const domains = [];
+        if ((_a = framework.structure) === null || _a === void 0 ? void 0 : _a.domains) {
+            framework.structure.domains.forEach((domain) => {
+                if (domain.name && !domains.includes(domain.name)) {
+                    domains.push(domain.name);
+                }
+            });
+        }
+        return domains;
+    }
+    async getFrameworkCategories(frameworkId, domain) {
+        var _a;
+        const framework = await this.frameworkRepository.findOne({ where: { id: frameworkId } });
+        if (!framework) {
+            throw new common_1.NotFoundException(`Framework with ID ${frameworkId} not found`);
+        }
+        const categories = [];
+        if ((_a = framework.structure) === null || _a === void 0 ? void 0 : _a.domains) {
+            framework.structure.domains.forEach((d) => {
+                var _a;
+                if (!domain || d.name === domain) {
+                    (_a = d.categories) === null || _a === void 0 ? void 0 : _a.forEach((category) => {
+                        if (category.name && !categories.includes(category.name)) {
+                            categories.push(category.name);
+                        }
+                    });
+                }
+            });
+        }
+        return categories;
+    }
+    async getFrameworkStatistics(frameworkId) {
+        var _a;
+        const framework = await this.frameworkRepository.findOne({ where: { id: frameworkId } });
+        if (!framework) {
+            throw new common_1.NotFoundException(`Framework with ID ${frameworkId} not found`);
+        }
+        let totalDomains = 0;
+        let totalCategories = 0;
+        let totalRequirements = 0;
+        if ((_a = framework.structure) === null || _a === void 0 ? void 0 : _a.domains) {
+            totalDomains = framework.structure.domains.length;
+            framework.structure.domains.forEach((domain) => {
+                if (domain.categories) {
+                    totalCategories += domain.categories.length;
+                    domain.categories.forEach((category) => {
+                        if (category.requirements) {
+                            totalRequirements += category.requirements.length;
+                        }
+                    });
+                }
+            });
+        }
+        return {
+            totalDomains,
+            totalCategories,
+            totalRequirements,
+            version: framework.version,
+            status: framework.status,
+        };
+    }
+    async isFrameworkActive(frameworkId) {
+        const framework = await this.frameworkRepository.findOne({ where: { id: frameworkId } });
+        if (!framework) {
+            return false;
+        }
+        return framework.status === compliance_framework_entity_1.FrameworkStatus.ACTIVE;
+    }
+    async getAllActiveFrameworks() {
+        return this.frameworkRepository.find({
+            where: { status: compliance_framework_entity_1.FrameworkStatus.ACTIVE },
+            order: { name: 'ASC' },
+        });
+    }
+    async searchFrameworks(query) {
+        const frameworks = await this.frameworkRepository
+            .createQueryBuilder('framework')
+            .where('framework.name ILIKE :query', { query: `%${query}%` })
+            .orWhere('framework.framework_code ILIKE :query', { query: `%${query}%` })
+            .andWhere('framework.status = :status', { status: 'active' })
+            .orderBy('framework.name', 'ASC')
+            .getMany();
+        return frameworks;
     }
 };
 exports.FrameworksService = FrameworksService;

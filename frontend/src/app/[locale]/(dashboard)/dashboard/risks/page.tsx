@@ -323,6 +323,7 @@ export default function RisksPage() {
         searchPlaceholder="Search risks by title, description, or ID..."
         searchValue={search}
         onSearchChange={setSearch}
+        dataTestId="risk-register-search-input"
         filters={[
           {
             key: 'status',

@@ -129,7 +129,7 @@ export default function SoftwareAssetsPage() {
             <Upload className="h-4 w-4 mr-2" />
             Import
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button onClick={() => setIsCreateOpen(true)} data-testid="assets-software-new-asset-button">
             <Plus className="h-4 w-4 mr-2" />
             New Asset
           </Button>
@@ -208,7 +208,7 @@ export default function SoftwareAssetsPage() {
               {selectedAssets.size} of {data.data.length} selected
             </span>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="assets-software-list">
             {data.data.map((software: any) => {
               const isSelected = selectedAssets.has(software.id);
               return (
@@ -315,7 +315,7 @@ export default function SoftwareAssetsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">No software assets found</p>
-            <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
+            <Button className="mt-4" onClick={() => setIsCreateOpen(true)} data-testid="assets-software-new-asset-button">
               <Plus className="h-4 w-4 mr-2" />
               Create First Software Asset
             </Button>

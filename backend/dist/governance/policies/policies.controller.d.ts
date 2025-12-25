@@ -43,9 +43,6 @@ export declare class PoliciesController {
         data: import("./entities/policy.entity").Policy[];
     }>;
     findOne(id: string): Promise<import("./entities/policy.entity").Policy>;
-    getVersions(id: string): Promise<{
-        data: import("./entities/policy.entity").Policy[];
-    }>;
     update(id: string, updatePolicyDto: UpdatePolicyDto, req: any): Promise<import("./entities/policy.entity").Policy>;
     remove(id: string): Promise<void>;
     uploadAttachment(id: string, file: Express.Multer.File, req: any): Promise<{
@@ -146,5 +143,56 @@ export declare class PoliciesController {
         reason?: string;
     }, req: any): Promise<{
         data: import("./entities/policy.entity").Policy;
+    }>;
+    getVersionsList(id: string): Promise<{
+        data: import("./entities/policy-version.entity").PolicyVersion[];
+    }>;
+    getLatestVersion(id: string): Promise<{
+        data: import("./entities/policy-version.entity").PolicyVersion;
+    }>;
+    createVersion(id: string, body: {
+        content: string;
+        change_summary?: string;
+    }, req: any): Promise<{
+        data: import("./entities/policy-version.entity").PolicyVersion;
+    }>;
+    compareVersions(id: string, body: {
+        version1_id: string;
+        version2_id: string;
+    }): Promise<{
+        data: {
+            version1: import("./entities/policy-version.entity").PolicyVersion;
+            version2: import("./entities/policy-version.entity").PolicyVersion;
+            differences: string[];
+        };
+    }>;
+    getPolicyApprovals(id: string): Promise<{
+        data: import("./entities/policy-approval.entity").PolicyApproval[];
+    }>;
+    getApprovalProgress(id: string): Promise<{
+        data: {
+            total: number;
+            approved: number;
+            rejected: number;
+            pending: number;
+        };
+    }>;
+    requestApprovals(id: string, body: {
+        approver_ids: string[];
+    }): Promise<{
+        data: import("./entities/policy-approval.entity").PolicyApproval[];
+    }>;
+    approvePolicy(approvalId: string, body: {
+        comments?: string;
+    }): Promise<{
+        data: import("./entities/policy-approval.entity").PolicyApproval;
+    }>;
+    rejectPolicy(approvalId: string, body: {
+        comments?: string;
+    }): Promise<{
+        data: import("./entities/policy-approval.entity").PolicyApproval;
+    }>;
+    getPendingApprovalsForSystem(): Promise<{
+        data: import("./entities/policy-approval.entity").PolicyApproval[];
     }>;
 }

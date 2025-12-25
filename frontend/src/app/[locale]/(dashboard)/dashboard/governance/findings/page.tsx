@@ -103,7 +103,7 @@ export default function FindingsPage() {
   if (error) {
     const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || 'Unknown error';
     const statusCode = (error as any)?.response?.status;
-    
+
     return (
       <div className="p-6">
         <div className="text-red-500 space-y-2">
@@ -121,12 +121,12 @@ export default function FindingsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center" data-testid="findings-header">
         <div>
-          <h1 className="text-3xl font-bold">Findings</h1>
+          <h1 className="text-3xl font-bold" data-testid="findings-page-title">Findings</h1>
           <p className="text-muted-foreground">Manage assessment findings and remediation tracking</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={() => setIsCreateOpen(true)} data-testid="add-finding-button">
           <Plus className="mr-2 h-4 w-4" />
           New Finding
         </Button>
@@ -163,27 +163,28 @@ export default function FindingsPage() {
                   options: Object.entries(statusLabels).map(([value, label]) => ({ value, label })),
                 },
               ]}
+              data-testid="findings-filters"
             />
 
             {/* Table */}
             <div className="border rounded-lg">
-              <table className="w-full">
+              <table className="w-full" data-testid="findings-table">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-semibold">Identifier</th>
-                    <th className="p-4 text-left font-semibold">Title</th>
-                    <th className="p-4 text-left font-semibold">Severity</th>
-                    <th className="p-4 text-left font-semibold">Status</th>
-                    <th className="p-4 text-left font-semibold">Finding Date</th>
-                    <th className="p-4 text-left font-semibold">Remediation Due</th>
-                    <th className="p-4 text-left font-semibold">Remediation Owner</th>
-                    <th className="p-4 text-left font-semibold">Control</th>
-                    <th className="p-4 text-right font-semibold">Actions</th>
+                    <th className="p-4 text-left font-semibold" data-testid="findings-table-header-identifier">Identifier</th>
+                    <th className="p-4 text-left font-semibold" data-testid="findings-table-header-title">Title</th>
+                    <th className="p-4 text-left font-semibold" data-testid="findings-table-header-severity">Severity</th>
+                    <th className="p-4 text-left font-semibold" data-testid="findings-table-header-status">Status</th>
+                    <th className="p-4 text-left font-semibold" data-testid="findings-table-header-finding-date">Finding Date</th>
+                    <th className="p-4 text-left font-semibold" data-testid="findings-table-header-remediation-due">Remediation Due</th>
+                    <th className="p-4 text-left font-semibold" data-testid="findings-table-header-remediation-owner">Remediation Owner</th>
+                    <th className="p-4 text-left font-semibold" data-testid="findings-table-header-control">Control</th>
+                    <th className="p-4 text-right font-semibold" data-testid="findings-table-header-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.data.map((finding) => (
-                    <tr key={finding.id} className="border-b hover:bg-muted/50">
+                    <tr key={finding.id} className="border-b hover:bg-muted/50" data-testid={`finding-row-${finding.id}`}>
                       <td className="p-4">
                         <Badge variant="outline">{finding.finding_identifier}</Badge>
                       </td>
@@ -205,10 +206,10 @@ export default function FindingsPage() {
                             finding.status === FindingStatus.CLOSED || finding.status === FindingStatus.RESOLVED
                               ? 'default'
                               : finding.status === FindingStatus.IN_PROGRESS
-                              ? 'secondary'
-                              : finding.status === FindingStatus.ACCEPTED || finding.status === FindingStatus.REJECTED
-                              ? 'outline'
-                              : 'destructive'
+                                ? 'secondary'
+                                : finding.status === FindingStatus.ACCEPTED || finding.status === FindingStatus.REJECTED
+                                  ? 'outline'
+                                  : 'destructive'
                           }
                         >
                           {statusLabels[finding.status]}
@@ -244,13 +245,13 @@ export default function FindingsPage() {
                       </td>
                       <td className="p-4">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleView(finding.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleView(finding.id)} data-testid={`finding-view-button-${finding.id}`}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(finding)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(finding)} data-testid={`finding-edit-button-${finding.id}`}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(finding.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(finding.id)} data-testid={`finding-delete-button-${finding.id}`}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -266,6 +267,8 @@ export default function FindingsPage() {
               <Pagination
                 currentPage={data.meta.page}
                 totalPages={data.meta.totalPages}
+                totalItems={data.meta.total}
+                itemsPerPage={data.meta.limit}
                 onPageChange={(page) => setFilters({ ...filters, page })}
               />
             )}
@@ -275,7 +278,7 @@ export default function FindingsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="finding-dialog">
           <DialogHeader>
             <DialogTitle>{editingFinding ? 'Edit Finding' : 'Create Finding'}</DialogTitle>
             <DialogDescription>

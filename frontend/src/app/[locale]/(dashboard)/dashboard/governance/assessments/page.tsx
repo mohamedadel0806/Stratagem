@@ -93,7 +93,7 @@ export default function AssessmentsPage() {
   if (error) {
     const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || 'Unknown error';
     const statusCode = (error as any)?.response?.status;
-    
+
     return (
       <div className="p-6">
         <div className="text-red-500 space-y-2">
@@ -111,12 +111,12 @@ export default function AssessmentsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center" data-testid="assessments-header">
         <div>
-          <h1 className="text-3xl font-bold">Assessments</h1>
+          <h1 className="text-3xl font-bold" data-testid="assessments-page-title">Assessments</h1>
           <p className="text-muted-foreground">Manage control assessments and compliance evaluations</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={() => setIsCreateOpen(true)} data-testid="add-assessment-button">
           <Plus className="mr-2 h-4 w-4" />
           New Assessment
         </Button>
@@ -153,22 +153,23 @@ export default function AssessmentsPage() {
                   options: Object.entries(statusLabels).map(([value, label]) => ({ value, label })),
                 },
               ]}
+              data-testid="assessments-filters"
             />
 
             {/* Table */}
             <div className="border rounded-lg">
-              <table className="w-full">
+              <table className="w-full" data-testid="assessments-table">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-semibold">Identifier</th>
-                    <th className="p-4 text-left font-semibold">Name</th>
-                    <th className="p-4 text-left font-semibold">Type</th>
-                    <th className="p-4 text-left font-semibold">Status</th>
-                    <th className="p-4 text-left font-semibold">Progress</th>
-                    <th className="p-4 text-left font-semibold">Score</th>
-                    <th className="p-4 text-left font-semibold">Dates</th>
-                    <th className="p-4 text-left font-semibold">Lead Assessor</th>
-                    <th className="p-4 text-right font-semibold">Actions</th>
+                    <th className="p-4 text-left font-semibold" data-testid="assessments-table-header-identifier">Identifier</th>
+                    <th className="p-4 text-left font-semibold" data-testid="assessments-table-header-name">Name</th>
+                    <th className="p-4 text-left font-semibold" data-testid="assessments-table-header-type">Type</th>
+                    <th className="p-4 text-left font-semibold" data-testid="assessments-table-header-status">Status</th>
+                    <th className="p-4 text-left font-semibold" data-testid="assessments-table-header-progress">Progress</th>
+                    <th className="p-4 text-left font-semibold" data-testid="assessments-table-header-score">Score</th>
+                    <th className="p-4 text-left font-semibold" data-testid="assessments-table-header-dates">Dates</th>
+                    <th className="p-4 text-left font-semibold" data-testid="assessments-table-header-lead-assessor">Lead Assessor</th>
+                    <th className="p-4 text-right font-semibold" data-testid="assessments-table-header-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -178,7 +179,7 @@ export default function AssessmentsPage() {
                         ? Math.round((assessment.controls_assessed / assessment.controls_total) * 100)
                         : 0;
                     return (
-                      <tr key={assessment.id} className="border-b hover:bg-muted/50">
+                      <tr key={assessment.id} className="border-b hover:bg-muted/50" data-testid={`assessment-row-${assessment.id}`}>
                         <td className="p-4">
                           <Badge variant="outline">{assessment.assessment_identifier}</Badge>
                         </td>
@@ -197,10 +198,10 @@ export default function AssessmentsPage() {
                               assessment.status === AssessmentStatus.COMPLETED
                                 ? 'default'
                                 : assessment.status === AssessmentStatus.IN_PROGRESS
-                                ? 'secondary'
-                                : assessment.status === AssessmentStatus.CANCELLED
-                                ? 'destructive'
-                                : 'outline'
+                                  ? 'secondary'
+                                  : assessment.status === AssessmentStatus.CANCELLED
+                                    ? 'destructive'
+                                    : 'outline'
                             }
                           >
                             {statusLabels[assessment.status]}
@@ -259,13 +260,13 @@ export default function AssessmentsPage() {
                         </td>
                         <td className="p-4">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleView(assessment.id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleView(assessment.id)} data-testid={`assessment-view-button-${assessment.id}`}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(assessment)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(assessment)} data-testid={`assessment-edit-button-${assessment.id}`}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(assessment.id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(assessment.id)} data-testid={`assessment-delete-button-${assessment.id}`}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -282,6 +283,8 @@ export default function AssessmentsPage() {
               <Pagination
                 currentPage={data.meta.page}
                 totalPages={data.meta.totalPages}
+                totalItems={data.meta.total}
+                itemsPerPage={data.meta.limit}
                 onPageChange={(page) => setFilters({ ...filters, page })}
               />
             )}
@@ -291,7 +294,7 @@ export default function AssessmentsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="assessment-dialog">
           <DialogHeader>
             <DialogTitle>{editingAssessment ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
             <DialogDescription>

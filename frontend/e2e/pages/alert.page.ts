@@ -23,10 +23,10 @@ export class AlertPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.createAlertRuleButton = page.getByRole('button', { name: 'Create Alert Rule' });
-    this.createSubscriptionButton = page.getByRole('button', { name: 'Create Subscription' });
-    this.alertsList = page.locator('[data-testid="alerts-list"]');
-    this.alertRulesList = page.locator('[data-testid="alert-rules-list"]');
+    this.createAlertRuleButton = page.getByRole('button', { name: /Create Rule/i });
+    this.createSubscriptionButton = page.getByRole('button', { name: /Create Subscription|Add Subscription/i });
+    this.alertsList = page.getByTestId('alerts-list').or(page.locator('.space-y-4').filter({ hasText: /Active Alerts/i }));
+    this.alertRulesList = page.getByTestId('alert-rules-list').or(page.locator('.space-y-4').filter({ hasText: /Alert Rules/i }));
     this.alertFormDialog = page.getByRole('dialog');
     this.ruleNameInput = page.getByLabel('Rule Name');
     this.ruleDescriptionTextarea = page.getByLabel('Description');
@@ -41,18 +41,33 @@ export class AlertPage {
 
   async goto() {
     await this.page.goto('/en/dashboard/governance/alerts');
-    await this.page.waitForLoadState('domcontentloaded');
+    // Wait for the page to be ready by checking for the title or a list
+    await expect(this.page.locator('h1').filter({ hasText: /Alert/i }).or(this.alertsList).first()).toBeVisible({ timeout: 15000 });
   }
+
+
 
   async gotoRules() {
-    await this.page.goto('/en/dashboard/governance/alerts/rules');
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.goto();
+    // Tab list might re-render, wait a bit
+    await this.page.waitForTimeout(WAIT_SMALL);
+    const rulesTab = this.page.getByRole('tab', { name: /Rules/i });
+    await rulesTab.waitFor({ state: 'visible' });
+    await rulesTab.click();
+    await expect(this.page.locator('h1').filter({ hasText: /Alert/i }).or(this.alertRulesList).first()).toBeVisible({ timeout: 15000 });
   }
 
+
   async gotoSubscriptions() {
-    await this.page.goto('/en/dashboard/governance/alerts/subscriptions');
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.goto();
+    // Tab list might re-render, wait a bit
+    await this.page.waitForTimeout(WAIT_SMALL);
+    const subsTab = this.page.getByRole('tab', { name: /Subscriptions/i });
+    await subsTab.waitFor({ state: 'visible' });
+    await subsTab.click();
+    await expect(this.page.locator('h1').filter({ hasText: /Alert/i }).or(this.page.getByText(/Subscriptions/i)).first()).toBeVisible({ timeout: 15000 });
   }
+
 
   async createAlertRule(data: {
     name: string;
@@ -62,6 +77,7 @@ export class AlertPage {
     severity: string;
     alertMessage: string;
   }) {
+    await this.gotoRules();
     await this.createAlertRuleButton.click();
     await expect(this.alertFormDialog).toBeVisible();
 
@@ -89,6 +105,7 @@ export class AlertPage {
     channels: string[];
     frequency: string;
   }) {
+    await this.gotoSubscriptions();
     await this.createSubscriptionButton.click();
     await expect(this.alertFormDialog).toBeVisible();
 
@@ -126,6 +143,18 @@ export class AlertPage {
     await this.page.getByLabel('Resolution Notes').fill(resolution);
     await this.page.getByRole('button', { name: 'Resolve Alert' }).click();
     await expect(this.page.getByText('Resolved')).toBeVisible();
+  }
+  async openAlertDetail(alertTitle: string) {
+    // Locate the alert row by title and click its view/details button or link
+    const row = this.page.getByText(alertTitle).locator('..');
+    const link = row.locator('a').first();
+    if (await link.isVisible()) {
+      await link.click();
+    } else {
+      const viewBtn = row.getByRole('button', { name: /View|Details/i }).first();
+      await viewBtn.click();
+    }
+    await expect(this.page.locator('h1')).toContainText('Alert', { timeout: 10000 });
   }
 
   async filterAlerts(filters: { status?: string; severity?: string; type?: string }) {

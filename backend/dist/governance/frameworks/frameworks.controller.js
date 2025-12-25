@@ -25,6 +25,12 @@ let FrameworksController = class FrameworksController {
     constructor(frameworksService) {
         this.frameworksService = frameworksService;
     }
+    getAllFrameworks() {
+        return this.frameworksService.getAllFrameworks();
+    }
+    getFramework(id) {
+        return this.frameworksService.getFramework(id);
+    }
     createVersion(id, createDto, req) {
         return this.frameworksService.createVersion(id, createDto, req.user.id);
     }
@@ -69,6 +75,24 @@ let FrameworksController = class FrameworksController {
     getFrameworkWithStructure(id) {
         return this.frameworksService.getFrameworkWithStructure(id);
     }
+    getFrameworkRequirements(id) {
+        return this.frameworksService.getFrameworkRequirements(id);
+    }
+    getFrameworkDomains(id) {
+        return this.frameworksService.getFrameworkDomains(id);
+    }
+    getFrameworkCategories(id, domain) {
+        return this.frameworksService.getFrameworkCategories(id, domain);
+    }
+    getFrameworkStatistics(id) {
+        return this.frameworksService.getFrameworkStatistics(id);
+    }
+    isFrameworkActive(id) {
+        return this.frameworksService.isFrameworkActive(id);
+    }
+    searchFrameworks(query) {
+        return this.frameworksService.searchFrameworks(query);
+    }
     async parseCSVToStructure(buffer) {
         const csvContent = buffer.toString('utf-8');
         const records = (0, sync_1.parse)(csvContent, {
@@ -103,6 +127,19 @@ let FrameworksController = class FrameworksController {
     }
 };
 exports.FrameworksController = FrameworksController;
+__decorate([
+    (0, common_1.Get)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], FrameworksController.prototype, "getAllFrameworks", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], FrameworksController.prototype, "getFramework", null);
 __decorate([
     (0, common_1.Post)(':id/versions'),
     (0, audit_decorator_1.Audit)(audit_log_entity_1.AuditAction.CREATE, 'FrameworkVersion', { description: 'Created new framework version' }),
@@ -167,6 +204,49 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], FrameworksController.prototype, "getFrameworkWithStructure", null);
+__decorate([
+    (0, common_1.Get)(':id/requirements'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], FrameworksController.prototype, "getFrameworkRequirements", null);
+__decorate([
+    (0, common_1.Get)(':id/domains'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], FrameworksController.prototype, "getFrameworkDomains", null);
+__decorate([
+    (0, common_1.Get)(':id/categories'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)('domain')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], FrameworksController.prototype, "getFrameworkCategories", null);
+__decorate([
+    (0, common_1.Get)(':id/statistics'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], FrameworksController.prototype, "getFrameworkStatistics", null);
+__decorate([
+    (0, common_1.Get)(':id/active'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], FrameworksController.prototype, "isFrameworkActive", null);
+__decorate([
+    (0, common_1.Get)('search/:query'),
+    __param(0, (0, common_1.Param)('query')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], FrameworksController.prototype, "searchFrameworks", null);
 exports.FrameworksController = FrameworksController = __decorate([
     (0, common_1.Controller)('governance/frameworks'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

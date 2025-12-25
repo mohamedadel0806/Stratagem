@@ -103,12 +103,6 @@ export class PoliciesController {
     return this.policiesService.findOne(id);
   }
 
-  @Get(':id/versions')
-  async getVersions(@Param('id') id: string) {
-    const versions = await this.policiesService.findVersions(id);
-    return { data: versions };
-  }
-
   @Patch(':id')
   @Audit(AuditAction.UPDATE, 'Policy')
   update(@Param('id') id: string, @Body() updatePolicyDto: UpdatePolicyDto, @Request() req) {
@@ -417,6 +411,132 @@ export class PoliciesController {
       body.reason,
     );
     return { data: result };
+  }
+
+  // ============ Policy Version Endpoints (Story 2.1) ============
+
+  @Get(':id/versions-list')
+  @ApiOperation({ summary: 'Get all versions of a policy' })
+  @ApiResponse({ status: 200, description: 'List of policy versions' })
+  async getVersionsList(@Param('id') id: string) {
+    const versions = await this.policiesService.getPolicyVersions(id);
+    return { data: versions };
+  }
+
+  @Get(':id/versions/latest')
+  @ApiOperation({ summary: 'Get the latest version of a policy' })
+  @ApiResponse({ status: 200, description: 'Latest policy version' })
+  async getLatestVersion(@Param('id') id: string) {
+    const version = await this.policiesService.getLatestPolicyVersion(id);
+    return { data: version };
+  }
+
+  @Post(':id/versions/create')
+  @HttpCode(HttpStatus.CREATED)
+  @Audit(AuditAction.CREATE, 'PolicyVersion')
+  @ApiOperation({ summary: 'Create a new version of a policy' })
+  @ApiResponse({ status: 201, description: 'Version created successfully' })
+  async createVersion(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      content: string;
+      change_summary?: string;
+    },
+    @Request() req,
+  ) {
+    const version = await this.policiesService.createVersion(
+      id,
+      body.content,
+      body.change_summary || '',
+      req.user.id,
+    );
+    return { data: version };
+  }
+
+  @Post(':id/versions/compare')
+  @ApiOperation({ summary: 'Compare two policy versions' })
+  @ApiResponse({ status: 200, description: 'Version comparison results' })
+  async compareVersions(
+    @Param('id') id: string,
+    @Body() body: { version1_id: string; version2_id: string },
+  ) {
+    const comparison = await this.policiesService.comparePolicyVersions(
+      body.version1_id,
+      body.version2_id,
+    );
+    return { data: comparison };
+  }
+
+  // ============ Policy Approval Endpoints (Story 2.2) ============
+
+  @Get(':id/approvals')
+  @ApiOperation({ summary: 'Get all approvals for a policy' })
+  @ApiResponse({ status: 200, description: 'List of policy approvals' })
+  async getPolicyApprovals(@Param('id') id: string) {
+    const approvals = await this.policiesService.getPolicyApprovals(id);
+    return { data: approvals };
+  }
+
+  @Get(':id/approvals/progress')
+  @ApiOperation({ summary: 'Get approval progress for a policy' })
+  @ApiResponse({ status: 200, description: 'Approval progress' })
+  async getApprovalProgress(@Param('id') id: string) {
+    const progress = await this.policiesService.getApprovalProgress(id);
+    return { data: progress };
+  }
+
+  @Post(':id/approvals/request')
+  @HttpCode(HttpStatus.CREATED)
+  @Audit(AuditAction.CREATE, 'PolicyApproval')
+  @ApiOperation({ summary: 'Request approvals for a policy' })
+  @ApiResponse({ status: 201, description: 'Approvals requested' })
+  async requestApprovals(
+    @Param('id') id: string,
+    @Body() body: { approver_ids: string[] },
+  ) {
+    const approvals = await this.policiesService.requestApprovals(id, body.approver_ids);
+    return { data: approvals };
+  }
+
+  @Post('approvals/:approval_id/approve')
+  @HttpCode(HttpStatus.OK)
+  @Audit(AuditAction.UPDATE, 'PolicyApproval')
+  @ApiOperation({ summary: 'Approve a policy' })
+  @ApiResponse({ status: 200, description: 'Policy approved' })
+  async approvePolicy(
+    @Param('approval_id') approvalId: string,
+    @Body() body: { comments?: string },
+  ) {
+    const approval = await this.policiesService.approvePolicy(
+      approvalId,
+      body.comments,
+    );
+    return { data: approval };
+  }
+
+  @Post('approvals/:approval_id/reject')
+  @HttpCode(HttpStatus.OK)
+  @Audit(AuditAction.UPDATE, 'PolicyApproval')
+  @ApiOperation({ summary: 'Reject a policy approval' })
+  @ApiResponse({ status: 200, description: 'Policy rejected' })
+  async rejectPolicy(
+    @Param('approval_id') approvalId: string,
+    @Body() body: { comments?: string },
+  ) {
+    const approval = await this.policiesService.rejectPolicy(
+      approvalId,
+      body.comments,
+    );
+    return { data: approval };
+  }
+
+  @Get('approvals/pending/all')
+  @ApiOperation({ summary: 'Get all pending approvals' })
+  @ApiResponse({ status: 200, description: 'List of pending approvals' })
+  async getPendingApprovalsForSystem() {
+    const approvals = await this.policiesService.getPendingApprovalsForSystem();
+    return { data: approvals };
   }
 }
 

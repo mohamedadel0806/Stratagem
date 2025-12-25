@@ -120,13 +120,14 @@ export default function SoftwareAssetDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+          <Button variant="outline" onClick={() => setIsEditOpen(true)} data-testid="asset-edit-button">
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
           <Button
             variant="destructive"
             onClick={() => setIsDeleteDialogOpen(true)}
+            data-testid="asset-delete-button"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
@@ -136,14 +137,13 @@ export default function SoftwareAssetDetailPage() {
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="licensing">Licensing</TabsTrigger>
-          <TabsTrigger value="vendor">Vendor</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          <TabsTrigger value="risks">Risks</TabsTrigger>
-          <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-          <TabsTrigger value="graph">Graph View</TabsTrigger>
-          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
+          <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+          <TabsTrigger value="licensing" data-testid="tab-licensing">Licensing</TabsTrigger>
+          <TabsTrigger value="vendor" data-testid="tab-vendor">Vendor</TabsTrigger>
+          <TabsTrigger value="compliance" data-testid="tab-compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="risks" data-testid="tab-risks">Risks</TabsTrigger>
+          <TabsTrigger value="dependencies" data-testid="tab-dependencies">Dependencies</TabsTrigger>
+          <TabsTrigger value="graph" data-testid="tab-graph">Graph View</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">

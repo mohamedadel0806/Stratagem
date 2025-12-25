@@ -124,7 +124,7 @@ export default function UnifiedControlsPage() {
   if (error) {
     const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || 'Unknown error';
     const statusCode = (error as any)?.response?.status;
-    
+
     return (
       <div className="p-6">
         <div className="text-red-500 space-y-2">
@@ -142,14 +142,14 @@ export default function UnifiedControlsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center" data-testid="controls-header">
         <div>
-          <h1 className="text-3xl font-bold">Unified Controls</h1>
+          <h1 className="text-3xl font-bold" data-testid="controls-page-title">Unified Controls</h1>
           <p className="text-muted-foreground">Manage unified control library with multi-framework mapping</p>
         </div>
         <div className="flex items-center gap-2">
-          <BulkAssetControlAssignment />
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <BulkAssetControlAssignment data-testid="bulk-asset-control-assignment-button" />
+          <Button onClick={() => setIsCreateOpen(true)} data-testid="add-control-button">
             <Plus className="mr-2 h-4 w-4" />
             Add Control
           </Button>
@@ -207,26 +207,27 @@ export default function UnifiedControlsPage() {
                   ],
                 },
               ]}
+              data-testid="controls-filters"
             />
 
             {/* Table */}
             <div className="border rounded-lg">
-              <table className="w-full">
+              <table className="w-full" data-testid="controls-table">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-semibold">Identifier</th>
-                    <th className="p-4 text-left font-semibold">Title</th>
-                    <th className="p-4 text-left font-semibold">Type</th>
-                    <th className="p-4 text-left font-semibold">Status</th>
-                    <th className="p-4 text-left font-semibold">Implementation</th>
-                    <th className="p-4 text-left font-semibold">Domain</th>
-                    <th className="p-4 text-left font-semibold">Owner</th>
-                    <th className="p-4 text-right font-semibold">Actions</th>
+                    <th className="p-4 text-left font-semibold" data-testid="controls-table-header-identifier">Identifier</th>
+                    <th className="p-4 text-left font-semibold" data-testid="controls-table-header-title">Title</th>
+                    <th className="p-4 text-left font-semibold" data-testid="controls-table-header-type">Type</th>
+                    <th className="p-4 text-left font-semibold" data-testid="controls-table-header-status">Status</th>
+                    <th className="p-4 text-left font-semibold" data-testid="controls-table-header-implementation">Implementation</th>
+                    <th className="p-4 text-left font-semibold" data-testid="controls-table-header-domain">Domain</th>
+                    <th className="p-4 text-left font-semibold" data-testid="controls-table-header-owner">Owner</th>
+                    <th className="p-4 text-right font-semibold" data-testid="controls-table-header-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.data.map((control) => (
-                    <tr key={control.id} className="border-b hover:bg-muted/50">
+                    <tr key={control.id} className="border-b hover:bg-muted/50" data-testid={`control-row-${control.id}`}>
                       <td className="p-4">
                         <Badge variant="outline">{control.control_identifier}</Badge>
                       </td>
@@ -247,8 +248,8 @@ export default function UnifiedControlsPage() {
                             control.status === ControlStatus.ACTIVE
                               ? 'default'
                               : control.status === ControlStatus.DRAFT
-                              ? 'outline'
-                              : 'secondary'
+                                ? 'outline'
+                                : 'secondary'
                           }
                         >
                           {statusLabels[control.status]}
@@ -260,8 +261,8 @@ export default function UnifiedControlsPage() {
                             control.implementation_status === ImplementationStatus.IMPLEMENTED
                               ? 'default'
                               : control.implementation_status === ImplementationStatus.IN_PROGRESS
-                              ? 'secondary'
-                              : 'outline'
+                                ? 'secondary'
+                                : 'outline'
                           }
                         >
                           {implementationLabels[control.implementation_status]}
@@ -275,13 +276,13 @@ export default function UnifiedControlsPage() {
                       </td>
                       <td className="p-4">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleView(control.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleView(control.id)} data-testid={`control-view-button-${control.id}`}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(control)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(control)} data-testid={`control-edit-button-${control.id}`}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(control.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(control.id)} data-testid={`control-delete-button-${control.id}`}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -297,6 +298,8 @@ export default function UnifiedControlsPage() {
               <Pagination
                 currentPage={data.meta.page}
                 totalPages={data.meta.totalPages}
+                totalItems={data.meta.total}
+                itemsPerPage={data.meta.limit}
                 onPageChange={(page) => setFilters({ ...filters, page })}
               />
             )}
@@ -306,7 +309,7 @@ export default function UnifiedControlsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="control-dialog">
           <DialogHeader>
             <DialogTitle>{editingControl ? 'Edit Control' : 'Create Control'}</DialogTitle>
             <DialogDescription>

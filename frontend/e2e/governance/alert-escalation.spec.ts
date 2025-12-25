@@ -3,7 +3,7 @@
  * Tests complete alert escalation workflow: Alert Creation → Auto-Escalation Chain → Manual Escalation → Resolution
  */
 
-import { test } from '../fixtures/auth';
+import { test } from '../fixtures/auth-storage';
 import { expect } from '@playwright/test';
 import { AlertPage } from '../pages/alert.page';
 
@@ -207,7 +207,7 @@ test.describe('Alert Escalation E2E', () => {
       await resolveSection.scrollIntoViewIfNeeded();
 
       // Fill resolution notes
-      const notesTextarea = authenticatedPage.locator('textarea').filter({ hasAttribute: 'placeholder', hasText: /resolution notes/i) });
+      const notesTextarea = authenticatedPage.locator('textarea').filter({ hasText: /resolution notes/i }).first();
       if (await notesTextarea.isVisible()) {
         await notesTextarea.fill('E2E test resolution - cascading to escalation chain');
       }
@@ -263,7 +263,7 @@ test.describe('Alert Escalation E2E', () => {
         console.log(`✅ Found ${count} escalation history entries`);
 
         // Verify timestamps are displayed
-        const timestamps = authenticatedPage.locator('div').filter({ hasText: /\\d{1,2}\\/\\d{1,2}\\/\\d{4}/ });
+        const timestamps = authenticatedPage.locator('div').filter({ hasText: /\d{1,2}\/\d{1,2}\/\d{4}/ });
         if (await timestamps.first().isVisible()) {
           console.log('✅ Escalation timestamps are displayed');
         }

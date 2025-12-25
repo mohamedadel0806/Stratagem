@@ -37,8 +37,7 @@ export class AssetDetailsPage {
    */
   async navigateToAsset(assetUrl: string): Promise<void> {
     await this.page.goto(assetUrl);
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(3000);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -69,7 +68,7 @@ export class AssetDetailsPage {
       const isVisible = await tab.isVisible().catch(() => false);
       if (isVisible) {
         await tab.click();
-        await this.page.waitForTimeout(2000);
+        await this.page.waitForLoadState('domcontentloaded');
         return;
       }
     }
@@ -80,14 +79,14 @@ export class AssetDetailsPage {
 
     if (roleTabVisible) {
       await roleTab.click();
-      await this.page.waitForTimeout(2000);
+      await this.page.waitForLoadState('domcontentloaded');
       return;
     }
 
     // Final fallback - try text-based approach
     const genericTab = this.page.locator(`button:has-text("${tabName}")`).first();
     await genericTab.click();
-    await this.page.waitForTimeout(2000);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -144,7 +143,7 @@ export class AssetDetailsPage {
    */
   async clickControlsTab(): Promise<void> {
     await this.controlsTab.click();
-    await this.page.waitForTimeout(2000);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -152,7 +151,7 @@ export class AssetDetailsPage {
    */
   async clickRisksTab(): Promise<void> {
     await this.risksTab.click();
-    await this.page.waitForTimeout(2000);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -160,7 +159,7 @@ export class AssetDetailsPage {
    */
   async clickDependenciesTab(): Promise<void> {
     await this.dependenciesTab.click();
-    await this.page.waitForTimeout(2000);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -202,7 +201,7 @@ export class ControlsTabPage {
    */
   async clickLinkControlsButton(): Promise<void> {
     await this.linkControlsButton.click();
-    await this.page.waitForTimeout(3000);
+    await expect(this.modal).toBeVisible({ timeout: 5000 });
   }
 
   /**
@@ -231,7 +230,7 @@ export class ControlsTabPage {
         const ariaChecked = await checkbox.getAttribute('aria-checked');
         if (ariaChecked !== 'true') {
           await checkbox.click();
-          await this.page.waitForTimeout(500);
+          await expect(checkbox).toHaveAttribute('aria-checked', 'true', { timeout: 1000 });
         }
       }
     }
@@ -246,7 +245,7 @@ export class ControlsTabPage {
 
     if (isEnabled) {
       await linkButton.click();
-      await this.page.waitForTimeout(5000);
+      await expect(this.modal).not.toBeVisible({ timeout: 10000 });
     } else {
       throw new Error('Link button is not enabled. Please select controls first.');
     }
@@ -259,7 +258,7 @@ export class ControlsTabPage {
     const modalVisible = await this.modal.isVisible();
     if (modalVisible) {
       await this.modalCloseButton.click();
-      await this.page.waitForTimeout(2000);
+      await expect(this.modal).not.toBeVisible({ timeout: 5000 });
     }
   }
 }
@@ -291,7 +290,7 @@ export class RisksTabPage {
    */
   async clickLinkRiskButton(): Promise<void> {
     await this.linkRiskButton.first().click();
-    await this.page.waitForTimeout(3000);
+    await expect(this.modal).toBeVisible({ timeout: 5000 });
   }
 
   /**
@@ -299,7 +298,7 @@ export class RisksTabPage {
    */
   async searchForRisk(searchTerm: string): Promise<void> {
     await this.riskSearchInput.fill(searchTerm);
-    await this.page.waitForTimeout(2000);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -307,7 +306,7 @@ export class RisksTabPage {
    */
   async openRiskDropdown(): Promise<void> {
     await this.riskDropdownTrigger.click();
-    await this.page.waitForTimeout(2000);
+    await expect(this.riskDropdownTrigger).toHaveAttribute('aria-expanded', 'true', { timeout: 3000 });
   }
 
   /**
@@ -316,7 +315,7 @@ export class RisksTabPage {
   async selectRiskByIndex(index: number): Promise<void> {
     const riskOption = this.page.locator(`[data-testid="risk-option-${index}"]`);
     await riskOption.click();
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -331,7 +330,7 @@ export class RisksTabPage {
    */
   async linkSelectedRisk(): Promise<void> {
     await this.riskDialogSubmitButton.click();
-    await this.page.waitForTimeout(5000);
+    await expect(this.modal).not.toBeVisible({ timeout: 10000 });
   }
 
   /**
@@ -341,7 +340,7 @@ export class RisksTabPage {
     const modalVisible = await this.modal.isVisible();
     if (modalVisible) {
       await this.modalCloseButton.click();
-      await this.page.waitForTimeout(2000);
+      await expect(this.modal).not.toBeVisible({ timeout: 5000 });
     }
   }
 
@@ -415,18 +414,17 @@ export class DependenciesTabPage {
    */
   async clickAddDependencyButton(): Promise<void> {
     await this.addDependencyButton.first().click();
-    await this.page.waitForTimeout(3000);
+    await expect(this.modal).toBeVisible({ timeout: 5000 });
   }
 
   /**
    * Search for target assets
    */
   async searchForAssets(searchTerm: string): Promise<void> {
-    // Find the search input within the modal
     const modalSearchInput = await this.modal.locator('input[placeholder*="Search"]').first();
     if (await modalSearchInput.isVisible()) {
       await modalSearchInput.fill(searchTerm);
-      await this.page.waitForTimeout(2000);
+      await this.page.waitForLoadState('domcontentloaded');
     }
   }
 
@@ -434,7 +432,6 @@ export class DependenciesTabPage {
    * Select target asset type
    */
   async selectTargetAssetType(assetType: string): Promise<void> {
-    // Look for the target type selector within the modal
     const selects = await this.modal.locator('select').all();
     for (const select of selects) {
       try {
@@ -443,7 +440,7 @@ export class DependenciesTabPage {
           const text = await option.textContent();
           if (text && text.toLowerCase().includes(assetType.toLowerCase())) {
             await select.selectOption({ label: text });
-            await this.page.waitForTimeout(1000);
+            await this.page.waitForLoadState('domcontentloaded');
             return;
           }
         }
@@ -457,7 +454,6 @@ export class DependenciesTabPage {
    * Select relationship type
    */
   async selectRelationshipType(relationshipType: string): Promise<void> {
-    // Look for relationship type selector
     const selects = await this.modal.locator('select').all();
     for (const select of selects) {
       try {
@@ -466,7 +462,7 @@ export class DependenciesTabPage {
           const value = await option.getAttribute('value');
           if (value === relationshipType) {
             await select.selectOption({ value });
-            await this.page.waitForTimeout(1000);
+            await this.page.waitForLoadState('domcontentloaded');
             return;
           }
         }
@@ -483,6 +479,7 @@ export class DependenciesTabPage {
     const textarea = await this.modal.locator('textarea').first();
     if (await textarea.isVisible()) {
       await textarea.fill(description);
+      await expect(textarea).toHaveValue(description);
     }
   }
 
@@ -493,7 +490,7 @@ export class DependenciesTabPage {
     const createButton = await this.createDependencyButton.first();
     if (await createButton.isVisible() && await createButton.isEnabled()) {
       await createButton.click();
-      await this.page.waitForTimeout(5000);
+      await expect(this.modal).not.toBeVisible({ timeout: 10000 });
     }
   }
 
@@ -504,7 +501,7 @@ export class DependenciesTabPage {
     const modalVisible = await this.modal.isVisible();
     if (modalVisible) {
       await this.modalCloseButton.click();
-      await this.page.waitForTimeout(2000);
+      await expect(this.modal).not.toBeVisible({ timeout: 5000 });
     }
   }
 
