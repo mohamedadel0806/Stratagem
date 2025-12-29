@@ -16,7 +16,7 @@ export class FrameworksService {
     private requirementRepository: Repository<FrameworkRequirement>,
     @InjectRepository(FrameworkVersion)
     private versionRepository: Repository<FrameworkVersion>,
-  ) {}
+  ) { }
 
   async getAllFrameworks(): Promise<ComplianceFramework[]> {
     return this.frameworkRepository.find({
@@ -70,7 +70,7 @@ export class FrameworksService {
       await this.frameworkRepository.update(frameworkId, {
         version: createDto.version,
         structure: createDto.structure || framework.structure,
-        updated_by: userId,
+        updatedBy: userId,
       });
     }
 
@@ -115,7 +115,7 @@ export class FrameworksService {
     await this.frameworkRepository.update(frameworkId, {
       version: frameworkVersion.version,
       structure: frameworkVersion.structure,
-      updated_by: userId,
+      updatedBy: userId,
     });
 
     return frameworkVersion;
@@ -188,7 +188,7 @@ export class FrameworksService {
     if (importDto.version) {
       framework.version = importDto.version;
     }
-    framework.updated_by = userId;
+    framework.updatedBy = userId;
     await this.frameworkRepository.save(framework);
 
     // Create version if requested

@@ -381,6 +381,8 @@ export interface ControlDomain {
   code?: string;
   display_order: number;
   is_active: boolean;
+  tenantId?: string;
+  tenant_id?: string;
   created_by?: string;
   creator?: {
     id: string;
@@ -808,6 +810,8 @@ export interface Standard {
   control_objectives?: ControlObjective[];
   created_at: string;
   updated_at: string;
+  tenantId?: string;
+  tenant_id?: string;
 }
 
 export interface CreateStandardData {
@@ -1311,92 +1315,6 @@ export interface PolicyExceptionQueryParams {
 
 export interface PolicyExceptionListResponse {
   data: PolicyException[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-// SOP Types
-export interface SOP {
-  id: string;
-  sop_identifier: string;
-  title: string;
-  category?: SOPCategory;
-  subcategory?: string;
-  purpose?: string;
-  scope?: string;
-  content?: string;
-  version?: string;
-  status: SOPStatus;
-  owner_id?: string;
-  owner?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
-  review_frequency?: string;
-  next_review_date?: string;
-  linked_policies?: string[];
-  linked_standards?: string[];
-  controls?: {
-    id: string;
-    control_identifier: string;
-    title: string;
-  }[];
-  tags?: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export enum SOPStatus {
-  DRAFT = 'draft',
-  IN_REVIEW = 'in_review',
-  APPROVED = 'approved',
-  PUBLISHED = 'published',
-  ARCHIVED = 'archived',
-}
-
-export enum SOPCategory {
-  OPERATIONAL = 'operational',
-  SECURITY = 'security',
-  COMPLIANCE = 'compliance',
-  THIRD_PARTY = 'third_party',
-}
-
-export interface CreateSOPData {
-  sop_identifier: string;
-  title: string;
-  category?: SOPCategory;
-  subcategory?: string;
-  purpose?: string;
-  scope?: string;
-  content?: string;
-  version?: string;
-  status?: SOPStatus;
-  owner_id?: string;
-  review_frequency?: string;
-  next_review_date?: string;
-  linked_policies?: string[];
-  linked_standards?: string[];
-  control_ids?: string[];
-  tags?: string[];
-}
-
-export interface UpdateSOPData extends Partial<CreateSOPData> { }
-
-export interface SOPQueryParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  status?: SOPStatus;
-  category?: SOPCategory;
-  owner_id?: string;
-  sort?: string;
-}
-
-export interface SOPListResponse {
-  data: SOP[];
   meta: {
     page: number;
     limit: number;
@@ -1577,6 +1495,7 @@ export interface CreateAlertRuleDto {
   severityScore: number;
   alertMessage?: string;
   filters?: Record<string, any>;
+  isActive?: boolean;
 }
 
 export interface CreateAlertSubscriptionDto {
@@ -1584,6 +1503,7 @@ export interface CreateAlertSubscriptionDto {
   severity?: AlertSeverity;
   notificationChannel: NotificationChannel;
   frequency: NotificationFrequency;
+  isActive?: boolean;
 }
 
 export interface AlertListResponse {
@@ -2404,6 +2324,112 @@ export const governanceApi = {
     const response = await apiClient.get('/api/v1/governance/domains/statistics');
     return response.data;
   },
+
+  // Standards API
+  getStandards: async (params?: StandardQueryParams): Promise<StandardListResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.policy_id) queryParams.append('policy_id', params.policy_id);
+    if (params?.control_objective_id) queryParams.append('control_objective_id', params.control_objective_id);
+    if (params?.owner_id) queryParams.append('owner_id', params.owner_id);
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.sort) queryParams.append('sort', params.sort);
+
+    const url = `/api/v1/governance/standards${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await apiClient.get<StandardListResponse>(url);
+    return response.data;
+  },
+
+  getStandard: async (id: string): Promise<Standard> => {
+    const response = await apiClient.get<Standard>(`/api/v1/governance/standards/${id}`);
+    return response.data;
+  },
+
+  createStandard: async (data: CreateStandardData): Promise<Standard> => {
+    const response = await apiClient.post<Standard>('/api/v1/governance/standards', data);
+    return response.data;
+  },
+
+  updateStandard: async (id: string, data: UpdateStandardData): Promise<Standard> => {
+    const response = await apiClient.patch<Standard>(`/api/v1/governance/standards/${id}`, data);
+    return response.data;
+  },
+
+  deleteStandard: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/standards/${id}`);
+  },
+
+  // Alerts
+  getAlerts: async (status?: AlertStatus, severity?: AlertSeverity, limit?: number, offset?: number): Promise<AlertListResponse> => {
+    const params: Record<string, any> = {};
+    if (status) params.status = status;
+    if (severity) params.severity = severity;
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    const response = await apiClient.get<AlertListResponse>('/api/v1/governance/alerts', { params });
+    return response.data;
+  },
+
+  createAlert: async (data: CreateAlertDto): Promise<{ data: Alert }> => {
+    const response = await apiClient.post<{ data: Alert }>('/api/v1/governance/alerts', data);
+    return response.data;
+  },
+
+  acknowledgeAlert: async (id: string): Promise<{ data: Alert }> => {
+    const response = await apiClient.post<{ data: Alert }>(`/api/v1/governance/alerts/${id}/acknowledge`);
+    return response.data;
+  },
+
+  resolveAlert: async (id: string, resolution: string): Promise<{ data: Alert }> => {
+    const response = await apiClient.post<{ data: Alert }>(`/api/v1/governance/alerts/${id}/resolve`, { resolution });
+    return response.data;
+  },
+
+  // Alert Rules
+  getAlertRules: async (): Promise<AlertRuleListResponse> => {
+    const response = await apiClient.get<AlertRuleListResponse>('/api/v1/governance/alerts/rules');
+    return response.data;
+  },
+
+  createAlertRule: async (data: CreateAlertRuleDto): Promise<AlertRule> => {
+    const response = await apiClient.post<AlertRule>('/api/v1/governance/alerting/rules', data);
+    return response.data;
+  },
+
+  updateAlertRule: async (id: string, data: Partial<CreateAlertRuleDto>): Promise<AlertRule> => {
+    const response = await apiClient.patch<AlertRule>(`/api/v1/governance/alerts/rules/${id}`, data);
+    return response.data;
+  },
+
+  deleteAlertRule: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/alerts/rules/${id}`);
+  },
+
+  triggerAlertRule: async (id: string): Promise<void> => {
+    await apiClient.post(`/api/v1/governance/alerts/rules/${id}/trigger`);
+  },
+
+  // Alert Subscriptions
+  getAlertSubscriptions: async (): Promise<AlertSubscriptionListResponse> => {
+    const response = await apiClient.get<AlertSubscriptionListResponse>('/api/v1/governance/alerts/subscriptions');
+    return response.data;
+  },
+
+  createAlertSubscription: async (data: CreateAlertSubscriptionDto): Promise<AlertSubscription> => {
+    const response = await apiClient.post<AlertSubscription>('/api/v1/governance/alerts/subscriptions', data);
+    return response.data;
+  },
+
+  updateAlertSubscription: async (id: string, data: Partial<CreateAlertSubscriptionDto>): Promise<AlertSubscription> => {
+    const response = await apiClient.patch<AlertSubscription>(`/api/v1/governance/alerts/subscriptions/${id}`, data);
+    return response.data;
+  },
+
+  deleteAlertSubscription: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/governance/alerts/subscriptions/${id}`);
+  },
 };
 
 // Governance Dashboard Types
@@ -3204,41 +3230,6 @@ export const controlAssetMappingApi = {
     return response.data;
   },
 
-  // Standards API
-  getStandards: async (params?: StandardQueryParams): Promise<StandardListResponse> => {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.status) queryParams.append('status', params.status);
-    if (params?.policy_id) queryParams.append('policy_id', params.policy_id);
-    if (params?.control_objective_id) queryParams.append('control_objective_id', params.control_objective_id);
-    if (params?.owner_id) queryParams.append('owner_id', params.owner_id);
-    if (params?.search) queryParams.append('search', params.search);
-    if (params?.sort) queryParams.append('sort', params.sort);
-
-    const url = `/api/v1/governance/standards${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    const response = await apiClient.get<StandardListResponse>(url);
-    return response.data;
-  },
-
-  getStandard: async (id: string): Promise<Standard> => {
-    const response = await apiClient.get<Standard>(`/api/v1/governance/standards/${id}`);
-    return response.data;
-  },
-
-  createStandard: async (data: CreateStandardData): Promise<Standard> => {
-    const response = await apiClient.post<Standard>('/api/v1/governance/standards', data);
-    return response.data;
-  },
-
-  updateStandard: async (id: string, data: UpdateStandardData): Promise<Standard> => {
-    const response = await apiClient.patch<Standard>(`/api/v1/governance/standards/${id}`, data);
-    return response.data;
-  },
-
-  deleteStandard: async (id: string): Promise<void> => {
-    await apiClient.delete(`/api/v1/governance/standards/${id}`);
-  },
 
   // SOPs API
   getSOPs: async (params?: SOPQueryParams): Promise<SOPListResponse> => {
@@ -4275,57 +4266,6 @@ export const dashboardEmailApi = {
     await apiClient.post(`/api/v1/governance/dashboard/email-schedules/test-send/${id}`);
   },
 
-  // Alerting
-  createAlert: async (data: CreateAlertDto): Promise<Alert> => {
-    const response = await apiClient.post<Alert>('/api/v1/governance/alerting/alerts', data);
-    return response.data;
-  },
-
-  getAlerts: async (status?: AlertStatus, severity?: AlertSeverity, limit?: number, offset?: number): Promise<AlertListResponse> => {
-    const params: Record<string, string> = {};
-    if (status) params.status = status;
-    if (severity) params.severity = severity;
-    if (limit) params.limit = limit.toString();
-    if (offset) params.offset = offset.toString();
-    const response = await apiClient.get<AlertListResponse>('/api/v1/governance/alerting/alerts', { params });
-    return response.data;
-  },
-
-  getAlert: async (id: string): Promise<Alert> => {
-    const response = await apiClient.get<Alert>(`/api/v1/governance/alerting/alerts/${id}`);
-    return response.data;
-  },
-
-  acknowledgeAlert: async (id: string): Promise<Alert> => {
-    const response = await apiClient.put<Alert>(`/api/v1/governance/alerting/alerts/${id}/acknowledge`);
-    return response.data;
-  },
-
-  resolveAlert: async (id: string, resolution: string): Promise<Alert> => {
-    const response = await apiClient.put<Alert>(`/api/v1/governance/alerting/alerts/${id}/resolve`, { resolution });
-    return response.data;
-  },
-
-  // Alert Rules
-  createAlertRule: async (data: CreateAlertRuleDto): Promise<AlertRule> => {
-    const response = await apiClient.post<AlertRule>('/api/v1/governance/alerting/rules', data);
-    return response.data;
-  },
-
-  getAlertRules: async (): Promise<AlertRuleListResponse> => {
-    const response = await apiClient.get<AlertRuleListResponse>('/api/v1/governance/alerting/rules');
-    return response.data;
-  },
-
-  updateAlertRule: async (id: string, data: Partial<CreateAlertRuleDto>): Promise<AlertRule> => {
-    const response = await apiClient.put<AlertRule>(`/api/v1/governance/alerting/rules/${id}`, data);
-    return response.data;
-  },
-
-  deleteAlertRule: async (id: string): Promise<void> => {
-    await apiClient.delete(`/api/v1/governance/alerting/rules/${id}`);
-  },
-
   // Alert Subscriptions
   createAlertSubscription: async (data: CreateAlertSubscriptionDto): Promise<AlertSubscription> => {
     const response = await apiClient.post<AlertSubscription>('/api/v1/governance/alerting/subscriptions', data);
@@ -4595,10 +4535,6 @@ export const dashboardEmailApi = {
   },
 
   // Alert Rules
-  createAlertRule: async (data: CreateAlertRuleDto): Promise<{ data: AlertRule }> => {
-    const response = await apiClient.post('/api/v1/governance/alert-rules', data);
-    return response.data;
-  },
 
   getAlertRule: async (id: string): Promise<{ data: AlertRule }> => {
     const response = await apiClient.get(`/api/v1/governance/alert-rules/${id}`);

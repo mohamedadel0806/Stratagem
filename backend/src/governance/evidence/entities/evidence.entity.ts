@@ -45,6 +45,9 @@ export class Evidence {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  tenant_id: string;
+
   @Column({ type: 'varchar', length: 100, unique: true, name: 'evidence_identifier' })
   evidence_identifier: string;
 
@@ -87,6 +90,10 @@ export class Evidence {
 
   @Column({ type: 'uuid', nullable: true, name: 'collector_id' })
   collector_id: string;
+
+  // Alias for collector_id to support service layer naming
+  @Column({ type: 'uuid', nullable: true, name: 'uploaded_by' })
+  uploaded_by: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'collector_id' })

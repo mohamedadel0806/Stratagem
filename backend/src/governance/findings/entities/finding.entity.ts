@@ -44,6 +44,9 @@ export class Finding {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  tenant_id: string;
+
   @Column({ type: 'varchar', length: 100, unique: true })
   finding_identifier: string;
 

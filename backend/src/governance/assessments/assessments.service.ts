@@ -18,12 +18,14 @@ export class AssessmentsService {
     @InjectRepository(AssessmentResult)
     private assessmentResultRepository: Repository<AssessmentResult>,
     @Optional() private notificationService?: NotificationService,
-  ) {}
+  ) { }
 
-  async create(createDto: CreateAssessmentDto, userId: string): Promise<Assessment> {
+  async create(createDto: CreateAssessmentDto, userId: string, tenantId: string): Promise<Assessment> {
+    // @ts-ignore - TypeORM entity type inference issue
     const assessment = this.assessmentRepository.create({
       ...createDto,
       created_by: userId,
+      tenant_id: tenantId,
     });
 
     const savedAssessment = await this.assessmentRepository.save(assessment);

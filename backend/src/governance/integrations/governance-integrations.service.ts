@@ -20,7 +20,7 @@ export class GovernanceIntegrationsService {
     private evidenceService: EvidenceService,
     private findingsService: FindingsService,
     private controlsService: UnifiedControlsService,
-  ) {}
+  ) { }
 
   async createHook(dto: CreateIntegrationHookDto, userId: string): Promise<GovernanceIntegrationHook> {
     const secretKey = crypto.randomBytes(32).toString('hex');
@@ -99,7 +99,7 @@ export class GovernanceIntegrationsService {
       collection_date: new Date(),
     };
 
-    return this.evidenceService.create(evidenceData, hook.created_by!);
+    return this.evidenceService.create(evidenceData, hook.created_by!, hook.tenant_id!);
   }
 
   private async processFindingHook(hook: GovernanceIntegrationHook, payload: any) {
@@ -111,13 +111,13 @@ export class GovernanceIntegrationsService {
       finding_date: new Date(),
     };
 
-    return this.findingsService.create(findingData, hook.created_by!);
+    return this.findingsService.create(findingData, hook.created_by!, hook.tenant_id!);
   }
 
   private mapField(hook: GovernanceIntegrationHook, payload: any, targetField: string): any {
     const sourceField = hook.config?.mapping?.[targetField];
     if (!sourceField) return hook.config?.defaultValues?.[targetField];
-    
+
     // Support nested access (e.g. "data.severity")
     return sourceField.split('.').reduce((obj, key) => obj?.[key], payload);
   }

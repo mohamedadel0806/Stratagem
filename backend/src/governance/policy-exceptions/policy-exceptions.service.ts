@@ -19,9 +19,9 @@ export class PolicyExceptionsService {
     private exceptionRepository: Repository<PolicyException>,
     private workflowService: WorkflowService,
     private notificationService: NotificationService,
-  ) {}
+  ) { }
 
-  async create(dto: CreatePolicyExceptionDto, userId: string): Promise<PolicyException> {
+  async create(dto: CreatePolicyExceptionDto, userId: string, tenantId: string): Promise<PolicyException> {
     // Generate exception identifier if not provided
     let identifier = dto.exception_identifier;
     if (!identifier) {
@@ -41,6 +41,7 @@ export class PolicyExceptionsService {
       ...dto,
       exception_identifier: identifier,
       requested_by: userId,
+      tenant_id: tenantId,
       request_date: new Date(),
       status: ExceptionStatus.REQUESTED,
       start_date: dto.start_date ? new Date(dto.start_date) : null,

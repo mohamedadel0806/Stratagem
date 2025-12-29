@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { DashboardEmailSchedule, EmailFrequency, EmailDayOfWeek } from '../entities/dashboard-email-schedule.entity';
 import { GovernanceDashboardService } from './governance-dashboard.service';
 import { User } from '../../users/entities/user.entity';
+import { MailService } from '../../common/mail/mail.service';
+import { TenantContextService } from '../../common/context/tenant-context.service';
 
 export interface CreateDashboardEmailScheduleDto {
   name: string;
@@ -37,7 +39,9 @@ export class DashboardEmailService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private dashboardService: GovernanceDashboardService,
-  ) {}
+    private mailService: MailService,
+    private tenantContextService: TenantContextService,
+  ) { }
 
   async createSchedule(dto: CreateDashboardEmailScheduleDto, userId: string): Promise<DashboardEmailSchedule> {
     // Validate the schedule configuration
@@ -148,25 +152,28 @@ export class DashboardEmailService {
   }
 
   private async sendDashboardEmail(schedule: DashboardEmailSchedule): Promise<void> {
-    // Get dashboard data
-    const dashboardData = await this.dashboardService.getDashboard();
+    // Run dashboard generation and email sending in the tenant's context
+    await this.tenantContextService.run({ tenantId: schedule.tenantId }, async () => {
+      try {
+        // Get dashboard data for the specific tenant
+        const dashboardData = await this.dashboardService.getDashboard();
 
-    // Generate email content
-    const emailContent = this.generateEmailContent(dashboardData, schedule);
+        // Generate email content
+        const emailContent = this.generateEmailContent(dashboardData, schedule);
 
-    // In a real implementation, you would use an email service like nodemailer
-    // For now, we'll log the email content
-    this.logger.log(`Sending dashboard email to: ${schedule.recipientEmails.join(', ')}`);
-    this.logger.log(`Subject: ${schedule.name} - Governance Dashboard Report`);
-    this.logger.log(`Content: ${emailContent}`);
+        // Send actual email using MailService
+        await this.mailService.send({
+          to: schedule.recipientEmails,
+          subject: `${schedule.name} - Governance Dashboard Report`,
+          html: emailContent,
+        }, schedule.tenantId);
 
-    // TODO: Implement actual email sending using nodemailer or similar service
-    // Example:
-    // await this.emailService.send({
-    //   to: schedule.recipientEmails,
-    //   subject: `${schedule.name} - Governance Dashboard Report`,
-    //   html: emailContent,
-    // });
+        this.logger.log(`Sent dashboard email to: ${schedule.recipientEmails.join(', ')}`);
+      } catch (error) {
+        this.logger.error(`Failed to send dashboard email for schedule ${schedule.id}:`, error.message);
+        throw error;
+      }
+    });
   }
 
   private generateEmailContent(dashboardData: any, schedule: DashboardEmailSchedule): string {

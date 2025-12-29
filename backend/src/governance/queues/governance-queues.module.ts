@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { redisConfig } from '../../config/redis.config';
 import { WorkflowProcessor } from './processors/workflow-processor';
 import { WorkflowModule } from '../../workflow/workflow.module';
+import { CommonModule } from '../../common/common.module';
 
 /**
  * Governance Queues Module
@@ -21,6 +22,7 @@ import { WorkflowModule } from '../../workflow/workflow.module';
 @Module({
   imports: [
     ConfigModule.forFeature(redisConfig),
+    CommonModule,
     forwardRef(() => WorkflowModule), // Import to access WorkflowService in processors
     BullModule.registerQueue(
       {
@@ -92,4 +94,4 @@ import { WorkflowModule } from '../../workflow/workflow.module';
   ],
   exports: [BullModule],
 })
-export class GovernanceQueuesModule {}
+export class GovernanceQueuesModule { }

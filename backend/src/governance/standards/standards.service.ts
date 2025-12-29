@@ -16,12 +16,13 @@ export class StandardsService {
     private standardRepository: Repository<Standard>,
     @InjectRepository(ControlObjective)
     private controlObjectiveRepository: Repository<ControlObjective>,
-  ) {}
+  ) { }
 
-  async create(createStandardDto: CreateStandardDto, userId: string): Promise<Standard> {
+  async create(createStandardDto: CreateStandardDto, userId: string, tenantId: string): Promise<Standard> {
     const standard = this.standardRepository.create({
       ...createStandardDto,
       created_by: userId,
+      tenantId: tenantId, // Use camelCase to match entity definition
     });
 
     const savedStandard = await this.standardRepository.save(standard);

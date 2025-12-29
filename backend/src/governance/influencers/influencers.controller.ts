@@ -40,7 +40,7 @@ export class InfluencersController {
   @HttpCode(HttpStatus.CREATED)
   @Audit(AuditAction.CREATE, 'Influencer')
   create(@Body() createInfluencerDto: CreateInfluencerDto, @Request() req) {
-    return this.influencersService.create(createInfluencerDto, req.user.id);
+    return this.influencersService.create(createInfluencerDto, req.user.id, req.user.tenantId);
   }
 
   @Get()
@@ -203,7 +203,7 @@ export class InfluencersController {
         skip_empty_lines: true,
         trim: true,
       });
-    } 
+    }
     // Handle JSON
     else if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
       items = JSON.parse(file.buffer.toString('utf-8'));
@@ -212,7 +212,7 @@ export class InfluencersController {
       throw new BadRequestException('Unsupported file type. Please upload CSV or JSON.');
     }
 
-    return this.influencersService.bulkImport(items, req.user.id);
+    return this.influencersService.bulkImport(items, req.user.id, req.user.tenantId);
   }
 }
 

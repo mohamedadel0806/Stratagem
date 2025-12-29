@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum AlertRuleTriggerType {
   TIME_BASED = 'time_based',
@@ -25,6 +26,14 @@ export enum AlertRuleCondition {
 export class AlertRule {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 255 })
   name: string;

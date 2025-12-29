@@ -20,9 +20,9 @@ export class ControlObjectivesService {
     @InjectRepository(UnifiedControl)
     private unifiedControlRepository: Repository<UnifiedControl>,
     @Optional() private notificationService?: NotificationService,
-  ) {}
+  ) { }
 
-  async create(createDto: CreateControlObjectiveDto, userId: string): Promise<ControlObjective> {
+  async create(createDto: CreateControlObjectiveDto, userId: string, tenantId: string): Promise<ControlObjective> {
     // Verify policy exists
     const policy = await this.policyRepository.findOne({
       where: { id: createDto.policy_id },
@@ -35,6 +35,7 @@ export class ControlObjectivesService {
     const controlObjective = this.controlObjectiveRepository.create({
       ...createDto,
       created_by: userId,
+      tenant_id: tenantId,
     });
 
     const savedObjective = await this.controlObjectiveRepository.save(controlObjective);
@@ -55,7 +56,7 @@ export class ControlObjectivesService {
             actionUrl: `/dashboard/governance/policies/${policy.id}`,
           });
         }
-        
+
         // Notify responsible party if assigned
         if (savedObjective.responsible_party_id) {
           await this.notificationService.create({
@@ -173,7 +174,7 @@ export class ControlObjectivesService {
 
   async remove(id: string): Promise<void> {
     const controlObjective = await this.findOne(id);
-    
+
     // Send notification before deletion
     if (this.notificationService && controlObjective.responsible_party_id) {
       try {
@@ -208,7 +209,7 @@ export class ControlObjectivesService {
     // Add new controls, avoiding duplicates
     const currentControlIds = new Set(controlObjective.unified_controls?.map(c => c.id) || []);
     const newControls = controls.filter(c => !currentControlIds.has(c.id));
-    
+
     controlObjective.unified_controls = [
       ...(controlObjective.unified_controls || []),
       ...newControls
@@ -219,7 +220,7 @@ export class ControlObjectivesService {
 
   async unlinkUnifiedControls(id: string, controlIds: string[]): Promise<ControlObjective> {
     const controlObjective = await this.findOne(id);
-    
+
     if (!controlObjective.unified_controls) {
       return controlObjective;
     }

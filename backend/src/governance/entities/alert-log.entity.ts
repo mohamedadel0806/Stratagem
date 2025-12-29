@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Alert } from './alert.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum AlertLogAction {
   CREATED = 'created',
@@ -15,6 +16,14 @@ export enum AlertLogAction {
 export class AlertLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'uuid' })
   alertId: string;

@@ -44,12 +44,13 @@ export class PoliciesService {
     @Optional() private notificationService?: NotificationService,
     @Optional() private policyApprovalService?: PolicyApprovalService,
     @Optional() private policyVersionService?: PolicyVersionService,
-  ) {}
+  ) { }
 
-  async create(createPolicyDto: CreatePolicyDto, userId: string): Promise<Policy> {
+  async create(createPolicyDto: CreatePolicyDto, userId: string, tenantId: string): Promise<Policy> {
     const policy = this.policyRepository.create({
       ...createPolicyDto,
       created_by: userId,
+      tenant_id: tenantId,
     });
 
     const savedPolicy = await this.policyRepository.save(policy);
@@ -194,9 +195,9 @@ export class PoliciesService {
           errorMessage: execution.errorMessage,
           assignedTo: execution.assignedTo
             ? {
-                id: execution.assignedTo.id,
-                name: `${execution.assignedTo.firstName || ''} ${execution.assignedTo.lastName || ''}`.trim() || execution.assignedTo.email,
-              }
+              id: execution.assignedTo.id,
+              name: `${execution.assignedTo.firstName || ''} ${execution.assignedTo.lastName || ''}`.trim() || execution.assignedTo.email,
+            }
             : null,
           startedAt: execution.startedAt?.toISOString(),
           completedAt: execution.completedAt?.toISOString(),
@@ -272,7 +273,7 @@ export class PoliciesService {
     // Add specific users
     if (assignToUserIds && assignToUserIds.length > 0) {
       userIdsToNotify.push(...assignToUserIds);
-      
+
       // Create assignments for specific users
       for (const userId of assignToUserIds) {
         await this.policyAssignmentRepository.save({
@@ -289,7 +290,7 @@ export class PoliciesService {
       const usersByRole = await this.userRepository.find({
         where: { role: In(assignToRoleIds as UserRole[]) },
       });
-      
+
       const roleUserIds = usersByRole.map((u) => u.id);
       userIdsToNotify.push(...roleUserIds);
 
@@ -307,7 +308,7 @@ export class PoliciesService {
     // Add users by business unit
     if (assignToBusinessUnitIds && assignToBusinessUnitIds.length > 0) {
       const usersByBU = await this.userRepository.find({
-        where: { 
+        where: {
           // Assuming users have business_unit_id field - adjust based on actual schema
           // For now, we'll create assignments and let the frontend handle user lookup
         },
@@ -330,7 +331,7 @@ export class PoliciesService {
     // Send notifications
     if (this.notificationService && userIdsToNotify.length > 0) {
       const uniqueUserIds = [...new Set(userIdsToNotify)];
-      
+
       for (const notifyUserId of uniqueUserIds) {
         try {
           await this.notificationService.create({
@@ -348,7 +349,7 @@ export class PoliciesService {
           const assignments = await this.policyAssignmentRepository.find({
             where: { policy_id: id, user_id: notifyUserId },
           });
-          
+
           for (const assignment of assignments) {
             assignment.notification_sent = true;
             assignment.notification_sent_at = new Date();
@@ -528,8 +529,8 @@ export class PoliciesService {
           if (savedPolicy.owner_id) {
             await this.notificationService.create({
               userId: savedPolicy.owner_id,
-              type: savedPolicy.status === PolicyStatus.IN_REVIEW 
-                ? NotificationType.POLICY_REVIEW_REQUIRED 
+              type: savedPolicy.status === PolicyStatus.IN_REVIEW
+                ? NotificationType.POLICY_REVIEW_REQUIRED
                 : NotificationType.GENERAL,
               priority: notificationConfig.priority,
               title: notificationConfig.title,
@@ -580,7 +581,7 @@ export class PoliciesService {
 
   async findVersions(id: string): Promise<Policy[]> {
     const currentPolicy = await this.findOne(id);
-    
+
     // Find all policies with the same title (assuming same title = same policy family)
     // This includes the current policy and all its versions
     const versions = await this.policyRepository.find({

@@ -34,13 +34,13 @@ import { AuditAction } from '../../common/entities/audit-log.entity';
 @Controller('governance/policies')
 @UseGuards(JwtAuthGuard)
 export class PoliciesController {
-  constructor(private readonly policiesService: PoliciesService) {}
+  constructor(private readonly policiesService: PoliciesService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Audit(AuditAction.CREATE, 'Policy')
   create(@Body() createPolicyDto: CreatePolicyDto, @Request() req) {
-    return this.policiesService.create(createPolicyDto, req.user.id);
+    return this.policiesService.create(createPolicyDto, req.user.id, req.user.tenantId);
   }
 
   @Get()

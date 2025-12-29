@@ -18,31 +18,32 @@ export class UnifiedControlsService {
     @InjectRepository(ControlDomain)
     private domainRepository: Repository<ControlDomain>,
     @Optional() private notificationService?: NotificationService,
-  ) {}
+  ) { }
 
-  async create(createDto: CreateUnifiedControlDto, userId: string): Promise<UnifiedControl> {
+  async create(createUnifiedControlDto: CreateUnifiedControlDto, userId: string, tenantId: string): Promise<UnifiedControl> {
     const control = this.controlRepository.create({
-      ...createDto,
+      ...createUnifiedControlDto,
       created_by: userId,
+      tenant_id: tenantId,
     });
 
     const savedControl = await this.controlRepository.save(control);
 
-    // Send notification to control owner if assigned
+    // Send notification if owner is assigned
     if (this.notificationService && savedControl.control_owner_id) {
       try {
         await this.notificationService.create({
           userId: savedControl.control_owner_id,
-          type: NotificationType.TASK_ASSIGNED,
+          type: NotificationType.GENERAL,
           priority: NotificationPriority.MEDIUM,
           title: 'New Control Assigned',
-          message: `Control "${savedControl.title}" has been assigned to you as the control owner.`,
-          entityType: 'control',
+          message: `Control "${savedControl.title}" has been created and assigned to you.`,
+          entityType: 'unified_control',
           entityId: savedControl.id,
-          actionUrl: `/dashboard/governance/controls/${savedControl.id}`,
+          actionUrl: `/dashboard/governance/unified-controls/${savedControl.id}`,
         });
       } catch (error) {
-        this.logger.error(`Failed to send notification on control creation: ${error.message}`, error.stack);
+        this.logger.error(`Failed to send notification: ${error.message}`, error.stack);
       }
     }
 

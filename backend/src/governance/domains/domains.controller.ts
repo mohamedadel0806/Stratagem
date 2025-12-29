@@ -20,12 +20,12 @@ import { AuditAction } from '../../common/entities/audit-log.entity';
 @Controller('governance/domains')
 @UseGuards(JwtAuthGuard)
 export class DomainsController {
-  constructor(private readonly domainsService: DomainsService) {}
+  constructor(private readonly domainsService: DomainsService) { }
 
   @Post()
   @Audit(AuditAction.CREATE, 'ControlDomain')
   create(@Body() createDomainDto: CreateDomainDto, @Request() req) {
-    return this.domainsService.create(createDomainDto, req.user.id);
+    return this.domainsService.create(createDomainDto, req.user.id, req.user.tenantId);
   }
 
   @Get()

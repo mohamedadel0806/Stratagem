@@ -7,6 +7,8 @@ import { GovernanceDashboardService } from '../services/governance-dashboard.ser
 import { ReportQueryDto, ReportType, ExportFormat } from '../dto/report-query.dto';
 import { GapAnalysisQueryDto, GapAnalysisDto } from '../dto/gap-analysis.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
+import { TenantFeature } from '../../common/constants/tier-config';
 
 @ApiTags('governance')
 @Controller('governance/reports')
@@ -20,6 +22,7 @@ export class GovernanceReportingController {
   ) { }
 
   @Get('export')
+  @RequireFeature(TenantFeature.DATA_EXPORT)
   @ApiOperation({ summary: 'Export governance report' })
   @ApiQuery({ name: 'type', enum: ReportType, description: 'Report type' })
   @ApiQuery({ name: 'format', enum: ExportFormat, required: false, description: 'Export format (default: csv)' })
@@ -36,6 +39,7 @@ export class GovernanceReportingController {
   }
 
   @Get('policy-compliance')
+  @RequireFeature(TenantFeature.DATA_EXPORT)
   @ApiOperation({ summary: 'Generate policy compliance report' })
   @ApiQuery({ name: 'format', enum: ExportFormat, required: false })
   @ApiQuery({ name: 'startDate', required: false })
@@ -68,6 +72,7 @@ export class GovernanceReportingController {
   }
 
   @Get('influencer')
+  @RequireFeature(TenantFeature.DATA_EXPORT)
   @ApiOperation({ summary: 'Generate influencer report' })
   @ApiQuery({ name: 'format', enum: ExportFormat, required: false })
   @ApiQuery({ name: 'startDate', required: false })
@@ -99,6 +104,7 @@ export class GovernanceReportingController {
   }
 
   @Get('control-implementation')
+  @RequireFeature(TenantFeature.DATA_EXPORT)
   @ApiOperation({ summary: 'Generate control implementation report' })
   @ApiQuery({ name: 'format', enum: ExportFormat, required: false })
   @ApiQuery({ name: 'status', required: false })
@@ -129,6 +135,7 @@ export class GovernanceReportingController {
   }
 
   @Get('assessment')
+  @RequireFeature(TenantFeature.DATA_EXPORT)
   @ApiOperation({ summary: 'Generate assessment report' })
   @ApiQuery({ name: 'format', enum: ExportFormat, required: false })
   @ApiQuery({ name: 'startDate', required: false })
@@ -160,6 +167,7 @@ export class GovernanceReportingController {
   }
 
   @Get('findings')
+  @RequireFeature(TenantFeature.DATA_EXPORT)
   @ApiOperation({ summary: 'Generate findings report' })
   @ApiQuery({ name: 'format', enum: ExportFormat, required: false })
   @ApiQuery({ name: 'startDate', required: false })
@@ -191,6 +199,7 @@ export class GovernanceReportingController {
   }
 
   @Get('control-status')
+  @RequireFeature(TenantFeature.DATA_EXPORT)
   @ApiOperation({ summary: 'Generate control status summary report' })
   @ApiQuery({ name: 'format', enum: ExportFormat, required: false })
   async getControlStatusReport(@Query() query: Partial<ReportQueryDto>, @Res() res: Response): Promise<void> {

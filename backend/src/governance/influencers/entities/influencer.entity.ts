@@ -10,6 +10,7 @@ import {
   Index,
 } from 'typeorm';
 import { User } from '../../../users/entities/user.entity';
+import { Tenant } from '../../../common/entities/tenant.entity';
 
 export enum InfluencerCategory {
   INTERNAL = 'internal',
@@ -41,6 +42,13 @@ export enum ApplicabilityStatus {
 export class Influencer {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  tenant_id: string;
+
+  @ManyToOne(() => Tenant, { nullable: true })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 500 })
   name: string;

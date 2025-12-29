@@ -1,10 +1,12 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { Public } from './decorators/public.decorator';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UsersService } from '../users/users.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UserRole, UserStatus } from '../users/entities/user.entity';
@@ -15,9 +17,10 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
   @Public()
+  @Throttle({ default: { limit: 50, ttl: 60000 } }) // Increased for testing
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
@@ -32,6 +35,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60000 } }) // Increased for testing
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new user' })
@@ -51,13 +55,38 @@ export class AuthController {
     };
 
     const user = await this.usersService.create(createUserDto);
-    
+
     // Return user without password
     const { password, ...userWithoutPassword } = user as any;
     return {
       message: 'User registered successfully',
       user: userWithoutPassword,
     };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('mfa/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify MFA code during login' })
+  async verifyMfa(@Body() body: { userId: string; code: string }) {
+    return this.authService.verifyMfa(body.userId, body.code);
+  }
+
+  @Post('mfa/setup')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate MFA secret and QR code' })
+  async setupMfa(@Req() req: any) {
+    return this.authService.setupMfa(req.user);
+  }
+
+  @Post('mfa/confirm')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Confirm and enable MFA' })
+  async confirmMfa(@Req() req: any, @Body() body: { code: string }) {
+    return this.authService.confirmMfa(req.user.id, body.code);
   }
 }
 

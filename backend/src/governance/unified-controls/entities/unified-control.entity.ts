@@ -13,6 +13,7 @@ import {
 } from 'typeorm';
 import { User } from '../../../users/entities/user.entity';
 import { ControlObjective } from '../../control-objectives/entities/control-objective.entity';
+import { Tenant } from '../../../common/entities/tenant.entity';
 
 export enum ControlType {
   PREVENTIVE = 'preventive',
@@ -60,6 +61,13 @@ export enum ImplementationStatus {
 export class UnifiedControl {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  tenant_id: string;
+
+  @ManyToOne(() => Tenant, { nullable: true })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 100, unique: true, name: 'control_identifier' })
   control_identifier: string;

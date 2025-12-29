@@ -2,13 +2,16 @@ import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { GovernanceAIService, AISuggestion } from './services/governance-ai.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RequireFeature } from '../common/decorators/require-feature.decorator';
+import { TenantFeature } from '../common/constants/tier-config';
 
 @ApiTags('Governance - AI')
 @Controller('governance/ai')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
+@RequireFeature(TenantFeature.ADVANCED_ANALYTICS)
 export class GovernanceAIController {
-  constructor(private readonly aiService: GovernanceAIService) {}
+  constructor(private readonly aiService: GovernanceAIService) { }
 
   @Get('suggest-mappings/:influencerId')
   @ApiOperation({ summary: 'Get AI-powered mapping suggestions for an influencer' })

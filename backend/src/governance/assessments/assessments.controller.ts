@@ -24,8 +24,8 @@ export class AssessmentsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDto: CreateAssessmentDto, @Request() req) {
-    return this.assessmentsService.create(createDto, req.user.id);
+  create(@Body() createAssessmentDto: CreateAssessmentDto, @Request() req) {
+    return this.assessmentsService.create(createAssessmentDto, req.user.id, req.user.tenantId);
   }
 
   @Get()

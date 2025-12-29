@@ -23,8 +23,8 @@ export class ControlObjectivesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDto: CreateControlObjectiveDto, @Request() req) {
-    return this.controlObjectivesService.create(createDto, req.user.id);
+  create(@Body() createControlObjectiveDto: CreateControlObjectiveDto, @Request() req) {
+    return this.controlObjectivesService.create(createControlObjectiveDto, req.user.id, req.user.tenantId);
   }
 
   @Get()

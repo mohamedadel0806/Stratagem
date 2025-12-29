@@ -19,12 +19,13 @@ export class InfluencersService {
     private influencerRepository: Repository<Influencer>,
     @Optional() private notificationService?: NotificationService,
     @Optional() private revisionService?: InfluencerRevisionService,
-  ) {}
+  ) { }
 
-  async create(createInfluencerDto: CreateInfluencerDto, userId: string): Promise<Influencer> {
+  async create(createInfluencerDto: CreateInfluencerDto, userId: string, tenantId: string): Promise<Influencer> {
     const influencer = this.influencerRepository.create({
       ...createInfluencerDto,
       created_by: userId,
+      tenant_id: tenantId,
     });
 
     const savedInfluencer = await this.influencerRepository.save(influencer);
@@ -148,7 +149,7 @@ export class InfluencersService {
 
     // Track changes for revision
     const changesSummary: Record<string, { old: any; new: any }> = {};
-    
+
     if (updateInfluencerDto.name && updateInfluencerDto.name !== oldName) {
       changesSummary.name = { old: oldName, new: updateInfluencerDto.name };
     }
@@ -277,7 +278,7 @@ export class InfluencersService {
 
   async remove(id: string): Promise<void> {
     const influencer = await this.findOne(id);
-    
+
     // Send notification before deletion
     if (this.notificationService && influencer.owner_id) {
       try {
@@ -384,7 +385,7 @@ export class InfluencersService {
     // Notify stakeholders if impact assessment indicates changes
     if (this.notificationService && reviewData.impact_assessment) {
       const { affected_policies, affected_controls, business_units_impact } = reviewData.impact_assessment;
-      
+
       // Notify owner
       if (savedInfluencer.owner_id) {
         try {
@@ -420,7 +421,7 @@ export class InfluencersService {
     return this.revisionService.getRevisionHistory(influencerId);
   }
 
-  async bulkImport(data: Partial<Influencer>[], userId: string): Promise<{ created: number; skipped: number; errors: string[] }> {
+  async bulkImport(data: Partial<Influencer>[], userId: string, tenantId: string): Promise<{ created: number; skipped: number; errors: string[] }> {
     let created = 0;
     let skipped = 0;
     const errors: string[] = [];
@@ -447,6 +448,7 @@ export class InfluencersService {
         const influencer = this.influencerRepository.create({
           ...item,
           created_by: userId,
+          tenant_id: tenantId,
         });
 
         await this.influencerRepository.save(influencer);

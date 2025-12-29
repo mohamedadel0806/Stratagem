@@ -18,6 +18,8 @@ import { FindingQueryDto } from './dto/finding-query.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RiskFindingLinkService } from '../../risk/services/risk-finding-link.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { Audit } from '../../common/decorators/audit.decorator';
+import { AuditAction } from '../../common/entities/audit-log.entity';
 
 @ApiTags('governance')
 @Controller('governance/findings')
@@ -31,8 +33,9 @@ export class FindingsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDto: CreateFindingDto, @Request() req) {
-    return this.findingsService.create(createDto, req.user.id);
+  @Audit(AuditAction.CREATE, 'Finding')
+  create(@Body() createFindingDto: CreateFindingDto, @Request() req) {
+    return this.findingsService.create(createFindingDto, req.user.id, req.user.tenantId);
   }
 
   @Get()

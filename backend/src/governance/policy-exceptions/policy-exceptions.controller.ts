@@ -9,6 +9,8 @@ import {
   Query,
   UseGuards,
   Request,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { PolicyExceptionsService } from './policy-exceptions.service';
@@ -32,9 +34,10 @@ export class PolicyExceptionsController {
   @Post()
   @ApiOperation({ summary: 'Create a policy exception request' })
   @ApiResponse({ status: 201, description: 'Exception created successfully' })
+  @HttpCode(HttpStatus.CREATED)
   @Audit(AuditAction.CREATE, 'PolicyException')
-  async create(@Body() dto: CreatePolicyExceptionDto, @Request() req) {
-    return this.exceptionsService.create(dto, req.user.id);
+  create(@Body() createPolicyExceptionDto: CreatePolicyExceptionDto, @Request() req) {
+    return this.exceptionsService.create(createPolicyExceptionDto, req.user.id, req.user.tenantId);
   }
 
   @Get()

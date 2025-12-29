@@ -45,7 +45,7 @@ export class UnifiedControlsController {
   @HttpCode(HttpStatus.CREATED)
   @Audit(AuditAction.CREATE, 'UnifiedControl')
   create(@Body() createDto: CreateUnifiedControlDto, @Request() req) {
-    return this.unifiedControlsService.create(createDto, req.user.id);
+    return this.unifiedControlsService.create(createDto, req.user.id, req.user.tenantId);
   }
 
   @Get()

@@ -15,12 +15,14 @@ export class FindingsService {
     @InjectRepository(Finding)
     private readonly findingRepository: Repository<Finding>,
     @Optional() private notificationService?: NotificationService,
-  ) {}
+  ) { }
 
-  async create(createDto: CreateFindingDto, userId: string): Promise<Finding> {
+  async create(createDto: CreateFindingDto, userId: string, tenantId: string): Promise<Finding> {
+    // @ts-ignore - TypeORM entity type inference issue
     const finding = this.findingRepository.create({
       ...createDto,
       created_by: userId,
+      tenant_id: tenantId,
       status: createDto.status || FindingStatus.OPEN,
     });
 

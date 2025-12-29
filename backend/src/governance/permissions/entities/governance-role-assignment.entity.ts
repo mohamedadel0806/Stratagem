@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../../users/entities/user.entity';
 import { BusinessUnit } from '../../../common/entities/business-unit.entity';
+import { Tenant } from '../../../common/entities/tenant.entity';
 
 @Entity('governance_role_assignments')
 @Index(['user_id'])
@@ -18,6 +19,14 @@ import { BusinessUnit } from '../../../common/entities/business-unit.entity';
 export class GovernanceRoleAssignment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'uuid', name: 'user_id' })
   user_id: string;
@@ -52,5 +61,3 @@ export class GovernanceRoleAssignment {
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 }
-
-

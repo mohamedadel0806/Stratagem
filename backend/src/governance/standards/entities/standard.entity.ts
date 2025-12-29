@@ -14,6 +14,7 @@ import {
 import { User } from '../../../users/entities/user.entity';
 import { Policy } from '../../policies/entities/policy.entity';
 import { ControlObjective } from '../../control-objectives/entities/control-objective.entity';
+import { Tenant } from '../../../common/entities/tenant.entity';
 
 export enum StandardStatus {
   DRAFT = 'draft',
@@ -24,6 +25,7 @@ export enum StandardStatus {
 }
 
 @Entity('standards')
+@Index(['tenantId'])
 @Index(['standard_identifier'])
 @Index(['policy_id'])
 @Index(['control_objective_id'])
@@ -32,6 +34,14 @@ export enum StandardStatus {
 export class Standard {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 100, unique: true, name: 'standard_identifier' })
   standard_identifier: string;

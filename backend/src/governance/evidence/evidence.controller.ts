@@ -36,8 +36,8 @@ export class EvidenceController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createDto: CreateEvidenceDto, @Request() req) {
-    return this.evidenceService.create(createDto, req.user.id);
+  create(@Body() createEvidenceDto: CreateEvidenceDto, @Request() req) {
+    return this.evidenceService.create(createEvidenceDto, req.user.id, req.user.tenantId);
   }
 
   @Get()
@@ -178,7 +178,7 @@ export class EvidenceController {
     @Res() res: Response,
   ) {
     const packageInfo = await this.evidenceService.generateEvidencePackage(options);
-    
+
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${packageInfo.filename}"`);
     res.send(packageInfo.data);

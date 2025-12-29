@@ -10,9 +10,9 @@ export class DomainsService {
   constructor(
     @InjectRepository(ControlDomain)
     private domainRepository: Repository<ControlDomain>,
-  ) {}
+  ) { }
 
-  async create(createDomainDto: CreateDomainDto, userId: string): Promise<ControlDomain> {
+  async create(createDomainDto: CreateDomainDto, userId: string, tenantId?: string): Promise<ControlDomain> {
     // Check for circular reference if parent_id is provided
     if (createDomainDto.parent_id) {
       await this.validateNoCircularReference(createDomainDto.parent_id, null);
@@ -21,6 +21,7 @@ export class DomainsService {
     const domain = this.domainRepository.create({
       ...createDomainDto,
       created_by: userId,
+      tenantId: tenantId,
     });
 
     return this.domainRepository.save(domain);

@@ -4,6 +4,7 @@ import { Job } from 'bull';
 import { WorkflowService } from '../../../workflow/services/workflow.service';
 import { WorkflowExecutionJob, WorkflowActionJob } from '../../../workflow/interfaces/workflow-job.interface';
 import { EntityType } from '../../../workflow/entities/workflow.entity';
+import { TenantContextService } from '../../../common/context/tenant-context.service';
 
 /**
  * Workflow Processor
@@ -17,7 +18,8 @@ export class WorkflowProcessor {
 
   constructor(
     private readonly workflowService: WorkflowService,
-  ) {}
+    private readonly tenantContextService: TenantContextService,
+  ) { }
 
   @OnQueueActive()
   onActive(job: Job) {
@@ -45,12 +47,15 @@ export class WorkflowProcessor {
     const { workflowId, entityType, entityId, executionId } = job.data;
 
     try {
-      this.logger.log(`Executing workflow ${workflowId} for ${entityType}:${entityId} (execution: ${executionId})`);
+      this.logger.log(`Executing workflow ${workflowId} for ${entityType}:${entityId} (execution: ${executionId}) for tenant ${job.data.tenantId}`);
 
       await job.progress(10);
 
-      // Execute workflow actions using the existing execution record
-      const execution = await this.workflowService.executeWorkflowActionsForExecution(executionId);
+      // Execute workflow actions using the existing execution record wrapped in tenant context
+      const execution = await this.tenantContextService.run(
+        { tenantId: job.data.tenantId },
+        () => this.workflowService.executeWorkflowActionsForExecution(executionId)
+      );
 
       await job.progress(100);
 

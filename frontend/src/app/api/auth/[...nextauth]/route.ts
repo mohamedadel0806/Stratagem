@@ -84,7 +84,7 @@ export const authOptions: NextAuthOptions = {
 
             const loginEndpoint = getLoginEndpoint(API_BASE_URL);
             console.log(`Using login endpoint: ${loginEndpoint}`);
-            
+
             const response = await axios.post(
               loginEndpoint,
               {
@@ -102,6 +102,11 @@ export const authOptions: NextAuthOptions = {
             console.log("Login response received:", response.status);
             const data = response.data;
 
+            if (data.mfaRequired) {
+              console.log("MFA Required for user:", data.userId);
+              throw new Error(JSON.stringify({ mfaRequired: true, userId: data.userId }));
+            }
+
             if (!data.user || !data.accessToken) {
               console.error("Invalid response structure:", data);
               return null;
@@ -112,6 +117,7 @@ export const authOptions: NextAuthOptions = {
               email: data.user.email,
               name: `${data.user.firstName} ${data.user.lastName}`,
               role: data.user.role,
+              tenantId: data.user.tenantId,
               accessToken: data.accessToken,
             };
             console.log("✅✅✅ AUTHORIZE SUCCESS - Returning user object:", {
@@ -120,6 +126,7 @@ export const authOptions: NextAuthOptions = {
               hasAccessToken: !!userData.accessToken,
               accessTokenLength: userData.accessToken?.length,
               role: userData.role,
+              tenantId: userData.tenantId,
               userDataKeys: Object.keys(userData),
             });
             return userData;
@@ -202,6 +209,10 @@ export const authOptions: NextAuthOptions = {
           token.role = (user as any).role;
         }
 
+        if ((user as any).tenantId) {
+          token.tenantId = (user as any).tenantId;
+        }
+
         if (user.id) {
           token.id = user.id;
         }
@@ -243,6 +254,7 @@ export const authOptions: NextAuthOptions = {
         session.accessToken = token.accessToken as string;
         session.user.id = (token.id || token.sub) as string;
         (session.user as any).role = token.role;
+        (session.user as any).tenantId = token.tenantId;
         console.log("✅ Session callback - accessToken SET in session");
       } else {
         console.error("❌ Session callback - NO accessToken in token!");
@@ -251,7 +263,9 @@ export const authOptions: NextAuthOptions = {
       console.log("✅ Session callback - returning session:", {
         hasAccessToken: !!session.accessToken,
         accessTokenLength: (session.accessToken as string)?.length,
-        userId: session.user.id
+        userId: session.user.id,
+        userTenantId: (session.user as any).tenantId,
+        userKeys: Object.keys(session.user)
       });
       return session;
     },

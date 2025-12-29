@@ -33,7 +33,7 @@ export class StandardsController {
   @ApiResponse({ status: 201, description: 'Standard created successfully' })
   @Audit(AuditAction.CREATE, 'Standard')
   create(@Body() createStandardDto: CreateStandardDto, @Request() req) {
-    return this.standardsService.create(createStandardDto, req.user.id);
+    return this.standardsService.create(createStandardDto, req.user.id, req.user.tenantId);
   }
 
   @Get()

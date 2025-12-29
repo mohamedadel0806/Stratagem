@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum AlertSeverity {
   LOW = 'low',
@@ -29,6 +30,14 @@ export enum AlertType {
 export class Alert {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 255 })
   title: string;
@@ -81,18 +90,18 @@ export class Alert {
   @Column({ type: 'timestamp', nullable: true })
   resolvedAt: Date;
 
-   @Column({ type: 'text', nullable: true })
-   resolutionNotes: string;
+  @Column({ type: 'text', nullable: true })
+  resolutionNotes: string;
 
-   @Column({ type: 'uuid', nullable: true })
-   escalationChainId: string; // Reference to escalation chain if escalated
+  @Column({ type: 'uuid', nullable: true })
+  escalationChainId: string; // Reference to escalation chain if escalated
 
-   @Column({ type: 'boolean', default: false })
-   hasEscalation: boolean; // Flag indicating this alert has an active escalation
+  @Column({ type: 'boolean', default: false })
+  hasEscalation: boolean; // Flag indicating this alert has an active escalation
 
-   @CreateDateColumn()
-   createdAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 
-   @UpdateDateColumn()
-   updatedAt: Date;
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

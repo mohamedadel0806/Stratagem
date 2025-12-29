@@ -14,6 +14,7 @@ import { User } from '../../../users/entities/user.entity';
 import { ControlObjective } from '../../control-objectives/entities/control-objective.entity';
 import { PolicyApproval } from './policy-approval.entity';
 import { PolicyVersion } from './policy-version.entity';
+import { Tenant } from '../../../common/entities/tenant.entity';
 
 export enum PolicyStatus {
   DRAFT = 'draft',
@@ -41,6 +42,13 @@ export enum ReviewFrequency {
 export class Policy {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  tenant_id: string;
+
+  @ManyToOne(() => Tenant, { nullable: true })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 200, name: 'policy_type' })
   policy_type: string;
