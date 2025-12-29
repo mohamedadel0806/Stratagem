@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Risk, RiskLevel } from './risk.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum AssessmentType {
   INHERENT = 'inherent',
@@ -39,6 +40,14 @@ export enum ConfidenceLevel {
 export class RiskAssessment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'uuid', name: 'risk_id' })
   risk_id: string;
@@ -179,4 +188,3 @@ export class RiskAssessment {
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 }
-

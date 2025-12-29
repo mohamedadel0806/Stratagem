@@ -6,6 +6,7 @@
  */
 
 export interface WorkflowExecutionJob {
+  tenantId: string | null;
   workflowId: string;
   entityType: string;
   entityId: string;

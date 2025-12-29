@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { ComplianceFramework } from './compliance-framework.entity';
+import { Tenant } from './tenant.entity';
 
 export enum RequirementStatus {
   NOT_STARTED = 'not_started',
@@ -22,19 +24,27 @@ export class ComplianceRequirement {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'requirementCode' })
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'requirement_code' })
   requirementCode: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'category' })
   category: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'complianceDeadline' })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'compliance_deadline' })
   complianceDeadline: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'applicability' })
@@ -54,13 +64,12 @@ export class ComplianceRequirement {
   })
   status: RequirementStatus;
 
-  @Column({ type: 'uuid', nullable: true, name: 'organizationId' })
+  @Column({ type: 'uuid', nullable: true, name: 'organization_id' })
   organizationId: string;
 
-  @CreateDateColumn({ name: 'createdAt' })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updatedAt' })
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

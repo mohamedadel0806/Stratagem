@@ -10,6 +10,7 @@ import { SyncStatus, IntegrationSyncLog } from '../entities/integration-sync-log
 import { PhysicalAssetService } from './physical-asset.service';
 import { NotificationService } from '../../common/services/notification.service';
 import { NotificationPriority, NotificationType } from '../../common/entities/notification.entity';
+import { EncryptionService } from '../../common/services/encryption.service';
 
 // Note: For production, install @nestjs/axios and use HttpService
 // npm install @nestjs/axios axios
@@ -25,7 +26,8 @@ export class IntegrationService {
     private syncLogRepository: Repository<IntegrationSyncLog>,
     private physicalAssetService: PhysicalAssetService,
     private notificationService: NotificationService,
-  ) {}
+    private encryptionService: EncryptionService,
+  ) { }
 
   async createConfig(dto: CreateIntegrationConfigDto, userId: string): Promise<IntegrationConfig> {
     const config = this.integrationConfigRepository.create({
@@ -33,6 +35,11 @@ export class IntegrationService {
       createdById: userId,
       status: IntegrationStatus.INACTIVE,
     });
+
+    // Encrypt sensitive fields
+    if (config.apiKey) config.apiKey = this.encryptionService.encrypt(config.apiKey);
+    if (config.bearerToken) config.bearerToken = this.encryptionService.encrypt(config.bearerToken);
+    if (config.password) config.password = this.encryptionService.encrypt(config.password);
 
     return this.integrationConfigRepository.save(config);
   }
@@ -60,6 +67,12 @@ export class IntegrationService {
   async update(id: string, dto: UpdateIntegrationConfigDto): Promise<IntegrationConfig> {
     const config = await this.findOne(id);
     Object.assign(config, dto);
+
+    // Encrypt sensitive fields if they were updated
+    if (dto.apiKey) config.apiKey = this.encryptionService.encrypt(dto.apiKey);
+    if (dto.bearerToken) config.bearerToken = this.encryptionService.encrypt(dto.bearerToken);
+    if (dto.password) config.password = this.encryptionService.encrypt(dto.password);
+
     return this.integrationConfigRepository.save(config);
   }
 
@@ -214,9 +227,8 @@ export class IntegrationService {
           type: NotificationType.GENERAL,
           priority: NotificationPriority.HIGH,
           title: `Integration sync failed: ${config.name}`,
-          message: `The integration "${config.name}" (type: ${config.integrationType}) failed to sync: ${
-            error?.message || 'Unknown error'
-          }`,
+          message: `The integration "${config.name}" (type: ${config.integrationType}) failed to sync: ${error?.message || 'Unknown error'
+            }`,
           entityType: 'integration',
           entityId: config.id,
           actionUrl: '/dashboard/integrations',
@@ -228,8 +240,7 @@ export class IntegrationService {
         });
       } catch (notifyError: any) {
         this.logger.error(
-          `Failed to create admin notification for integration ${config.id}: ${
-            notifyError?.message || 'Unknown error'
+          `Failed to create admin notification for integration ${config.id}: ${notifyError?.message || 'Unknown error'
           }`,
           notifyError?.stack,
         );
@@ -259,13 +270,15 @@ export class IntegrationService {
 
     switch (config.authenticationType) {
       case AuthenticationType.API_KEY:
-        headers['X-API-Key'] = config.apiKey || '';
+        headers['X-API-Key'] = this.encryptionService.decrypt(config.apiKey || '');
         break;
       case AuthenticationType.BEARER_TOKEN:
-        headers['Authorization'] = `Bearer ${config.bearerToken}`;
+        headers['Authorization'] = `Bearer ${this.encryptionService.decrypt(config.bearerToken || '')}`;
         break;
       case AuthenticationType.BASIC_AUTH:
-        const credentials = Buffer.from(`${config.username}:${config.password}`).toString('base64');
+        const username = config.username || '';
+        const password = this.encryptionService.decrypt(config.password || '');
+        const credentials = Buffer.from(`${username}:${password}`).toString('base64');
         headers['Authorization'] = `Basic ${credentials}`;
         break;
     }

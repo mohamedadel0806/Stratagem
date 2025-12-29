@@ -9,6 +9,7 @@ import {
 import { ComplianceRequirement } from './compliance-requirement.entity';
 import { User } from '../../users/entities/user.entity';
 import { ComplianceStatus } from './asset-requirement-mapping.entity';
+import { Tenant } from './tenant.entity';
 
 export enum AssessmentType {
   AUTOMATIC = 'automatic',
@@ -34,6 +35,14 @@ export interface ValidationResults {
 export class ComplianceAssessment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 50, name: 'asset_type' })
   assetType: AssetType;
@@ -87,4 +96,3 @@ export class ComplianceAssessment {
   @Column({ type: 'text', nullable: true })
   notes: string;
 }
-

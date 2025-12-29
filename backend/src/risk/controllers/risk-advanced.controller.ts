@@ -23,14 +23,14 @@ import {
 @Controller('risks/advanced')
 @UseGuards(JwtAuthGuard)
 export class RiskAdvancedController {
-  constructor(private readonly advancedService: RiskAdvancedService) {}
+  constructor(private readonly advancedService: RiskAdvancedService) { }
 
   // =====================
   // RISK COMPARISON
   // =====================
 
   @Post('compare')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Compare multiple risks side-by-side',
     description: 'Provides detailed comparison of selected risks including scores, levels, controls, and calculated metrics like risk reduction percentage',
   })
@@ -38,9 +38,8 @@ export class RiskAdvancedController {
   @ApiResponse({ status: 200, description: 'Risk comparison data', type: RiskComparisonResponseDto })
   async compareRisks(
     @Body() request: RiskComparisonRequestDto,
-    @Request() req: any,
   ): Promise<RiskComparisonResponseDto> {
-    return this.advancedService.compareRisks(request, req.user?.organizationId);
+    return this.advancedService.compareRisks(request);
   }
 
   // =====================
@@ -48,7 +47,7 @@ export class RiskAdvancedController {
   // =====================
 
   @Post('what-if')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Simulate what-if scenario for a risk',
     description: 'Analyze how changing likelihood, impact, or control effectiveness would affect the risk score and level',
   })
@@ -56,13 +55,12 @@ export class RiskAdvancedController {
   @ApiResponse({ status: 200, description: 'What-if analysis result', type: WhatIfScenarioResponseDto })
   async simulateWhatIf(
     @Body() request: WhatIfScenarioRequestDto,
-    @Request() req: any,
   ): Promise<WhatIfScenarioResponseDto> {
-    return this.advancedService.simulateWhatIf(request, req.user?.organizationId);
+    return this.advancedService.simulateWhatIf(request);
   }
 
   @Post('what-if/batch')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Compare multiple what-if scenarios',
     description: 'Run multiple scenarios for a single risk to compare different mitigation strategies',
   })
@@ -70,9 +68,8 @@ export class RiskAdvancedController {
   @ApiResponse({ status: 200, description: 'Array of what-if results', type: [WhatIfScenarioResponseDto] })
   async batchWhatIf(
     @Body() request: BatchWhatIfRequestDto,
-    @Request() req: any,
   ): Promise<WhatIfScenarioResponseDto[]> {
-    return this.advancedService.batchWhatIf(request, req.user?.organizationId);
+    return this.advancedService.batchWhatIf(request);
   }
 
   // =====================
@@ -80,7 +77,7 @@ export class RiskAdvancedController {
   // =====================
 
   @Post('reports/generate')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Generate custom risk report',
     description: 'Create a customized report with selected fields, filters, sorting, and grouping options',
   })
@@ -88,13 +85,12 @@ export class RiskAdvancedController {
   @ApiResponse({ status: 200, description: 'Generated report data' })
   async generateReport(
     @Body() config: CustomReportConfigDto,
-    @Request() req: any,
   ) {
-    return this.advancedService.generateCustomReport(config, req.user?.organizationId);
+    return this.advancedService.generateCustomReport(config);
   }
 
   @Get('reports/fields')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get available report fields',
     description: 'Returns all available fields that can be included in custom reports, organized by category',
   })
@@ -108,21 +104,20 @@ export class RiskAdvancedController {
   // =====================
 
   @Get('quick-compare')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Quick compare risks by IDs (GET)',
     description: 'Compare risks using query parameters (convenience endpoint)',
   })
   @ApiResponse({ status: 200, description: 'Risk comparison data' })
   async quickCompare(
     @Query('ids') ids: string,
-    @Request() req: any,
   ): Promise<RiskComparisonResponseDto> {
     const riskIds = ids.split(',').filter(id => id.trim());
-    return this.advancedService.compareRisks({ risk_ids: riskIds }, req.user?.organizationId);
+    return this.advancedService.compareRisks({ risk_ids: riskIds });
   }
 
   @Get('quick-whatif')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Quick what-if analysis (GET)',
     description: 'Run a what-if scenario using query parameters',
   })
@@ -143,7 +138,6 @@ export class RiskAdvancedController {
         simulated_control_effectiveness: controlEffectiveness ? parseInt(controlEffectiveness) : undefined,
         additional_controls: additionalControls ? parseInt(additionalControls) : undefined,
       },
-      req?.user?.organizationId,
     );
   }
 }

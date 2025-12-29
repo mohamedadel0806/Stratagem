@@ -1,6 +1,8 @@
 import { Sidebar } from "@/components/layout/sidebar"
 import { DashboardHeader } from "@/components/layout/dashboard-header"
 import { SkipToContent } from "@/components/accessibility/skip-to-content"
+import { TrialStatusBanner } from "@/components/dashboard/trial-status-banner"
+import { FeatureRestrictionHandler } from "@/components/providers/feature-restriction-handler"
 
 export default function DashboardLayout({
   children,
@@ -16,9 +18,13 @@ export default function DashboardLayout({
           <Sidebar className="py-6 pr-6 lg:py-8" />
         </aside>
         <main className="flex w-full flex-col overflow-hidden p-4 md:py-6 lg:py-8" tabIndex={-1}>
+          <TrialStatusBanner />
           {children}
         </main>
       </div>
+
+      {/* Global feature restriction handler */}
+      <FeatureRestrictionHandler />
     </div>
   )
 }

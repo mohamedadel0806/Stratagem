@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { ComplianceRequirement } from './compliance-requirement.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from './tenant.entity';
 
 export enum ComplianceStatus {
   NOT_ASSESSED = 'not_assessed',
@@ -39,6 +40,14 @@ export type AssetType = 'physical' | 'information' | 'application' | 'software' 
 export class AssetRequirementMapping {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 50, name: 'asset_type' })
   assetType: AssetType;
@@ -80,10 +89,9 @@ export class AssetRequirementMapping {
   @Column({ type: 'boolean', default: false, name: 'auto_assessed' })
   autoAssessed: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

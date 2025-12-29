@@ -18,7 +18,7 @@ export class KRIService {
     private measurementRepository: Repository<KRIMeasurement>,
     @InjectRepository(KRIRiskLink)
     private linkRepository: Repository<KRIRiskLink>,
-  ) {}
+  ) { }
 
   async findAll(filters?: {
     categoryId?: string;
@@ -69,14 +69,14 @@ export class KRIService {
   async create(createDto: CreateKRIDto, userId?: string): Promise<KRIResponseDto> {
     const kri = this.kriRepository.create({
       ...createDto,
-      next_measurement_due: createDto.next_measurement_due 
-        ? new Date(createDto.next_measurement_due) 
+      next_measurement_due: createDto.next_measurement_due
+        ? new Date(createDto.next_measurement_due)
         : this.calculateNextMeasurementDate(createDto.measurement_frequency),
       created_by: userId,
     });
 
     const savedKri = await this.kriRepository.save(kri);
-    
+
     const fullKri = await this.kriRepository.findOne({
       where: { id: savedKri.id },
       relations: ['category', 'kri_owner'],
@@ -160,7 +160,7 @@ export class KRIService {
   // Risk links
   async linkToRisk(kriId: string, riskId: string, relationshipType = 'indicator', notes?: string, userId?: string): Promise<void> {
     const existingLink = await this.linkRepository.findOne({
-      where: { kri_id: kriId, risk_id: riskId },
+      where: { kriId, riskId },
     });
 
     if (existingLink) {
@@ -168,8 +168,8 @@ export class KRIService {
     }
 
     const link = this.linkRepository.create({
-      kri_id: kriId,
-      risk_id: riskId,
+      kriId,
+      riskId,
       relationship_type: relationshipType,
       notes,
       linked_by: userId,
@@ -179,28 +179,28 @@ export class KRIService {
   }
 
   async unlinkFromRisk(kriId: string, riskId: string): Promise<void> {
-    await this.linkRepository.delete({ kri_id: kriId, risk_id: riskId });
+    await this.linkRepository.delete({ kriId, riskId });
   }
 
   async getLinkedRisks(kriId: string): Promise<any[]> {
     const links = await this.linkRepository.find({
-      where: { kri_id: kriId },
+      where: { kriId },
       relations: ['risk'],
     });
 
     return links.map(link => ({
       link_id: link.id,
       risk_id: link.risk.id,
-      risk_identifier: link.risk.risk_id,
+      risk_identifier: link.risk.riskId,
       risk_title: link.risk.title,
-      risk_level: link.risk.current_risk_level,
+      risk_level: link.risk.currentRiskLevel,
       relationship_type: link.relationship_type,
     }));
   }
 
   async getKRIsForRisk(riskId: string): Promise<KRIResponseDto[]> {
     const links = await this.linkRepository.find({
-      where: { risk_id: riskId },
+      where: { riskId },
       relations: ['kri', 'kri.category'],
     });
 

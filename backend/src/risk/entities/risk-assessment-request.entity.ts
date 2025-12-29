@@ -12,6 +12,7 @@ import { Risk } from './risk.entity';
 import { RiskAssessment } from './risk-assessment.entity';
 import { User } from '../../users/entities/user.entity';
 import { AssessmentType } from './risk-assessment.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum RequestPriority {
   CRITICAL = 'critical',
@@ -40,6 +41,14 @@ export enum RequestStatus {
 export class RiskAssessmentRequest {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 100, unique: true, name: 'request_identifier' })
   request_identifier: string;
@@ -137,6 +146,3 @@ export class RiskAssessmentRequest {
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 }
-
-
-

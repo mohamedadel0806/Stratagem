@@ -22,6 +22,20 @@ export const businessUnitsApi = {
     const response = await apiClient.get<BusinessUnit>(`/business-units/${id}`);
     return response.data;
   },
+
+  create: async (data: Partial<BusinessUnit>): Promise<BusinessUnit> => {
+    const response = await apiClient.post<BusinessUnit>('/business-units', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: Partial<BusinessUnit>): Promise<BusinessUnit> => {
+    const response = await apiClient.put<BusinessUnit>(`/business-units/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await apiClient.delete(`/business-units/${id}`);
+  },
 };
 
 

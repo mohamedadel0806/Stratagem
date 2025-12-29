@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { ComplianceRequirement } from './compliance-requirement.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from './tenant.entity';
 
 export enum FrameworkStatus {
   ACTIVE = 'active',
@@ -19,14 +20,22 @@ export enum FrameworkStatus {
 }
 
 @Entity('compliance_frameworks')
-@Index(['framework_code'])
+@Index(['frameworkCode'])
 @Index(['status'])
 export class ComplianceFramework {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'varchar', length: 100, unique: true, name: 'framework_code' })
-  framework_code: string; // e.g., 'NCA_ECC', 'ISO27001', 'PCI_DSS'
+  frameworkCode: string; // e.g., 'NCA_ECC', 'ISO27001', 'PCI_DSS'
 
   @Column({ type: 'varchar', length: 300 })
   name: string;
@@ -35,13 +44,13 @@ export class ComplianceFramework {
   version: string; // e.g., '1.0', '2022', '4.0'
 
   @Column({ type: 'varchar', length: 300, nullable: true, name: 'issuing_authority' })
-  issuing_authority: string;
+  issuingAuthority: string;
 
   @Column({ type: 'text', nullable: true })
   description: string;
 
   @Column({ type: 'date', nullable: true, name: 'effective_date' })
-  effective_date: Date;
+  effectiveDate: Date;
 
   @Column({ type: 'text', nullable: true })
   url: string;
@@ -72,27 +81,27 @@ export class ComplianceFramework {
   tags: string[];
 
   @Column({ type: 'uuid', nullable: true, name: 'created_by' })
-  created_by: string;
+  createdBy: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'created_by' })
   creator: User;
 
   @CreateDateColumn({ name: 'created_at' })
-  created_at: Date;
+  createdAt: Date;
 
   @Column({ type: 'uuid', nullable: true, name: 'updated_by' })
-  updated_by: string;
+  updatedBy: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'updated_by' })
   updater: User;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updated_at: Date;
+  updatedAt: Date;
 
   @Column({ type: 'timestamp', nullable: true, name: 'deleted_at' })
-  deleted_at: Date;
+  deletedAt: Date;
 
   // Legacy fields for backward compatibility
   @Column({ type: 'varchar', length: 50, nullable: true, name: 'code' })
@@ -101,7 +110,7 @@ export class ComplianceFramework {
   @Column({ type: 'varchar', length: 50, nullable: true, name: 'region' })
   region: string; // e.g., 'Saudi Arabia', 'UAE', 'Egypt'
 
-  @Column({ type: 'uuid', nullable: true, name: 'organizationId' })
+  @Column({ type: 'uuid', nullable: true, name: 'organization_id' })
   organizationId: string;
 
   @OneToMany(
@@ -110,4 +119,3 @@ export class ComplianceFramework {
   )
   requirements: ComplianceRequirement[];
 }
-

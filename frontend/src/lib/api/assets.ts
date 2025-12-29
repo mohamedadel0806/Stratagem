@@ -230,13 +230,13 @@ export const assetsApi = {
             if (isValidUUID(id)) {
               cleanParams[key] = id;
             }
-          } 
+          }
           // If it's a string, only include if it's a valid UUID
           else if (typeof value === 'string' && isValidUUID(value)) {
             cleanParams[key] = value;
           }
           // Otherwise, skip it (don't send non-UUID values like "server", "workstation", etc.)
-        } 
+        }
         // Handle boolean values - ensure they're proper booleans
         else if (key === 'hasDependencies') {
           if (typeof value === 'boolean') {
@@ -259,17 +259,17 @@ export const assetsApi = {
         }
       });
     }
-    
+
     // Ensure page and limit have defaults if not provided
     if (!cleanParams.page || cleanParams.page < 1) cleanParams.page = 1;
     if (!cleanParams.limit || cleanParams.limit < 1) cleanParams.limit = 20;
-    
+
     const response = await apiClient.get<{
       data: PhysicalAsset[];
       total: number;
       page: number;
       limit: number;
-    }>('/assets/physical', { 
+    }>('/assets/physical', {
       params: cleanParams,
       timeout: 10000, // 10 second timeout
     });
@@ -567,7 +567,7 @@ export const assetsApi = {
     if (data.description) backendData.description = data.description;
     if (data.classificationDate) backendData.classificationDate = data.classificationDate;
     if (data.reclassificationDate) backendData.reclassificationDate = data.reclassificationDate;
-    
+
     // Map UUID fields - only include if valid UUIDs
     if (data.ownerId && isValidUUID(data.ownerId)) {
       backendData.informationOwnerId = data.ownerId;
@@ -578,13 +578,13 @@ export const assetsApi = {
     if (data.businessUnit && isValidUUID(data.businessUnit)) {
       backendData.businessUnitId = data.businessUnit;
     }
-    
+
     // Map storage fields
     if (data.storageLocation) backendData.assetLocation = data.storageLocation;
     if (data.storageType) backendData.storageMedium = data.storageType;
     if (data.retentionPolicy) backendData.retentionPeriod = data.retentionPolicy;
     if (data.retentionExpiryDate) backendData.retentionExpiryDate = data.retentionExpiryDate;
-    
+
     // Map compliance requirements
     if (data.complianceRequirements && Array.isArray(data.complianceRequirements)) {
       backendData.complianceRequirements = data.complianceRequirements;
@@ -616,7 +616,7 @@ export const assetsApi = {
     }
     if (data.classificationDate !== undefined) backendData.classificationDate = data.classificationDate;
     if (data.reclassificationDate !== undefined) backendData.reclassificationDate = data.reclassificationDate;
-    
+
     // Map UUID fields
     if (data.ownerId !== undefined && isValidUUID(data.ownerId)) {
       backendData.informationOwnerId = data.ownerId;
@@ -627,12 +627,12 @@ export const assetsApi = {
     if (data.businessUnit !== undefined && isValidUUID(data.businessUnit)) {
       backendData.businessUnitId = data.businessUnit;
     }
-    
+
     // Map storage fields
     if (data.storageLocation !== undefined) backendData.assetLocation = data.storageLocation;
     if (data.storageType !== undefined) backendData.storageMedium = data.storageType;
     if (data.retentionPolicy !== undefined) backendData.retentionPeriod = data.retentionPolicy;
-    
+
     // Map compliance requirements
     if (data.complianceRequirements !== undefined && Array.isArray(data.complianceRequirements)) {
       backendData.complianceRequirements = data.complianceRequirements;
@@ -710,7 +710,7 @@ export const assetsApi = {
     if (data.version) backendData.versionNumber = data.version;
     if (data.patchLevel) backendData.patchLevel = data.patchLevel;
     if (data.description || data.businessPurpose) backendData.businessPurpose = data.description || data.businessPurpose;
-    
+
     // Map UUID fields
     if (data.ownerId && isValidUUID(data.ownerId)) {
       backendData.ownerId = data.ownerId;
@@ -718,16 +718,16 @@ export const assetsApi = {
     if (data.businessUnit && isValidUUID(data.businessUnit)) {
       backendData.businessUnitId = data.businessUnit;
     }
-    
+
     // Map data fields
     if (data.dataTypesProcessed && Array.isArray(data.dataTypesProcessed)) {
       backendData.dataProcessed = data.dataTypesProcessed;
     }
     if (data.dataClassification) backendData.dataClassification = data.dataClassification;
-    
+
     // Map vendor fields
     if (data.vendor) backendData.vendorName = data.vendor;
-    
+
     // Combine vendor contact fields into object
     if (data.vendorContact || data.vendorEmail || data.vendorPhone) {
       backendData.vendorContact = {
@@ -736,21 +736,21 @@ export const assetsApi = {
         phone: data.vendorPhone || '',
       };
     }
-    
+
     // Map license fields
     if (data.licenseType) backendData.licenseType = data.licenseType;
     if (data.licenseCount !== undefined) backendData.licenseCount = data.licenseCount;
     if (data.licenseExpiry) backendData.licenseExpiry = data.licenseExpiry;
-    
+
     // Map hosting fields
     if (data.hostingType) backendData.hostingType = data.hostingType;
     if (data.hostingLocation) backendData.hostingLocation = data.hostingLocation;
     if (data.url) backendData.accessUrl = data.url;
-    
+
     // Map security fields
     if (data.lastSecurityTestDate) backendData.lastSecurityTestDate = data.lastSecurityTestDate;
     if (data.authenticationMethod) backendData.authenticationMethod = data.authenticationMethod;
-    
+
     // Map compliance and criticality
     if (data.complianceRequirements && Array.isArray(data.complianceRequirements)) {
       backendData.complianceRequirements = data.complianceRequirements;
@@ -778,7 +778,7 @@ export const assetsApi = {
     if (data.description !== undefined || data.businessPurpose !== undefined) {
       backendData.businessPurpose = data.description || data.businessPurpose;
     }
-    
+
     // Map UUID fields
     // Handle ownerId: only include if it's a valid UUID
     // If it's empty/null, omit it (don't change the current value)
@@ -797,16 +797,16 @@ export const assetsApi = {
       }
       // If it's not a valid UUID, we skip it (invalid value) to avoid validation errors
     }
-    
+
     // Map data fields
     if (data.dataTypesProcessed !== undefined && Array.isArray(data.dataTypesProcessed)) {
       backendData.dataProcessed = data.dataTypesProcessed;
     }
     if (data.dataClassification !== undefined) backendData.dataClassification = data.dataClassification;
-    
+
     // Map vendor fields
     if (data.vendor !== undefined) backendData.vendorName = data.vendor;
-    
+
     // Combine vendor contact fields into object
     if (data.vendorContact !== undefined || data.vendorEmail !== undefined || data.vendorPhone !== undefined) {
       backendData.vendorContact = {
@@ -815,21 +815,21 @@ export const assetsApi = {
         phone: data.vendorPhone || '',
       };
     }
-    
+
     // Map license fields
     if (data.licenseType !== undefined) backendData.licenseType = data.licenseType;
     if (data.licenseCount !== undefined) backendData.licenseCount = data.licenseCount;
     if (data.licenseExpiry !== undefined) backendData.licenseExpiry = data.licenseExpiry;
-    
+
     // Map hosting fields
     if (data.hostingType !== undefined) backendData.hostingType = data.hostingType;
     if (data.hostingLocation !== undefined) backendData.hostingLocation = data.hostingLocation;
     if (data.url !== undefined) backendData.accessUrl = data.url;
-    
+
     // Map security fields
     if (data.lastSecurityTestDate !== undefined) backendData.lastSecurityTestDate = data.lastSecurityTestDate;
     if (data.authenticationMethod !== undefined) backendData.authenticationMethod = data.authenticationMethod;
-    
+
     // Map compliance and criticality
     if (data.complianceRequirements !== undefined && Array.isArray(data.complianceRequirements)) {
       backendData.complianceRequirements = data.complianceRequirements;
@@ -911,7 +911,7 @@ export const assetsApi = {
     if (data.version) backendData.versionNumber = data.version;
     if (data.patchLevel) backendData.patchLevel = data.patchLevel;
     if (data.description || data.businessPurpose) backendData.businessPurpose = data.description || data.businessPurpose;
-    
+
     // Map UUID fields
     if (data.ownerId && isValidUUID(data.ownerId)) {
       backendData.ownerId = data.ownerId;
@@ -919,10 +919,10 @@ export const assetsApi = {
     if (data.businessUnit && isValidUUID(data.businessUnit)) {
       backendData.businessUnitId = data.businessUnit;
     }
-    
+
     // Map vendor fields
     if (data.vendor) backendData.vendorName = data.vendor;
-    
+
     // Combine vendor contact fields into object
     if (data.vendorContact || data.vendorEmail || data.vendorPhone) {
       backendData.vendorContact = {
@@ -931,18 +931,18 @@ export const assetsApi = {
         phone: data.vendorPhone || '',
       };
     }
-    
+
     // Map license fields
     if (data.licenseType) backendData.licenseType = data.licenseType;
     if (data.numberOfLicenses !== undefined) backendData.licenseCount = data.numberOfLicenses;
     if (data.licenseKey) backendData.licenseKey = data.licenseKey;
     if (data.licenseExpiryDate) backendData.licenseExpiry = data.licenseExpiryDate;
     if (data.installationCount !== undefined) backendData.installationCount = data.installationCount;
-    
+
     // Map security fields
     if (data.lastSecurityTestDate) backendData.lastSecurityTestDate = data.lastSecurityTestDate;
     if (data.supportEndDate) backendData.supportEndDate = data.supportEndDate;
-    
+
     // Map compliance requirements
     if (data.complianceRequirements && Array.isArray(data.complianceRequirements)) {
       backendData.complianceRequirements = data.complianceRequirements;
@@ -969,7 +969,7 @@ export const assetsApi = {
     if (data.description !== undefined || data.businessPurpose !== undefined) {
       backendData.businessPurpose = data.description || data.businessPurpose;
     }
-    
+
     // Map UUID fields
     if (data.ownerId !== undefined && isValidUUID(data.ownerId)) {
       backendData.ownerId = data.ownerId;
@@ -977,10 +977,10 @@ export const assetsApi = {
     if (data.businessUnit !== undefined && isValidUUID(data.businessUnit)) {
       backendData.businessUnitId = data.businessUnit;
     }
-    
+
     // Map vendor fields
     if (data.vendor !== undefined) backendData.vendorName = data.vendor;
-    
+
     // Combine vendor contact fields into object
     if (data.vendorContact !== undefined || data.vendorEmail !== undefined || data.vendorPhone !== undefined) {
       backendData.vendorContact = {
@@ -989,18 +989,18 @@ export const assetsApi = {
         phone: data.vendorPhone || '',
       };
     }
-    
+
     // Map license fields
     if (data.licenseType !== undefined) backendData.licenseType = data.licenseType;
     if (data.numberOfLicenses !== undefined) backendData.licenseCount = data.numberOfLicenses;
     if (data.licenseKey !== undefined) backendData.licenseKey = data.licenseKey;
     if (data.licenseExpiryDate !== undefined) backendData.licenseExpiry = data.licenseExpiryDate;
     if (data.installationCount !== undefined) backendData.installationCount = data.installationCount;
-    
+
     // Map security fields
     if (data.lastSecurityTestDate !== undefined) backendData.lastSecurityTestDate = data.lastSecurityTestDate;
     if (data.supportEndDate !== undefined) backendData.supportEndDate = data.supportEndDate;
-    
+
     // Map compliance requirements
     if (data.complianceRequirements !== undefined && Array.isArray(data.complianceRequirements)) {
       backendData.complianceRequirements = data.complianceRequirements;
@@ -1094,7 +1094,7 @@ export const assetsApi = {
     // Map optional fields
     if (data.supplierType) backendData.supplierType = data.supplierType;
     if (data.description || data.businessPurpose) backendData.businessPurpose = data.description || data.businessPurpose;
-    
+
     // Map UUID fields
     if (data.ownerId && isValidUUID(data.ownerId)) {
       backendData.ownerId = data.ownerId;
@@ -1102,7 +1102,7 @@ export const assetsApi = {
     if (data.businessUnit && isValidUUID(data.businessUnit)) {
       backendData.businessUnitId = data.businessUnit;
     }
-    
+
     // Map goods/services - convert string to array if needed
     if (data.goodsOrServicesProvided) {
       if (typeof data.goodsOrServicesProvided === 'string') {
@@ -1111,9 +1111,9 @@ export const assetsApi = {
         backendData.goodsServicesType = data.goodsOrServicesProvided;
       }
     }
-    
+
     if (data.criticalityLevel) backendData.criticalityLevel = data.criticalityLevel;
-    
+
     // Map contract fields
     if (data.contractReference) backendData.contractReference = data.contractReference;
     if (data.contractStartDate) backendData.contractStartDate = data.contractStartDate;
@@ -1121,7 +1121,7 @@ export const assetsApi = {
     if (data.contractValue !== undefined) backendData.contractValue = data.contractValue;
     if (data.currency) backendData.currency = data.currency;
     if (data.autoRenewal !== undefined) backendData.autoRenewal = data.autoRenewal;
-    
+
     // Combine primary contact fields into object
     if (data.primaryContactName || data.primaryContactEmail || data.primaryContactPhone) {
       backendData.primaryContact = {
@@ -1131,7 +1131,7 @@ export const assetsApi = {
         phone: data.primaryContactPhone || '',
       };
     }
-    
+
     // Map secondary contact if provided
     if (data.secondaryContactName || data.secondaryContactEmail || data.secondaryContactPhone) {
       backendData.secondaryContact = {
@@ -1141,7 +1141,7 @@ export const assetsApi = {
         phone: data.secondaryContactPhone || '',
       };
     }
-    
+
     // Map other fields
     if (data.taxId) backendData.taxId = data.taxId;
     if (data.registrationNumber) backendData.registrationNumber = data.registrationNumber;
@@ -1180,7 +1180,7 @@ export const assetsApi = {
     if (data.description !== undefined || data.businessPurpose !== undefined) {
       backendData.businessPurpose = data.description || data.businessPurpose;
     }
-    
+
     // Map UUID fields
     if (data.ownerId !== undefined && isValidUUID(data.ownerId)) {
       backendData.ownerId = data.ownerId;
@@ -1188,7 +1188,7 @@ export const assetsApi = {
     if (data.businessUnit !== undefined && isValidUUID(data.businessUnit)) {
       backendData.businessUnitId = data.businessUnit;
     }
-    
+
     // Map goods/services
     if (data.goodsOrServicesProvided !== undefined) {
       if (typeof data.goodsOrServicesProvided === 'string') {
@@ -1197,9 +1197,9 @@ export const assetsApi = {
         backendData.goodsServicesType = data.goodsOrServicesProvided;
       }
     }
-    
+
     if (data.criticalityLevel !== undefined) backendData.criticalityLevel = data.criticalityLevel;
-    
+
     // Map contract fields
     if (data.contractReference !== undefined) backendData.contractReference = data.contractReference;
     if (data.contractStartDate !== undefined) backendData.contractStartDate = data.contractStartDate;
@@ -1207,7 +1207,7 @@ export const assetsApi = {
     if (data.contractValue !== undefined) backendData.contractValue = data.contractValue;
     if (data.currency !== undefined) backendData.currency = data.currency;
     if (data.autoRenewal !== undefined) backendData.autoRenewal = data.autoRenewal;
-    
+
     // Combine primary contact fields into object
     if (data.primaryContactName !== undefined || data.primaryContactEmail !== undefined || data.primaryContactPhone !== undefined) {
       backendData.primaryContact = {
@@ -1217,7 +1217,7 @@ export const assetsApi = {
         phone: data.primaryContactPhone || '',
       };
     }
-    
+
     // Map secondary contact
     if (data.secondaryContactName !== undefined || data.secondaryContactEmail !== undefined || data.secondaryContactPhone !== undefined) {
       backendData.secondaryContact = {
@@ -1227,7 +1227,7 @@ export const assetsApi = {
         phone: data.secondaryContactPhone || '',
       };
     }
-    
+
     // Map other fields
     if (data.taxId !== undefined) backendData.taxId = data.taxId;
     if (data.registrationNumber !== undefined) backendData.registrationNumber = data.registrationNumber;
@@ -1290,7 +1290,7 @@ export const assetsApi = {
         }
       });
     }
-    const response = await apiClient.get('/assets/search', { 
+    const response = await apiClient.get('/assets/search', {
       params: cleanParams,
       timeout: 10000,
     });
@@ -1334,7 +1334,7 @@ export const assetsApi = {
         }
       });
     }
-    const response = await apiClient.get('/assets', { 
+    const response = await apiClient.get('/assets', {
       params: cleanParams,
       timeout: 10000,
     });
@@ -1861,6 +1861,35 @@ export const assetsApi = {
   },
 };
 
+// Asset Types API
+export const assetTypesApi = {
+  getAll: async (category?: string): Promise<AssetType[]> => {
+    const response = await apiClient.get<AssetType[]>('/assets/types', {
+      params: category ? { category } : undefined,
+    });
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<AssetType> => {
+    const response = await apiClient.get<AssetType>(`/assets/types/${id}`);
+    return response.data;
+  },
+
+  create: async (data: Partial<AssetType>): Promise<AssetType> => {
+    const response = await apiClient.post<AssetType>('/assets/types', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: Partial<AssetType>): Promise<AssetType> => {
+    const response = await apiClient.put<AssetType>(`/assets/types/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await apiClient.delete(`/assets/types/${id}`);
+  },
+};
+
 // Integration Types
 export interface IntegrationConfig {
   id: string;
@@ -1868,6 +1897,10 @@ export interface IntegrationConfig {
   integrationType: 'cmdb' | 'asset_management_system' | 'rest_api' | 'webhook';
   endpointUrl: string;
   authenticationType: 'api_key' | 'bearer_token' | 'basic_auth' | 'oauth2';
+  apiKey?: string;
+  bearerToken?: string;
+  username?: string;
+  password?: string;
   fieldMapping?: Record<string, string>;
   syncInterval?: string;
   status: 'active' | 'inactive' | 'error';

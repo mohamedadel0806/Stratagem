@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog } from '../entities/audit-log.entity';
 import { CreateAuditLogDto } from '../dto/audit-log.dto';
+import { TenantContextService } from '../context/tenant-context.service';
 
 /**
  * AuditLogService: Centralized audit logging for all system operations
@@ -15,15 +16,19 @@ export class AuditLogService {
   constructor(
     @InjectRepository(AuditLog)
     private auditLogRepository: Repository<AuditLog>,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   /**
    * Create an audit log entry
    */
   async log(dto: CreateAuditLogDto): Promise<AuditLog> {
     try {
+      const tenantId = this.tenantContextService.getTenantId();
+
       const auditLog = this.auditLogRepository.create({
         ...dto,
+        tenantId: dto.tenantId || tenantId,
         timestamp: new Date(),
       });
 
@@ -42,9 +47,12 @@ export class AuditLogService {
     if (!dtos || dtos.length === 0) return;
 
     try {
+      const tenantId = this.tenantContextService.getTenantId();
+
       const auditLogs = dtos.map(dto =>
         this.auditLogRepository.create({
           ...dto,
+          tenantId: dto.tenantId || tenantId,
           timestamp: new Date(),
         }),
       );
@@ -184,9 +192,10 @@ export class AuditLogService {
     const logs = await query.orderBy('audit.timestamp', 'DESC').getMany();
 
     // CSV Headers
-    const headers = ['Timestamp', 'User ID', 'Action', 'Entity Type', 'Entity ID', 'Changes', 'Description'];
+    const headers = ['Timestamp', 'Tenant ID', 'User ID', 'Action', 'Entity Type', 'Entity ID', 'Changes', 'Description'];
     const rows = logs.map(log => [
       log.timestamp.toISOString(),
+      log.tenantId || 'GLOBAL',
       log.userId || 'SYSTEM',
       log.action,
       log.entityType,
@@ -240,7 +249,7 @@ export class AuditLogService {
     newestLog: Date;
   }> {
     const totalLogs = await this.auditLogRepository.count();
-    
+
     const [uniqueUsers, uniqueActions, uniqueEntities, oldest, newest] = await Promise.all([
       this.auditLogRepository
         .createQueryBuilder('audit')

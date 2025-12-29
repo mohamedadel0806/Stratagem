@@ -100,9 +100,9 @@ export default function AlertsPage() {
 
   const [activeTab, setActiveTab] = useState<'alerts' | 'rules' | 'subscriptions'>('alerts');
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<AlertStatus | ''>('');
-  const [severityFilter, setSeverityFilter] = useState<AlertSeverity | ''>('');
-  const [typeFilter, setTypeFilter] = useState<AlertType | ''>('');
+  const [statusFilter, setStatusFilter] = useState<AlertStatus | 'all'>('all');
+  const [severityFilter, setSeverityFilter] = useState<AlertSeverity | 'all'>('all');
+  const [typeFilter, setTypeFilter] = useState<AlertType | 'all'>('all');
 
   // Dialog states
   const [isCreateAlertOpen, setIsCreateAlertOpen] = useState(false);
@@ -125,7 +125,8 @@ export default function AlertsPage() {
   const [newRule, setNewRule] = useState<Partial<CreateAlertRuleDto>>({
     triggerType: 'time_based' as any,
     condition: 'days_overdue' as any,
-    severityScore: 2
+    severityScore: 2,
+    isActive: true
   });
   const [newSubscription, setNewSubscription] = useState<Partial<CreateAlertSubscriptionDto>>({
     notificationChannel: 'in_app' as any,
@@ -137,8 +138,8 @@ export default function AlertsPage() {
   const { data: alertsData, isLoading: alertsLoading } = useQuery({
     queryKey: ['alerts', statusFilter, severityFilter, typeFilter, searchQuery],
     queryFn: () => governanceApi.getAlerts(
-      statusFilter || undefined,
-      severityFilter || undefined,
+      statusFilter === 'all' ? undefined : statusFilter,
+      severityFilter === 'all' ? undefined : severityFilter,
       50,
       0
     ),
@@ -217,6 +218,21 @@ export default function AlertsPage() {
       queryClient.invalidateQueries({ queryKey: ['alert-rules'] });
       setDeleteDialog({ item: {} as AlertRule, type: 'rule', isOpen: false });
       toast({ title: 'Success', description: 'Alert rule deleted' });
+    },
+  });
+
+  const triggerRuleMutation = useMutation({
+    mutationFn: (id: string) => governanceApi.triggerAlertRule(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      toast({ title: 'Success', description: 'Alert rule triggered. Check dashboard for updates.' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to trigger rule',
+        variant: 'destructive'
+      });
     },
   });
 
@@ -333,34 +349,34 @@ export default function AlertsPage() {
                       className="pl-10"
                     />
                   </div>
-                  <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as AlertStatus || '')}>
-                    <SelectTrigger className="w-40">
+                  <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as AlertStatus || 'all')}>
+                    <SelectTrigger className="w-40" aria-label="Status Filter">
                       <SelectValue placeholder="All Statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Statuses</SelectItem>
+                      <SelectItem value="all">All Status</SelectItem>
                       {Object.entries(statusLabels).map(([value, label]) => (
                         <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select value={severityFilter} onValueChange={(value) => setSeverityFilter(value as AlertSeverity || '')}>
-                    <SelectTrigger className="w-40">
+                  <Select value={severityFilter} onValueChange={(value) => setSeverityFilter(value as AlertSeverity || 'all')}>
+                    <SelectTrigger className="w-40" aria-label="Severity Filter">
                       <SelectValue placeholder="All Severities" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Severities</SelectItem>
+                      <SelectItem value="all">All Severities</SelectItem>
                       {Object.entries(severityLabels).map(([value, label]) => (
                         <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as AlertType || '')}>
-                    <SelectTrigger className="w-48">
+                  <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as AlertType || 'all')}>
+                    <SelectTrigger className="w-48" aria-label="Type Filter">
                       <SelectValue placeholder="All Types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Types</SelectItem>
+                      <SelectItem value="all">All Types</SelectItem>
                       {Object.entries(typeLabels).map(([value, label]) => (
                         <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
@@ -377,7 +393,7 @@ export default function AlertsPage() {
                     <p>No alerts found</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-4" data-testid="alerts-list">
                     {filteredAlerts.map((alert) => (
                       <Card key={alert.id} className="hover:shadow-md transition-shadow">
                         <CardContent className="p-4">
@@ -419,6 +435,7 @@ export default function AlertsPage() {
                                   size="sm"
                                   onClick={() => acknowledgeAlertMutation.mutate(alert.id)}
                                   disabled={acknowledgeAlertMutation.isPending}
+                                  data-testid={`acknowledge-alert-${alert.id}`}
                                 >
                                   <Eye className="h-4 w-4 mr-1" />
                                   Acknowledge
@@ -429,6 +446,7 @@ export default function AlertsPage() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setResolveDialog({ alert, isOpen: true })}
+                                  data-testid={`resolve-alert-${alert.id}`}
                                 >
                                   <CheckCircle2 className="h-4 w-4 mr-1" />
                                   Resolve
@@ -501,37 +519,17 @@ export default function AlertsPage() {
                               <span> • Severity Score: {rule.severityScore}</span>
                             </div>
                           </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => setEditingRule(rule)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => updateRuleMutation.mutate({
-                                  id: rule.id,
-                                  data: { ...rule, isActive: !rule.isActive }
-                                })}
-                              >
-                                {rule.isActive ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                                {rule.isActive ? 'Disable' : 'Enable'}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => setDeleteDialog({ item: rule, type: 'rule', isOpen: true })}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => triggerRuleMutation.mutate(rule.id)} data-testid={`trigger-rule-${rule.id}`}>
+                              Trigger Rule
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setEditingRule(rule)} data-testid={`edit-rule-${rule.id}`}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteDialog({ isOpen: true, type: 'rule', item: rule })} data-testid={`delete-rule-${rule.id}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -658,7 +656,7 @@ export default function AlertsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="alert-description">Description</Label>
+              <Label htmlFor="alert-description">Alert Message</Label>
               <Textarea
                 id="alert-description"
                 value={newAlert.description || ''}
@@ -727,7 +725,7 @@ export default function AlertsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="rule-name">Name</Label>
+                <Label htmlFor="rule-name">Rule Name</Label>
                 <Input
                   id="rule-name"
                   value={editingRule?.name || newRule.name || ''}
@@ -741,16 +739,17 @@ export default function AlertsPage() {
               <div>
                 <Label htmlFor="rule-entity-type">Entity Type</Label>
                 <Select
-                  value={editingRule?.entityType || newRule.entityType || ''}
+                  value={editingRule?.entityType || newRule.entityType || 'all'}
                   onValueChange={(value) => editingRule
                     ? setEditingRule({ ...editingRule, entityType: value })
                     : setNewRule({ ...newRule, entityType: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="rule-entity-type">
                     <SelectValue placeholder="Select entity type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">Select entity type</SelectItem>
                     <SelectItem value="policy">Policy</SelectItem>
                     <SelectItem value="control">Control</SelectItem>
                     <SelectItem value="assessment">Assessment</SelectItem>
@@ -775,13 +774,13 @@ export default function AlertsPage() {
               <div>
                 <Label htmlFor="rule-trigger-type">Trigger Type</Label>
                 <Select
-                  value={editingRule?.triggerType || newRule.triggerType || ''}
+                  value={editingRule?.triggerType || newRule.triggerType || 'all'}
                   onValueChange={(value) => editingRule
                     ? setEditingRule({ ...editingRule, triggerType: value as any })
                     : setNewRule({ ...newRule, triggerType: value as any })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="alert-rule-trigger-type-dropdown">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -793,9 +792,67 @@ export default function AlertsPage() {
                 </Select>
               </div>
               <div>
+                <Label htmlFor="rule-alert-type">Alert Type</Label>
+                <Select
+                  value={editingRule?.filters?.alertType || newRule.filters?.alertType || 'all'}
+                  onValueChange={(value) => {
+                    const filters = editingRule?.filters || newRule.filters || {};
+                    const val = value === 'all' ? undefined : value;
+                    if (editingRule) {
+                      setEditingRule({ ...editingRule, filters: { ...filters, alertType: val } });
+                    } else {
+                      setNewRule({ ...newRule, filters: { ...filters, alertType: val } });
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="alert-rule-alert-type-dropdown">
+                    <SelectValue placeholder="Alert Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(typeLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="rule-alert-severity">Severity</Label>
+                <Select
+                  value={editingRule?.filters?.severity || newRule.filters?.severity || 'all'}
+                  onValueChange={(value) => {
+                    const filters = editingRule?.filters || newRule.filters || {};
+                    const val = value === 'all' ? undefined : value;
+                    const scoreMap: Record<string, number> = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 4 };
+                    const score = scoreMap[value] || 2;
+                    if (editingRule) {
+                      setEditingRule({
+                        ...editingRule,
+                        severityScore: score,
+                        filters: { ...filters, severity: val }
+                      });
+                    } else {
+                      setNewRule({
+                        ...newRule,
+                        severityScore: score,
+                        filters: { ...filters, severity: val }
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="alert-rule-severity-dropdown">
+                    <SelectValue placeholder="Severity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(severityLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="rule-condition">Condition</Label>
                 <Select
-                  value={editingRule?.condition || newRule.condition || ''}
+                  value={editingRule?.condition || newRule.condition || 'all'}
                   onValueChange={(value) => editingRule
                     ? setEditingRule({ ...editingRule, condition: value as any })
                     : setNewRule({ ...newRule, condition: value as any })
@@ -879,7 +936,7 @@ export default function AlertsPage() {
                 onClick={() => {
                   setIsCreateRuleOpen(false);
                   setEditingRule(null);
-                  setNewRule({ triggerType: 'time_based' as any, condition: 'days_overdue' as any, severityScore: 2 });
+                  setNewRule({ triggerType: 'time_based' as any, condition: 'days_overdue' as any, severityScore: 2, isActive: true });
                 }}
               >
                 Cancel
@@ -893,7 +950,7 @@ export default function AlertsPage() {
                     createRuleMutation.mutate(data as CreateAlertRuleDto);
                   }
                 }}
-                disabled={!((editingRule?.name || newRule.name) && (editingRule?.entityType || newRule.entityType))}
+                disabled={createRuleMutation.isPending || updateRuleMutation.isPending || (!editingRule && !newRule.name)}
               >
                 {editingRule ? 'Update Rule' : 'Create Rule'}
               </Button>
@@ -916,7 +973,7 @@ export default function AlertsPage() {
               <div>
                 <Label htmlFor="subscription-channel">Notification Channel</Label>
                 <Select
-                  value={editingSubscription?.notificationChannel || newSubscription.notificationChannel || ''}
+                  value={editingSubscription?.notificationChannel || newSubscription.notificationChannel || 'in_app'}
                   onValueChange={(value) => editingSubscription
                     ? setEditingSubscription({ ...editingSubscription, notificationChannel: value as any })
                     : setNewSubscription({ ...newSubscription, notificationChannel: value as any })
@@ -935,7 +992,7 @@ export default function AlertsPage() {
               <div>
                 <Label htmlFor="subscription-frequency">Frequency</Label>
                 <Select
-                  value={editingSubscription?.frequency || newSubscription.frequency || ''}
+                  value={editingSubscription?.frequency || newSubscription.frequency || 'immediate'}
                   onValueChange={(value) => editingSubscription
                     ? setEditingSubscription({ ...editingSubscription, frequency: value as any })
                     : setNewSubscription({ ...newSubscription, frequency: value as any })
@@ -954,19 +1011,21 @@ export default function AlertsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="subscription-alert-type">Alert Type (Optional)</Label>
+                <Label htmlFor="subscription-alert-type">Alert Type</Label>
                 <Select
-                  value={editingSubscription?.alertType || newSubscription.alertType || ''}
-                  onValueChange={(value) => editingSubscription
-                    ? setEditingSubscription({ ...editingSubscription, alertType: value as AlertType || undefined })
-                    : setNewSubscription({ ...newSubscription, alertType: value as AlertType || undefined })
-                  }
+                  value={editingSubscription?.alertType || newSubscription.alertType || 'all'}
+                  onValueChange={(value) => {
+                    const val = value === 'all' ? undefined : value as AlertType;
+                    editingSubscription
+                      ? setEditingSubscription({ ...editingSubscription, alertType: val })
+                      : setNewSubscription({ ...newSubscription, alertType: val })
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="alert-subscription-type-dropdown" id="subscription-alert-type">
                     <SelectValue placeholder="All types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="all">All Types</SelectItem>
                     {Object.entries(typeLabels).map(([value, label]) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
@@ -974,19 +1033,21 @@ export default function AlertsPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="subscription-severity">Severity (Optional)</Label>
+                <Label htmlFor="subscription-severity">Severity</Label>
                 <Select
-                  value={editingSubscription?.severity || newSubscription.severity || ''}
-                  onValueChange={(value) => editingSubscription
-                    ? setEditingSubscription({ ...editingSubscription, severity: value as AlertSeverity || undefined })
-                    : setNewSubscription({ ...newSubscription, severity: value as AlertSeverity || undefined })
-                  }
+                  value={editingSubscription?.severity || newSubscription.severity || 'all'}
+                  onValueChange={(value) => {
+                    const val = value === 'all' ? undefined : value as AlertSeverity;
+                    editingSubscription
+                      ? setEditingSubscription({ ...editingSubscription, severity: val })
+                      : setNewSubscription({ ...newSubscription, severity: val })
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="alert-subscription-severity-dropdown" id="subscription-severity">
                     <SelectValue placeholder="All severities" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Severities</SelectItem>
+                    <SelectItem value="all">All Severities</SelectItem>
                     {Object.entries(severityLabels).map(([value, label]) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
@@ -1048,6 +1109,7 @@ export default function AlertsPage() {
               <Button
                 onClick={() => resolveAlertMutation.mutate({ id: resolveDialog.alert.id, resolution: resolutionNotes })}
                 disabled={resolveAlertMutation.isPending || !resolutionNotes.trim()}
+                data-testid="confirm-resolve-alert"
               >
                 Resolve Alert
               </Button>

@@ -9,8 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { 
-  ShieldAlert, Plus, AlertTriangle, Edit, Trash2, Eye, 
+import {
+  ShieldAlert, Plus, AlertTriangle, Edit, Trash2, Eye,
   Package, Shield, Target, Activity, TrendingUp, Clock
 } from "lucide-react"
 import { RiskForm } from "@/components/forms/risk-form"
@@ -323,7 +323,7 @@ export default function RisksPage() {
         searchPlaceholder="Search risks by title, description, or ID..."
         searchValue={search}
         onSearchChange={setSearch}
-        dataTestId="risk-register-search-input"
+        data-testid="risk-register-search-input"
         filters={[
           {
             key: 'status',
@@ -411,7 +411,7 @@ export default function RisksPage() {
       )}
 
       {risks && risks.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="risk-register-list">
           {risks.map((risk) => {
             const likelihood = toNumber(risk.current_likelihood || risk.likelihood)
             const impact = toNumber(risk.current_impact || risk.impact)
@@ -450,7 +450,7 @@ export default function RisksPage() {
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                     {risk.description || 'No description available'}
                   </p>
-                  
+
                   {/* Risk Score Comparison */}
                   {(risk.inherent_risk_score || risk.target_risk_score) && (
                     <div className="mb-3 p-2 bg-muted/50 rounded-md">
@@ -499,7 +499,7 @@ export default function RisksPage() {
                       </div>
                     )}
                     {risk.kri_count !== undefined && risk.kri_count > 0 && (
-                      <Link 
+                      <Link
                         href={`/${params.locale}/dashboard/risks/kris`}
                         className="flex items-center gap-1 hover:text-primary transition-colors"
                         title="View KRIs"

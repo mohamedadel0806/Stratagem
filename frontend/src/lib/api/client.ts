@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { getSession } from 'next-auth/react';
+import { toast } from '@/hooks/use-toast';
 
 // Determine API base URL based on Kong configuration
 // USE_KONG=true: Use Kong API Gateway (http://localhost:8000 in dev, Kong base URL in prod)
@@ -190,6 +191,38 @@ class ApiClient {
       (error: AxiosError) => {
         if (error.response?.status === 401) {
           console.warn('Unauthorized request:', error.config?.url);
+        }
+
+        if (error.response?.status === 403) {
+          const errorData = error.response.data as any;
+
+          // Check if this is a feature restriction error
+          if (errorData?.message?.toLowerCase().includes('feature') ||
+            errorData?.message?.toLowerCase().includes('subscription') ||
+            errorData?.message?.toLowerCase().includes('tier') ||
+            errorData?.requiredFeature) {
+
+            // Emit custom event for feature restriction
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('feature-restricted', {
+                detail: {
+                  feature: errorData.requiredFeature || 'premium',
+                  message: errorData.message || 'This feature requires a higher subscription tier',
+                  endpoint: error.config?.url,
+                  currentTier: errorData.currentTier,
+                  requiredTier: errorData.requiredTier
+                }
+              }));
+            }
+          }
+        }
+
+        if (error.response?.status === 429) {
+          toast({
+            title: "Too Many Requests",
+            description: "You have exceeded the rate limit. Please try again in a minute.",
+            variant: "destructive",
+          });
         }
         return Promise.reject(error);
       }

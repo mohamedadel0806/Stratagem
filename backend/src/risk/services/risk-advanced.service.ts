@@ -7,6 +7,7 @@ import { RiskControlLink } from '../entities/risk-control-link.entity';
 import { RiskTreatment, TreatmentStatus } from '../entities/risk-treatment.entity';
 import { KRIRiskLink } from '../entities/kri-risk-link.entity';
 import { RiskSettingsService } from './risk-settings.service';
+import { TenantContextService } from '../../common/context/tenant-context.service';
 import {
   RiskComparisonRequestDto,
   RiskComparisonResponseDto,
@@ -31,7 +32,8 @@ export class RiskAdvancedService {
     @InjectRepository(KRIRiskLink)
     private kriLinkRepository: Repository<KRIRiskLink>,
     private riskSettingsService: RiskSettingsService,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   /**
    * Compare multiple risks side-by-side
@@ -40,9 +42,10 @@ export class RiskAdvancedService {
     request: RiskComparisonRequestDto,
     organizationId?: string,
   ): Promise<RiskComparisonResponseDto> {
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
     const risks = await this.riskRepository.find({
-      where: { id: In(request.risk_ids), deleted_at: IsNull() },
-      relations: ['owner', 'risk_category'],
+      where: { id: In(request.risk_ids), deletedAt: IsNull(), tenantId: tenantId },
+      relations: ['owner', 'riskCategory'],
     });
 
     if (risks.length === 0) {
@@ -55,12 +58,12 @@ export class RiskAdvancedService {
 
     // Build comparison data
     const comparisonData: RiskComparisonDataDto[] = risks.map(risk => {
-      const inherentScore = risk.inherent_risk_score || 
-        (risk.inherent_likelihood && risk.inherent_impact ? risk.inherent_likelihood * risk.inherent_impact : null);
-      const currentScore = risk.current_risk_score || 
-        (risk.current_likelihood && risk.current_impact ? risk.current_likelihood * risk.current_impact : null);
-      const targetScore = risk.target_risk_score ||
-        (risk.target_likelihood && risk.target_impact ? risk.target_likelihood * risk.target_impact : null);
+      const inherentScore = risk.inherentRiskScore ||
+        (risk.inherentLikelihood && risk.inherentImpact ? risk.inherentLikelihood * risk.inherentImpact : null);
+      const currentScore = risk.currentRiskScore ||
+        (risk.currentLikelihood && risk.currentImpact ? risk.currentLikelihood * risk.currentImpact : null);
+      const targetScore = risk.targetRiskScore ||
+        (risk.targetLikelihood && risk.targetImpact ? risk.targetLikelihood * risk.targetImpact : null);
 
       // Calculate risk reduction percentage
       const riskReduction = inherentScore && currentScore
@@ -72,26 +75,26 @@ export class RiskAdvancedService {
 
       return {
         id: risk.id,
-        risk_id: risk.risk_id,
+        risk_id: risk.riskId,
         title: risk.title,
-        category_name: risk.risk_category?.name,
+        category_name: risk.riskCategory?.name,
         status: risk.status,
-        owner_name: risk.owner 
+        owner_name: risk.owner
           ? `${risk.owner.firstName || ''} ${risk.owner.lastName || ''}`.trim()
           : undefined,
-        inherent_likelihood: risk.inherent_likelihood,
-        inherent_impact: risk.inherent_impact,
+        inherent_likelihood: risk.inherentLikelihood,
+        inherent_impact: risk.inherentImpact,
         inherent_risk_score: inherentScore,
-        inherent_risk_level: risk.inherent_risk_level,
-        current_likelihood: risk.current_likelihood,
-        current_impact: risk.current_impact,
+        inherent_risk_level: risk.inherentRiskLevel as any,
+        current_likelihood: risk.currentLikelihood,
+        current_impact: risk.currentImpact,
         current_risk_score: currentScore,
-        current_risk_level: risk.current_risk_level,
-        target_likelihood: risk.target_likelihood,
-        target_impact: risk.target_impact,
+        current_risk_level: risk.currentRiskLevel as any,
+        target_likelihood: risk.targetLikelihood,
+        target_impact: risk.targetImpact,
         target_risk_score: targetScore,
-        target_risk_level: risk.target_risk_level,
-        control_effectiveness: risk.control_effectiveness,
+        target_risk_level: risk.targetRiskLevel as any,
+        control_effectiveness: risk.controlEffectiveness,
         linked_controls_count: counts[risk.id]?.linked_controls_count || 0,
         linked_assets_count: counts[risk.id]?.linked_assets_count || 0,
         active_treatments_count: counts[risk.id]?.active_treatments_count || 0,
@@ -105,8 +108,8 @@ export class RiskAdvancedService {
     const scores = comparisonData
       .map(r => r.current_risk_score)
       .filter((s): s is number => s !== null && s !== undefined);
-    
-    const avgScore = scores.length > 0 
+
+    const avgScore = scores.length > 0
       ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
       : 0;
 
@@ -120,11 +123,11 @@ export class RiskAdvancedService {
     const avgEffectiveness = comparisonData
       .map(r => r.control_effectiveness)
       .filter((e): e is number => e !== null && e !== undefined);
-    
+
     const summary = {
       total_risks: comparisonData.length,
       average_current_score: avgScore,
-      highest_risk: highestRisk 
+      highest_risk: highestRisk
         ? { id: highestRisk.id, title: highestRisk.title, score: highestRisk.current_risk_score || 0 }
         : { id: '', title: '', score: 0 },
       lowest_risk: lowestRisk
@@ -193,7 +196,7 @@ export class RiskAdvancedService {
     organizationId?: string,
   ): Promise<WhatIfScenarioResponseDto> {
     const risk = await this.riskRepository.findOne({
-      where: { id: request.risk_id, deleted_at: IsNull() },
+      where: { id: request.risk_id, deletedAt: IsNull() },
     });
 
     if (!risk) {
@@ -201,14 +204,15 @@ export class RiskAdvancedService {
     }
 
     // Get settings for risk level calculation
-    const settings = await this.riskSettingsService.getSettings(organizationId);
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+    const settings = await this.riskSettingsService.getSettings(tenantId);
 
     // Original values
-    const originalLikelihood = risk.current_likelihood || Number(risk.likelihood) || 3;
-    const originalImpact = risk.current_impact || Number(risk.impact) || 3;
+    const originalLikelihood = risk.currentLikelihood || Number(risk.likelihood) || 3;
+    const originalImpact = risk.currentImpact || Number(risk.impact) || 3;
     const originalScore = originalLikelihood * originalImpact;
-    const originalLevel = await this.getRiskLevelFromSettings(originalScore, organizationId);
-    const originalEffectiveness = risk.control_effectiveness || 0;
+    const originalLevel = await this.getRiskLevelFromSettings(originalScore, tenantId);
+    const originalEffectiveness = risk.controlEffectiveness || 0;
 
     // Simulated values
     const simulatedLikelihood = request.simulated_likelihood ?? originalLikelihood;
@@ -224,14 +228,14 @@ export class RiskAdvancedService {
     const baseSimulatedScore = simulatedLikelihood * simulatedImpact;
     const effectivenessReduction = simulatedEffectiveness / 100;
     const simulatedScore = Math.max(1, Math.round(baseSimulatedScore * (1 - effectivenessReduction * 0.5)));
-    const simulatedLevel = await this.getRiskLevelFromSettings(simulatedScore, organizationId);
+    const simulatedLevel = await this.getRiskLevelFromSettings(simulatedScore, tenantId);
 
     // Check risk appetite
-    const exceedsAppetite = settings.enable_risk_appetite && 
+    const exceedsAppetite = settings.enable_risk_appetite &&
       simulatedScore > settings.max_acceptable_risk_score;
 
     // Get risk level details
-    const levelDetails = await this.riskSettingsService.getRiskLevelForScore(simulatedScore, organizationId);
+    const levelDetails = await this.riskSettingsService.getRiskLevelForScore(simulatedScore, tenantId);
 
     // Generate recommendation
     const recommendation = this.generateRecommendation(
@@ -260,7 +264,7 @@ export class RiskAdvancedService {
       },
       impact_analysis: {
         score_change: simulatedScore - originalScore,
-        score_change_percentage: originalScore > 0 
+        score_change_percentage: originalScore > 0
           ? Math.round(((simulatedScore - originalScore) / originalScore) * 100)
           : 0,
         level_changed: originalLevel !== simulatedLevel,
@@ -315,13 +319,18 @@ export class RiskAdvancedService {
   }> {
     let queryBuilder = this.riskRepository.createQueryBuilder('risk')
       .leftJoinAndSelect('risk.owner', 'owner')
-      .leftJoinAndSelect('risk.risk_category', 'risk_category')
-      .leftJoinAndSelect('risk.risk_analyst', 'risk_analyst')
-      .where('risk.deleted_at IS NULL');
+      .leftJoinAndSelect('risk.riskCategory', 'riskCategory')
+      .leftJoinAndSelect('risk.riskAnalyst', 'riskAnalyst')
+      .where('risk.deletedAt IS NULL');
+
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+    if (tenantId) {
+      queryBuilder.andWhere('risk.tenantId = :tenantId', { tenantId });
+    }
 
     // Apply filters
     if (config.risk_levels && config.risk_levels.length > 0) {
-      queryBuilder.andWhere('risk.current_risk_level IN (:...levels)', { levels: config.risk_levels });
+      queryBuilder.andWhere('risk.currentRiskLevel IN (:...levels)', { levels: config.risk_levels });
     }
 
     if (config.statuses && config.statuses.length > 0) {
@@ -333,7 +342,7 @@ export class RiskAdvancedService {
     }
 
     if (config.categories && config.categories.length > 0) {
-      queryBuilder.andWhere('risk.category_id IN (:...categoryIds)', { categoryIds: config.categories });
+      queryBuilder.andWhere('risk.categoryId IN (:...categoryIds)', { categoryIds: config.categories });
     }
 
     // Apply sorting
@@ -341,7 +350,7 @@ export class RiskAdvancedService {
       const direction = config.sort_direction || 'DESC';
       queryBuilder.orderBy(`risk.${config.sort_by}`, direction);
     } else {
-      queryBuilder.orderBy('risk.current_risk_score', 'DESC');
+      queryBuilder.orderBy('risk.currentRiskScore', 'DESC');
     }
 
     const risks = await queryBuilder.getMany();
@@ -349,9 +358,9 @@ export class RiskAdvancedService {
     // Filter by risk appetite if needed
     let filteredRisks = risks;
     if (config.exceeds_appetite_only) {
-      const settings = await this.riskSettingsService.getSettings(organizationId);
-      filteredRisks = risks.filter(r => 
-        r.current_risk_score && r.current_risk_score > settings.max_acceptable_risk_score
+      const settings = await this.riskSettingsService.getSettings(tenantId);
+      filteredRisks = risks.filter(r =>
+        r.currentRiskScore && r.currentRiskScore > settings.max_acceptable_risk_score
       );
     }
 
@@ -363,37 +372,37 @@ export class RiskAdvancedService {
     const reportData = filteredRisks.map(risk => {
       const fullData: Record<string, any> = {
         id: risk.id,
-        risk_id: risk.risk_id,
+        risk_id: risk.riskId,
         title: risk.title,
         description: risk.description,
-        risk_statement: risk.risk_statement,
+        risk_statement: risk.riskStatement,
         category: risk.category,
-        category_name: risk.risk_category?.name,
+        category_name: risk.riskCategory?.name,
         status: risk.status,
-        owner_name: risk.owner 
+        owner_name: risk.owner
           ? `${risk.owner.firstName || ''} ${risk.owner.lastName || ''}`.trim()
           : undefined,
-        analyst_name: risk.risk_analyst
-          ? `${risk.risk_analyst.firstName || ''} ${risk.risk_analyst.lastName || ''}`.trim()
+        analyst_name: risk.riskAnalyst
+          ? `${risk.riskAnalyst.firstName || ''} ${risk.riskAnalyst.lastName || ''}`.trim()
           : undefined,
-        inherent_likelihood: risk.inherent_likelihood,
-        inherent_impact: risk.inherent_impact,
-        inherent_risk_score: risk.inherent_risk_score,
-        inherent_risk_level: risk.inherent_risk_level,
-        current_likelihood: risk.current_likelihood,
-        current_impact: risk.current_impact,
-        current_risk_score: risk.current_risk_score,
-        current_risk_level: risk.current_risk_level,
-        target_likelihood: risk.target_likelihood,
-        target_impact: risk.target_impact,
-        target_risk_score: risk.target_risk_score,
-        target_risk_level: risk.target_risk_level,
-        control_effectiveness: risk.control_effectiveness,
-        threat_source: risk.threat_source,
-        risk_velocity: risk.risk_velocity,
-        date_identified: risk.date_identified,
-        next_review_date: risk.next_review_date,
-        last_review_date: risk.last_review_date,
+        inherent_likelihood: risk.inherentLikelihood,
+        inherent_impact: risk.inherentImpact,
+        inherent_risk_score: risk.inherentRiskScore,
+        inherent_risk_level: risk.inherentRiskLevel as any,
+        current_likelihood: risk.currentLikelihood,
+        current_impact: risk.currentImpact,
+        current_risk_score: risk.currentRiskScore,
+        current_risk_level: risk.currentRiskLevel as any,
+        target_likelihood: risk.targetLikelihood,
+        target_impact: risk.targetImpact,
+        target_risk_score: risk.targetRiskScore,
+        target_risk_level: risk.targetRiskLevel as any,
+        control_effectiveness: risk.controlEffectiveness,
+        threat_source: risk.threatSource as any,
+        risk_velocity: risk.riskVelocity as any,
+        date_identified: risk.dateIdentified,
+        next_review_date: risk.nextReviewDate,
+        last_review_date: risk.lastReviewDate,
         linked_controls_count: counts[risk.id]?.linked_controls_count || 0,
         linked_assets_count: counts[risk.id]?.linked_assets_count || 0,
         active_treatments_count: counts[risk.id]?.active_treatments_count || 0,
@@ -420,21 +429,21 @@ export class RiskAdvancedService {
     let summary: Record<string, any> | undefined;
     if (config.include_summary) {
       const scores = filteredRisks
-        .map(r => r.current_risk_score)
+        .map(r => r.currentRiskScore)
         .filter((s): s is number => s !== null && s !== undefined);
 
       summary = {
         total_risks: filteredRisks.length,
-        average_score: scores.length > 0 
+        average_score: scores.length > 0
           ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
           : 0,
         max_score: scores.length > 0 ? Math.max(...scores) : 0,
         min_score: scores.length > 0 ? Math.min(...scores) : 0,
         by_level: {
-          critical: filteredRisks.filter(r => r.current_risk_level === RiskLevel.CRITICAL).length,
-          high: filteredRisks.filter(r => r.current_risk_level === RiskLevel.HIGH).length,
-          medium: filteredRisks.filter(r => r.current_risk_level === RiskLevel.MEDIUM).length,
-          low: filteredRisks.filter(r => r.current_risk_level === RiskLevel.LOW).length,
+          critical: filteredRisks.filter(r => r.currentRiskLevel === RiskLevel.CRITICAL).length,
+          high: filteredRisks.filter(r => r.currentRiskLevel === RiskLevel.HIGH).length,
+          medium: filteredRisks.filter(r => r.currentRiskLevel === RiskLevel.MEDIUM).length,
+          low: filteredRisks.filter(r => r.currentRiskLevel === RiskLevel.LOW).length,
         },
         by_status: filteredRisks.reduce((acc, r) => {
           acc[r.status] = (acc[r.status] || 0) + 1;
@@ -485,40 +494,40 @@ export class RiskAdvancedService {
       { field: 'risk_statement', label: 'Risk Statement', category: 'Identification' },
       { field: 'category_name', label: 'Category', category: 'Identification' },
       { field: 'status', label: 'Status', category: 'Identification' },
-      
+
       // Ownership
       { field: 'owner_name', label: 'Owner', category: 'Ownership' },
       { field: 'analyst_name', label: 'Analyst', category: 'Ownership' },
-      
+
       // Inherent Risk
       { field: 'inherent_likelihood', label: 'Inherent Likelihood', category: 'Inherent Risk' },
       { field: 'inherent_impact', label: 'Inherent Impact', category: 'Inherent Risk' },
       { field: 'inherent_risk_score', label: 'Inherent Score', category: 'Inherent Risk' },
       { field: 'inherent_risk_level', label: 'Inherent Level', category: 'Inherent Risk' },
-      
+
       // Current Risk
       { field: 'current_likelihood', label: 'Current Likelihood', category: 'Current Risk' },
       { field: 'current_impact', label: 'Current Impact', category: 'Current Risk' },
       { field: 'current_risk_score', label: 'Current Score', category: 'Current Risk' },
       { field: 'current_risk_level', label: 'Current Level', category: 'Current Risk' },
-      
+
       // Target Risk
       { field: 'target_likelihood', label: 'Target Likelihood', category: 'Target Risk' },
       { field: 'target_impact', label: 'Target Impact', category: 'Target Risk' },
       { field: 'target_risk_score', label: 'Target Score', category: 'Target Risk' },
       { field: 'target_risk_level', label: 'Target Level', category: 'Target Risk' },
-      
+
       // Controls
       { field: 'control_effectiveness', label: 'Control Effectiveness', category: 'Controls' },
       { field: 'linked_controls_count', label: 'Linked Controls', category: 'Controls' },
-      
+
       // Additional Info
       { field: 'threat_source', label: 'Threat Source', category: 'Additional' },
       { field: 'risk_velocity', label: 'Risk Velocity', category: 'Additional' },
       { field: 'linked_assets_count', label: 'Linked Assets', category: 'Additional' },
       { field: 'active_treatments_count', label: 'Active Treatments', category: 'Additional' },
       { field: 'kri_count', label: 'KRIs', category: 'Additional' },
-      
+
       // Dates
       { field: 'date_identified', label: 'Date Identified', category: 'Dates' },
       { field: 'next_review_date', label: 'Next Review', category: 'Dates' },
@@ -532,7 +541,8 @@ export class RiskAdvancedService {
 
   private async getRiskLevelFromSettings(score: number, organizationId?: string): Promise<string> {
     try {
-      const riskLevel = await this.riskSettingsService.getRiskLevelForScore(score, organizationId);
+      const tenantId = organizationId || this.tenantContextService.getTenantId();
+      const riskLevel = await this.riskSettingsService.getRiskLevelForScore(score, tenantId);
       return riskLevel?.level || this.getDefaultRiskLevel(score);
     } catch {
       return this.getDefaultRiskLevel(score);
@@ -586,8 +596,8 @@ export class RiskAdvancedService {
       recommendations.push('Focus on improving control effectiveness through testing and monitoring.');
     }
 
-    return recommendations.length > 0 
-      ? recommendations.join(' ') 
+    return recommendations.length > 0
+      ? recommendations.join(' ')
       : 'No significant changes detected in this scenario.';
   }
 
@@ -612,10 +622,10 @@ export class RiskAdvancedService {
     // Count asset links
     const assetCounts = await this.assetLinkRepository
       .createQueryBuilder('link')
-      .select('link.risk_id', 'risk_id')
+      .select('link.riskId', 'risk_id')
       .addSelect('COUNT(*)', 'count')
-      .where('link.risk_id IN (:...ids)', { ids: riskIds })
-      .groupBy('link.risk_id')
+      .where('link.riskId IN (:...ids)', { ids: riskIds })
+      .groupBy('link.riskId')
       .getRawMany();
 
     assetCounts.forEach(row => {
@@ -625,10 +635,10 @@ export class RiskAdvancedService {
     // Count control links
     const controlCounts = await this.controlLinkRepository
       .createQueryBuilder('link')
-      .select('link.risk_id', 'risk_id')
+      .select('link.riskId', 'risk_id')
       .addSelect('COUNT(*)', 'count')
-      .where('link.risk_id IN (:...ids)', { ids: riskIds })
-      .groupBy('link.risk_id')
+      .where('link.riskId IN (:...ids)', { ids: riskIds })
+      .groupBy('link.riskId')
       .getRawMany();
 
     controlCounts.forEach(row => {
@@ -638,12 +648,12 @@ export class RiskAdvancedService {
     // Count active treatments
     const treatmentCounts = await this.treatmentRepository
       .createQueryBuilder('treatment')
-      .select('treatment.risk_id', 'risk_id')
+      .select('treatment.riskId', 'risk_id')
       .addSelect('COUNT(*)', 'count')
-      .where('treatment.risk_id IN (:...ids)', { ids: riskIds })
+      .where('treatment.riskId IN (:...ids)', { ids: riskIds })
       .andWhere('treatment.status IN (:...statuses)', { statuses: ['planned', 'in_progress'] })
-      .andWhere('treatment.deleted_at IS NULL')
-      .groupBy('treatment.risk_id')
+      .andWhere('treatment.deletedAt IS NULL')
+      .groupBy('treatment.riskId')
       .getRawMany();
 
     treatmentCounts.forEach(row => {
@@ -653,10 +663,10 @@ export class RiskAdvancedService {
     // Count KRI links
     const kriCounts = await this.kriLinkRepository
       .createQueryBuilder('link')
-      .select('link.risk_id', 'risk_id')
+      .select('link.riskId', 'risk_id')
       .addSelect('COUNT(*)', 'count')
-      .where('link.risk_id IN (:...ids)', { ids: riskIds })
-      .groupBy('link.risk_id')
+      .where('link.riskId IN (:...ids)', { ids: riskIds })
+      .groupBy('link.riskId')
       .getRawMany();
 
     kriCounts.forEach(row => {
@@ -666,10 +676,3 @@ export class RiskAdvancedService {
     return result;
   }
 }
-
-
-
-
-
-
-

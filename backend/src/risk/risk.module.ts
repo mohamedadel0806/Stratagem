@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { GovernanceModule } from '../governance/governance.module';
+import { CommonModule } from '../common/common.module';
 
 // Entities
 import { Risk } from './entities/risk.entity';
@@ -95,6 +96,7 @@ const services = [
   imports: [
     TypeOrmModule.forFeature(entities),
     forwardRef(() => WorkflowModule),
+    forwardRef(() => CommonModule),
   ],
   controllers,
   providers: services,
@@ -103,4 +105,4 @@ const services = [
     TypeOrmModule,
   ],
 })
-export class RiskModule {}
+export class RiskModule { }

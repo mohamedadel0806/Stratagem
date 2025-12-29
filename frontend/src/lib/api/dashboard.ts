@@ -52,6 +52,7 @@ export interface AssetWithOutdatedSecurityTest {
 export interface AssetStats {
   countByType: AssetCountByType;
   countByCriticality: AssetCountByCriticality;
+  countByConnectivityStatus: { connected: number; disconnected: number; unknown: number };
   assetsWithoutOwner: AssetWithoutOwner[];
   recentChanges: RecentAssetChange[];
   assetsByComplianceScope?: AssetByComplianceScope[];
@@ -106,6 +107,7 @@ export const dashboardApi = {
             medium: 0,
             low: 0,
           },
+          countByConnectivityStatus: { connected: 0, disconnected: 0, unknown: 0 },
           assetsWithoutOwner: [],
           recentChanges: [],
           assetsByComplianceScope: [],
@@ -148,6 +150,7 @@ export const dashboardApi = {
             medium: 0,
             low: 0,
           },
+          countByConnectivityStatus: { connected: 0, disconnected: 0, unknown: 0 },
           assetsWithoutOwner: [],
           recentChanges: [],
         },

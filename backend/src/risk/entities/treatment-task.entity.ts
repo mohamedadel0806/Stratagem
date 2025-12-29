@@ -10,16 +10,25 @@ import {
 } from 'typeorm';
 import { RiskTreatment } from './risk-treatment.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 @Entity('treatment_tasks')
-@Index(['treatment_id'])
+@Index(['treatmentId'])
 @Index(['status'])
 export class TreatmentTask {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'uuid', name: 'treatment_id' })
-  treatment_id: string;
+  treatmentId: string;
 
   @ManyToOne(() => RiskTreatment, (treatment) => treatment.tasks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'treatment_id' })
@@ -32,7 +41,7 @@ export class TreatmentTask {
   description: string;
 
   @Column({ type: 'uuid', nullable: true, name: 'assignee_id' })
-  assignee_id: string;
+  assigneeId: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'assignee_id' })
@@ -42,24 +51,17 @@ export class TreatmentTask {
   status: string;
 
   @Column({ type: 'date', nullable: true, name: 'due_date' })
-  due_date: Date;
+  dueDate: Date;
 
   @Column({ type: 'date', nullable: true, name: 'completed_date' })
-  completed_date: Date;
+  completedDate: Date;
 
   @Column({ type: 'integer', default: 0, name: 'display_order' })
-  display_order: number;
+  displayOrder: number;
 
   @CreateDateColumn({ name: 'created_at' })
-  created_at: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updated_at: Date;
+  updatedAt: Date;
 }
-
-
-
-
-
-
-

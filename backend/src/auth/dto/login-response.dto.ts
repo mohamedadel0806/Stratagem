@@ -11,6 +11,7 @@ export class LoginResponseDto {
     firstName: string;
     lastName: string;
     role: string;
+    tenantId?: string | null;
   };
 }
 

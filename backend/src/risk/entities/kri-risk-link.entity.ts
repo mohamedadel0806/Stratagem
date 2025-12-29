@@ -10,23 +10,32 @@ import {
 import { KRI } from './kri.entity';
 import { Risk } from './risk.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 @Entity('kri_risk_links')
-@Index(['kri_id'])
-@Index(['risk_id'])
+@Index(['kriId'])
+@Index(['riskId'])
 export class KRIRiskLink {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'uuid', name: 'kri_id' })
-  kri_id: string;
+  kriId: string;
 
   @ManyToOne(() => KRI, (kri) => kri.risk_links, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'kri_id' })
   kri: KRI;
 
   @Column({ type: 'uuid', name: 'risk_id' })
-  risk_id: string;
+  riskId: string;
 
   @ManyToOne(() => Risk, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'risk_id' })
@@ -53,10 +62,3 @@ export class KRIRiskLink {
   @CreateDateColumn({ name: 'linked_at' })
   linked_at: Date;
 }
-
-
-
-
-
-
-

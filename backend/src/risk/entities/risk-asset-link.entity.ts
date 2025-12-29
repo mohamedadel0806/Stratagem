@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Risk } from './risk.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum RiskAssetType {
   PHYSICAL = 'physical',
@@ -20,14 +21,22 @@ export enum RiskAssetType {
 }
 
 @Entity('risk_asset_links')
-@Index(['risk_id'])
-@Index(['asset_type', 'asset_id'])
+@Index(['riskId'])
+@Index(['assetType', 'assetId'])
 export class RiskAssetLink {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'uuid', name: 'risk_id' })
-  risk_id: string;
+  riskId: string;
 
   @ManyToOne(() => Risk, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'risk_id' })
@@ -38,13 +47,13 @@ export class RiskAssetLink {
     enum: RiskAssetType,
     name: 'asset_type',
   })
-  asset_type: RiskAssetType;
+  assetType: RiskAssetType;
 
   @Column({ type: 'uuid', name: 'asset_id' })
-  asset_id: string;
+  assetId: string;
 
   @Column({ type: 'text', nullable: true, name: 'impact_description' })
-  impact_description: string;
+  impactDescription: string;
 
   @Column({
     type: 'varchar',
@@ -52,25 +61,18 @@ export class RiskAssetLink {
     nullable: true,
     name: 'asset_criticality_at_link',
   })
-  asset_criticality_at_link: string;
+  assetCriticalityAtLink: string;
 
   @Column({ type: 'uuid', nullable: true, name: 'linked_by' })
-  linked_by: string;
+  linkedBy: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'linked_by' })
   linker: User;
 
   @CreateDateColumn({ name: 'linked_at' })
-  linked_at: Date;
+  linkedAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updated_at: Date;
+  updatedAt: Date;
 }
-
-
-
-
-
-
-

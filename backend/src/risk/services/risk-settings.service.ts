@@ -3,21 +3,25 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RiskSettings } from '../entities/risk-settings.entity';
 import { UpdateRiskSettingsDto, RiskSettingsResponseDto } from '../dto/settings/risk-settings.dto';
+import { TenantContextService } from '../../common/context/tenant-context.service';
 
 @Injectable()
 export class RiskSettingsService {
   constructor(
     @InjectRepository(RiskSettings)
     private settingsRepository: Repository<RiskSettings>,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   /**
    * Get risk settings for an organization
    * Creates default settings if none exist
    */
   async getSettings(organizationId?: string): Promise<RiskSettingsResponseDto> {
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+
     let settings = await this.settingsRepository.findOne({
-      where: organizationId ? { organization_id: organizationId } : {},
+      where: tenantId ? { tenantId } : {},
       relations: ['updater'],
     });
 
@@ -37,8 +41,10 @@ export class RiskSettingsService {
     userId?: string,
     organizationId?: string,
   ): Promise<RiskSettingsResponseDto> {
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+
     let settings = await this.settingsRepository.findOne({
-      where: organizationId ? { organization_id: organizationId } : {},
+      where: tenantId ? { tenantId } : {},
     });
 
     // If no settings exist, create default settings first
@@ -61,8 +67,10 @@ export class RiskSettingsService {
    * Reset settings to defaults
    */
   async resetToDefaults(userId?: string, organizationId?: string): Promise<RiskSettingsResponseDto> {
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+
     let settings = await this.settingsRepository.findOne({
-      where: organizationId ? { organization_id: organizationId } : {},
+      where: tenantId ? { tenantId } : {},
     });
 
     if (settings) {
@@ -84,7 +92,7 @@ export class RiskSettingsService {
     escalation: boolean;
   } | null> {
     const settings = await this.getSettings(organizationId);
-    
+
     const riskLevel = settings.risk_levels.find(
       level => score >= level.minScore && score <= level.maxScore
     );
@@ -97,7 +105,7 @@ export class RiskSettingsService {
    */
   async exceedsRiskAppetite(score: number, organizationId?: string): Promise<boolean> {
     const settings = await this.getSettings(organizationId);
-    
+
     if (!settings.enable_risk_appetite) {
       return false;
     }
@@ -156,8 +164,11 @@ export class RiskSettingsService {
    * Create default settings
    */
   private async createDefaultSettings(organizationId?: string, userId?: string): Promise<RiskSettings> {
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+
     const defaultSettings = this.settingsRepository.create({
-      organization_id: organizationId,
+      tenantId: tenantId,
+      organization_id: tenantId, // Keeping for backward compatibility
       created_by: userId,
       // All other fields use entity defaults
     });
@@ -171,7 +182,7 @@ export class RiskSettingsService {
   private toResponseDto(settings: RiskSettings): RiskSettingsResponseDto {
     return {
       id: settings.id,
-      organization_id: settings.organization_id,
+      organization_id: settings.tenantId || settings.organization_id,
       risk_levels: settings.risk_levels,
       assessment_methods: settings.assessment_methods,
       likelihood_scale: settings.likelihood_scale,

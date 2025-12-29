@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { Card } from "@/components/ui/card"
 import { ChangePasswordForm } from "@/components/forms/change-password-form"
+import { MfaSettings } from "@/components/forms/mfa-settings"
 
 export const metadata: Metadata = {
   title: "Security Settings | GRC Platform",
@@ -17,6 +18,7 @@ export default function SecuritySettingsPage() {
         <h3 className="text-lg font-semibold mb-4">Change Password</h3>
         <ChangePasswordForm />
       </Card>
+      <MfaSettings />
     </div>
   )
 }

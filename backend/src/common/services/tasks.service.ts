@@ -3,20 +3,24 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus } from '../entities/task.entity';
 import { TaskResponseDto } from '../dto/task-response.dto';
+import { TenantContextService } from '../context/tenant-context.service';
 
 @Injectable()
 export class TasksService {
   constructor(
     @InjectRepository(Task)
     private tasksRepository: Repository<Task>,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   async findPending(userId?: string): Promise<TaskResponseDto[]> {
     try {
+      const tenantId = this.tenantContextService.getTenantId();
       const query = this.tasksRepository
         .createQueryBuilder('task')
         .leftJoinAndSelect('task.assignedTo', 'assignedTo')
-        .where('task.status IN (:...statuses)', {
+        .where('task.tenantId = :tenantId', { tenantId })
+        .andWhere('task.status IN (:...statuses)', {
           statuses: [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.REVIEW],
         })
         .orderBy('task.dueDate', 'ASC')
@@ -38,9 +42,11 @@ export class TasksService {
 
   async findAll(userId?: string): Promise<TaskResponseDto[]> {
     try {
+      const tenantId = this.tenantContextService.getTenantId();
       const query = this.tasksRepository
         .createQueryBuilder('task')
         .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+        .where('task.tenantId = :tenantId', { tenantId })
         .orderBy('task.createdAt', 'DESC');
 
       if (userId) {

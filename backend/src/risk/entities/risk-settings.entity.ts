@@ -9,17 +9,26 @@ import {
   Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 /**
  * Risk Settings Entity
  * Stores organizational risk management configuration
- * Only one active settings record per organization
+ * Only one active settings record per tenant (formerly organization)
  */
 @Entity('risk_settings')
-@Index(['organization_id'], { unique: true })
+@Index(['tenantId'], { unique: true })
 export class RiskSettings {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'uuid', nullable: true, name: 'organization_id' })
   organization_id: string;
@@ -27,13 +36,15 @@ export class RiskSettings {
   // =====================
   // RISK LEVEL CONFIGURATION
   // =====================
-  
-  @Column({ type: 'jsonb', name: 'risk_levels', default: () => `'${JSON.stringify([
-    { level: 'low', minScore: 1, maxScore: 5, color: '#22c55e', description: 'Acceptable risk - monitor periodically', responseTime: '90 days', escalation: false },
-    { level: 'medium', minScore: 6, maxScore: 11, color: '#eab308', description: 'Moderate risk - implement controls', responseTime: '30 days', escalation: false },
-    { level: 'high', minScore: 12, maxScore: 19, color: '#f97316', description: 'Significant risk - prioritize treatment', responseTime: '7 days', escalation: true },
-    { level: 'critical', minScore: 20, maxScore: 25, color: '#dc2626', description: 'Unacceptable risk - immediate action required', responseTime: '24 hours', escalation: true },
-  ])}'` })
+
+  @Column({
+    type: 'jsonb', name: 'risk_levels', default: () => `'${JSON.stringify([
+      { level: 'low', minScore: 1, maxScore: 5, color: '#22c55e', description: 'Acceptable risk - monitor periodically', responseTime: '90 days', escalation: false },
+      { level: 'medium', minScore: 6, maxScore: 11, color: '#eab308', description: 'Moderate risk - implement controls', responseTime: '30 days', escalation: false },
+      { level: 'high', minScore: 12, maxScore: 19, color: '#f97316', description: 'Significant risk - prioritize treatment', responseTime: '7 days', escalation: true },
+      { level: 'critical', minScore: 20, maxScore: 25, color: '#dc2626', description: 'Unacceptable risk - immediate action required', responseTime: '24 hours', escalation: true },
+    ])}'`
+  })
   risk_levels: {
     level: string;
     minScore: number;
@@ -47,12 +58,14 @@ export class RiskSettings {
   // =====================
   // ASSESSMENT METHODS
   // =====================
-  
-  @Column({ type: 'jsonb', name: 'assessment_methods', default: () => `'${JSON.stringify([
-    { id: 'qualitative_5x5', name: 'Qualitative 5x5 Matrix', description: 'Standard 5-point scales for likelihood and impact', likelihoodScale: 5, impactScale: 5, isDefault: true, isActive: true },
-    { id: 'qualitative_3x3', name: 'Simplified 3x3 Matrix', description: 'Basic 3-point scales for quick assessments', likelihoodScale: 3, impactScale: 3, isDefault: false, isActive: true },
-    { id: 'bowtie', name: 'Bowtie Analysis', description: 'Cause-consequence analysis with barriers', likelihoodScale: 5, impactScale: 5, isDefault: false, isActive: false },
-  ])}'` })
+
+  @Column({
+    type: 'jsonb', name: 'assessment_methods', default: () => `'${JSON.stringify([
+      { id: 'qualitative_5x5', name: 'Qualitative 5x5 Matrix', description: 'Standard 5-point scales for likelihood and impact', likelihoodScale: 5, impactScale: 5, isDefault: true, isActive: true },
+      { id: 'qualitative_3x3', name: 'Simplified 3x3 Matrix', description: 'Basic 3-point scales for quick assessments', likelihoodScale: 3, impactScale: 3, isDefault: false, isActive: true },
+      { id: 'bowtie', name: 'Bowtie Analysis', description: 'Cause-consequence analysis with barriers', likelihoodScale: 5, impactScale: 5, isDefault: false, isActive: false },
+    ])}'`
+  })
   assessment_methods: {
     id: string;
     name: string;
@@ -66,14 +79,16 @@ export class RiskSettings {
   // =====================
   // LIKELIHOOD SCALE DESCRIPTIONS
   // =====================
-  
-  @Column({ type: 'jsonb', name: 'likelihood_scale', default: () => `'${JSON.stringify([
-    { value: 1, label: 'Rare', description: 'Highly unlikely to occur (< 5% chance)' },
-    { value: 2, label: 'Unlikely', description: 'Not expected but possible (5-20% chance)' },
-    { value: 3, label: 'Possible', description: 'Could occur at some point (20-50% chance)' },
-    { value: 4, label: 'Likely', description: 'More likely than not (50-80% chance)' },
-    { value: 5, label: 'Almost Certain', description: 'Expected to occur (> 80% chance)' },
-  ])}'` })
+
+  @Column({
+    type: 'jsonb', name: 'likelihood_scale', default: () => `'${JSON.stringify([
+      { value: 1, label: 'Rare', description: 'Highly unlikely to occur (< 5% chance)' },
+      { value: 2, label: 'Unlikely', description: 'Not expected but possible (5-20% chance)' },
+      { value: 3, label: 'Possible', description: 'Could occur at some point (20-50% chance)' },
+      { value: 4, label: 'Likely', description: 'More likely than not (50-80% chance)' },
+      { value: 5, label: 'Almost Certain', description: 'Expected to occur (> 80% chance)' },
+    ])}'`
+  })
   likelihood_scale: {
     value: number;
     label: string;
@@ -83,14 +98,16 @@ export class RiskSettings {
   // =====================
   // IMPACT SCALE DESCRIPTIONS
   // =====================
-  
-  @Column({ type: 'jsonb', name: 'impact_scale', default: () => `'${JSON.stringify([
-    { value: 1, label: 'Negligible', description: 'Minimal impact on operations or objectives' },
-    { value: 2, label: 'Minor', description: 'Limited impact, easily recoverable' },
-    { value: 3, label: 'Moderate', description: 'Noticeable impact requiring management attention' },
-    { value: 4, label: 'Major', description: 'Significant impact on key objectives' },
-    { value: 5, label: 'Catastrophic', description: 'Severe impact threatening organizational survival' },
-  ])}'` })
+
+  @Column({
+    type: 'jsonb', name: 'impact_scale', default: () => `'${JSON.stringify([
+      { value: 1, label: 'Negligible', description: 'Minimal impact on operations or objectives' },
+      { value: 2, label: 'Minor', description: 'Limited impact, easily recoverable' },
+      { value: 3, label: 'Moderate', description: 'Noticeable impact requiring management attention' },
+      { value: 4, label: 'Major', description: 'Significant impact on key objectives' },
+      { value: 5, label: 'Catastrophic', description: 'Severe impact threatening organizational survival' },
+    ])}'`
+  })
   impact_scale: {
     value: number;
     label: string;
@@ -100,7 +117,7 @@ export class RiskSettings {
   // =====================
   // RISK APPETITE SETTINGS
   // =====================
-  
+
   @Column({ type: 'integer', name: 'max_acceptable_risk_score', default: 11 })
   max_acceptable_risk_score: number;
 
@@ -110,7 +127,7 @@ export class RiskSettings {
   // =====================
   // GENERAL SETTINGS
   // =====================
-  
+
   @Column({ type: 'integer', name: 'default_review_period_days', default: 90 })
   default_review_period_days: number;
 
@@ -129,7 +146,7 @@ export class RiskSettings {
   // =====================
   // NOTIFICATION SETTINGS
   // =====================
-  
+
   @Column({ type: 'boolean', name: 'notify_on_high_risk', default: true })
   notify_on_high_risk: boolean;
 
@@ -145,14 +162,14 @@ export class RiskSettings {
   // =====================
   // VERSION TRACKING
   // =====================
-  
+
   @Column({ type: 'integer', default: 1, name: 'version' })
   version: number;
 
   // =====================
   // AUDIT FIELDS
   // =====================
-  
+
   @Column({ type: 'uuid', nullable: true, name: 'created_by' })
   created_by: string;
 
@@ -173,10 +190,3 @@ export class RiskSettings {
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 }
-
-
-
-
-
-
-

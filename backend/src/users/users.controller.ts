@@ -21,13 +21,17 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserData } from '../auth/decorators/current-user.decorator';
 import { UserRole } from './entities/user.entity';
+import { DataExportService } from '../common/export/data-export.service';
 
 @ApiTags('users')
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly dataExportService: DataExportService,
+  ) { }
 
   @Post()
   @UseGuards(RolesGuard)
@@ -108,6 +112,13 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
+  }
+
+  @Post('profile/export')
+  @ApiOperation({ summary: 'Export personal data for the current user' })
+  @ApiResponse({ status: 200, description: 'User data exported successfully' })
+  exportMyData(@CurrentUser() user: CurrentUserData) {
+    return this.dataExportService.exportUserData(user.userId);
   }
 }
 

@@ -14,6 +14,7 @@ import { RiskCategory } from './risk-category.entity';
 import { User } from '../../users/entities/user.entity';
 import { KRIMeasurement } from './kri-measurement.entity';
 import { KRIRiskLink } from './kri-risk-link.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum MeasurementFrequency {
   DAILY = 'daily',
@@ -44,6 +45,14 @@ export enum KRITrend {
 export class KRI {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 20, unique: true, nullable: true, name: 'kri_id' })
   kri_id: string;
@@ -170,4 +179,3 @@ export class KRI {
   @DeleteDateColumn({ name: 'deleted_at' })
   deleted_at: Date;
 }
-

@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum ReportType {
   ASSET_INVENTORY = 'asset_inventory',
@@ -38,6 +40,14 @@ export class ReportTemplate {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
@@ -47,6 +57,7 @@ export class ReportTemplate {
   @Column({
     type: 'enum',
     enum: ReportType,
+    name: 'report_type',
   })
   reportType: ReportType;
 
@@ -57,7 +68,7 @@ export class ReportTemplate {
   })
   format: ReportFormat;
 
-  @Column({ type: 'jsonb', nullable: true, default: '[]' })
+  @Column({ type: 'jsonb', nullable: true, default: '[]', name: 'field_selection' })
   fieldSelection: string[]; // Selected fields to include
 
   @Column({ type: 'jsonb', nullable: true })
@@ -66,65 +77,63 @@ export class ReportTemplate {
   @Column({ type: 'jsonb', nullable: true })
   grouping: Record<string, any>; // Grouping options
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'is_scheduled' })
   isScheduled: boolean;
 
   @Column({
     type: 'enum',
     enum: ScheduleFrequency,
     nullable: true,
+    name: 'schedule_frequency',
   })
   scheduleFrequency: ScheduleFrequency;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'schedule_cron' })
   scheduleCron: string; // Custom cron expression
 
-  @Column({ type: 'time', nullable: true })
+  @Column({ type: 'time', nullable: true, name: 'schedule_time' })
   scheduleTime: string; // Time of day to run (HH:mm format)
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true, name: 'distribution_list_id' })
   distributionListId: string; // Email distribution list
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive: boolean;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'is_system_template' })
   isSystemTemplate: boolean; // Pre-built templates that cannot be deleted
 
-  @Column({ type: 'boolean', default: false, nullable: true })
+  @Column({ type: 'boolean', default: false, nullable: true, name: 'is_shared' })
   isShared?: boolean; // Whether template is shared
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'jsonb', nullable: true, name: 'shared_with_user_ids' })
   sharedWithUserIds?: string[]; // Array of user IDs who can access this template
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'jsonb', nullable: true, name: 'shared_with_team_ids' })
   sharedWithTeamIds?: string[]; // Array of team IDs who can access this template
 
-  @Column({ type: 'boolean', default: false, nullable: true })
+  @Column({ type: 'boolean', default: false, nullable: true, name: 'is_organization_wide' })
   isOrganizationWide?: boolean; // Whether template is available to entire organization
 
   @Column({ type: 'integer', default: 1, nullable: true })
   version?: number; // Current version number
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'last_run_at' })
   lastRunAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'next_run_at' })
   nextRunAt: Date;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', name: 'created_by_id' })
   createdById: string;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'created_by_id' })
   createdBy: User;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-
-
-

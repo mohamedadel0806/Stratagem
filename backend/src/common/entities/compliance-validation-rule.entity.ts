@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { ComplianceRequirement } from './compliance-requirement.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from './tenant.entity';
 
 export type AssetType = 'physical' | 'information' | 'application' | 'software' | 'supplier';
 
@@ -44,6 +45,14 @@ export class ComplianceValidationRule {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @ManyToOne(() => ComplianceRequirement, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'requirement_id' })
   requirement: ComplianceRequirement;
@@ -76,10 +85,9 @@ export class ComplianceValidationRule {
   @Column({ type: 'uuid', nullable: true, name: 'created_by' })
   createdById: string;
 
-  @CreateDateColumn({ name: 'createdAt' })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updatedAt' })
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

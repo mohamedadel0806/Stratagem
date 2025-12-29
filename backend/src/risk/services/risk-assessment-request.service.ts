@@ -18,6 +18,7 @@ import { UpdateRiskAssessmentRequestDto } from '../dto/request/update-risk-asses
 import { RiskAssessmentRequestResponseDto } from '../dto/request/risk-assessment-request-response.dto';
 import { WorkflowService } from '../../workflow/services/workflow.service';
 import { EntityType, WorkflowTrigger } from '../../workflow/entities/workflow.entity';
+import { TenantContextService } from '../../common/context/tenant-context.service';
 
 @Injectable()
 export class RiskAssessmentRequestService {
@@ -30,7 +31,8 @@ export class RiskAssessmentRequestService {
     private assessmentRepository: Repository<RiskAssessment>,
     @Inject(forwardRef(() => WorkflowService))
     private workflowService: WorkflowService,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   /**
    * Generate unique request identifier
@@ -40,7 +42,7 @@ export class RiskAssessmentRequestService {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
-    
+
     // Find latest request for this month
     const monthPrefix = `${prefix}-${year}${month}-`;
     const latest = await this.requestRepository
@@ -69,7 +71,7 @@ export class RiskAssessmentRequestService {
       request_identifier: request.request_identifier,
       risk_id: request.risk_id,
       risk_title: request.risk?.title,
-      risk_identifier: request.risk?.risk_id,
+      risk_identifier: request.risk?.riskId,
       requested_by_id: request.requested_by_id,
       requested_by_name: request.requested_by
         ? `${request.requested_by.firstName || ''} ${request.requested_by.lastName || ''}`.trim() || request.requested_by.email
@@ -114,8 +116,14 @@ export class RiskAssessmentRequestService {
     requestedForId?: string;
     status?: RequestStatus;
     assessmentType?: string;
+    organizationId?: string;
   }): Promise<RiskAssessmentRequestResponseDto[]> {
+    const tenantId = filters?.organizationId || this.tenantContextService.getTenantId();
     const where: any = {};
+
+    if (tenantId) {
+      where.tenantId = tenantId;
+    }
 
     if (filters?.riskId) {
       where.risk_id = filters.riskId;
@@ -183,6 +191,7 @@ export class RiskAssessmentRequestService {
     userId: string,
     organizationId?: string,
   ): Promise<RiskAssessmentRequestResponseDto> {
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
     // Validate userId is provided
     if (!userId) {
       throw new UnauthorizedException('User ID is required. Please ensure you are authenticated.');
@@ -209,6 +218,7 @@ export class RiskAssessmentRequestService {
       due_date: createDto.due_date ? new Date(createDto.due_date) : undefined,
       justification: createDto.justification,
       notes: createDto.notes,
+      tenantId: tenantId,
     });
 
     const savedRequest = await this.requestRepository.save(request);
@@ -442,6 +452,3 @@ export class RiskAssessmentRequestService {
     }
   }
 }
-
-
-

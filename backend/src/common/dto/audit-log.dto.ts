@@ -5,6 +5,10 @@ export class CreateAuditLogDto {
   @IsString()
   userId: string;
 
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+
   @IsEnum(AuditAction)
   action: AuditAction;
 
@@ -41,6 +45,10 @@ export class AuditLogResponseDto {
 
   @IsString()
   userId: string;
+
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
 
   @IsString()
   action: string;

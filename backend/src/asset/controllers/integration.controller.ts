@@ -17,15 +17,19 @@ import { IntegrationConfigResponseDto } from '../dto/integration-config-response
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { User } from '../../users/entities/user.entity';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
+import { TenantFeature } from '../../common/constants/tier-config';
+import { SubscriptionGuard } from '../../auth/guards/subscription.guard';
 
 @ApiTags('Integrations')
 @Controller('assets/integrations')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, SubscriptionGuard)
 @ApiBearerAuth()
 export class IntegrationController {
-  constructor(private readonly integrationService: IntegrationService) {}
+  constructor(private readonly integrationService: IntegrationService) { }
 
   @Post()
+  @RequireFeature(TenantFeature.REST_INTEGRATIONS)
   @ApiOperation({ summary: 'Create integration configuration' })
   @ApiResponse({ status: 201, description: 'Integration config created', type: IntegrationConfigResponseDto })
   async create(
@@ -82,6 +86,7 @@ export class IntegrationController {
   }
 
   @Post(':id/sync')
+  @RequireFeature(TenantFeature.REST_INTEGRATIONS)
   @ApiOperation({ summary: 'Trigger manual synchronization' })
   @ApiParam({ name: 'id', description: 'Integration config ID' })
   @ApiResponse({ status: 200, description: 'Synchronization started' })
@@ -90,6 +95,7 @@ export class IntegrationController {
   }
 
   @Post(':id/webhook')
+  @RequireFeature(TenantFeature.WEBHOOKS)
   @ApiOperation({ summary: 'Receive webhook payload for integration (asset management system push)' })
   @ApiParam({ name: 'id', description: 'Integration config ID' })
   @ApiResponse({ status: 200, description: 'Webhook payload processed' })

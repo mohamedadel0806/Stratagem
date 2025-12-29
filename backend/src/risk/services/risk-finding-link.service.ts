@@ -37,13 +37,13 @@ export class RiskFindingLinkService {
     private riskRepository: Repository<Risk>,
     @InjectRepository(Finding)
     private findingRepository: Repository<Finding>,
-  ) {}
+  ) { }
 
   async findByRiskId(riskId: string): Promise<RiskFindingLinkResponseDto[]> {
     const links = await this.linkRepository.find({
-      where: { risk_id: riskId },
+      where: { riskId },
       relations: ['finding', 'linker'],
-      order: { linked_at: 'DESC' },
+      order: { linkedAt: 'DESC' },
     });
 
     return links.map(link => this.toResponseDto(link));
@@ -51,9 +51,9 @@ export class RiskFindingLinkService {
 
   async findByFindingId(findingId: string): Promise<RiskFindingLinkResponseDto[]> {
     const links = await this.linkRepository.find({
-      where: { finding_id: findingId },
+      where: { findingId },
       relations: ['risk', 'linker'],
-      order: { linked_at: 'DESC' },
+      order: { linkedAt: 'DESC' },
     });
 
     return links.map(link => this.toResponseDto(link));
@@ -61,24 +61,24 @@ export class RiskFindingLinkService {
 
   async getRisksForFinding(findingId: string): Promise<any[]> {
     const links = await this.linkRepository.find({
-      where: { finding_id: findingId },
+      where: { findingId },
       relations: ['risk'],
     });
 
     return links.map(link => ({
       link_id: link.id,
       risk_id: link.risk.id,
-      risk_identifier: link.risk.risk_id,
+      risk_identifier: link.risk.riskId,
       risk_title: link.risk.title,
-      risk_level: link.risk.current_risk_level,
-      risk_score: link.risk.current_risk_score,
-      relationship_type: link.relationship_type,
+      risk_level: link.risk.currentRiskLevel,
+      risk_score: link.risk.currentRiskScore,
+      relationship_type: link.relationshipType,
     }));
   }
 
   async getFindingsForRisk(riskId: string): Promise<any[]> {
     const links = await this.linkRepository.find({
-      where: { risk_id: riskId },
+      where: { riskId },
       relations: ['finding'],
     });
 
@@ -89,7 +89,7 @@ export class RiskFindingLinkService {
       finding_title: link.finding.title,
       severity: link.finding.severity,
       status: link.finding.status,
-      relationship_type: link.relationship_type,
+      relationship_type: link.relationshipType,
     }));
   }
 
@@ -108,20 +108,25 @@ export class RiskFindingLinkService {
 
     // Check for duplicate link
     const existingLink = await this.linkRepository.findOne({
-      where: { risk_id: createDto.risk_id, finding_id: createDto.finding_id },
+      where: { riskId: createDto.risk_id, findingId: createDto.finding_id },
     });
 
     if (existingLink) {
       throw new ConflictException('This finding is already linked to this risk');
     }
 
+    const { risk_id, finding_id, relationship_type, ...rest } = createDto;
+
     const link = this.linkRepository.create({
-      ...createDto,
-      linked_by: userId,
+      ...rest,
+      riskId: risk_id,
+      findingId: finding_id,
+      relationshipType: relationship_type,
+      linkedBy: userId,
     });
 
     const savedLink = await this.linkRepository.save(link);
-    
+
     // Reload with relations
     const fullLink = await this.linkRepository.findOne({
       where: { id: savedLink.id },
@@ -141,14 +146,18 @@ export class RiskFindingLinkService {
       throw new NotFoundException(`Risk-finding link with ID ${linkId} not found`);
     }
 
-    Object.assign(link, updateDto);
+    const { relationship_type, ...rest } = updateDto as any;
+    const updateData: any = { ...rest };
+    if (relationship_type) updateData.relationshipType = relationship_type;
+
+    Object.assign(link, updateData);
     const updatedLink = await this.linkRepository.save(link);
     return this.toResponseDto(updatedLink);
   }
 
   async remove(linkId: string): Promise<void> {
     const link = await this.linkRepository.findOne({ where: { id: linkId } });
-    
+
     if (!link) {
       throw new NotFoundException(`Risk-finding link with ID ${linkId} not found`);
     }
@@ -158,7 +167,7 @@ export class RiskFindingLinkService {
 
   async removeByRiskAndFinding(riskId: string, findingId: string): Promise<void> {
     const link = await this.linkRepository.findOne({
-      where: { risk_id: riskId, finding_id: findingId },
+      where: { riskId, findingId },
     });
 
     if (!link) {
@@ -171,20 +180,20 @@ export class RiskFindingLinkService {
   private toResponseDto(link: RiskFindingLink): RiskFindingLinkResponseDto {
     const dto: RiskFindingLinkResponseDto = {
       id: link.id,
-      risk_id: link.risk_id,
-      finding_id: link.finding_id,
-      relationship_type: link.relationship_type,
+      risk_id: link.riskId,
+      finding_id: link.findingId,
+      relationship_type: link.relationshipType,
       notes: link.notes,
-      linked_by: link.linked_by,
-      linked_at: link.linked_at?.toISOString(),
+      linked_by: link.linkedBy,
+      linked_at: link.linkedAt?.toISOString(),
     };
 
     if (link.risk) {
       dto.risk_info = {
-        risk_id: link.risk.risk_id,
+        risk_id: link.risk.riskId,
         title: link.risk.title,
-        current_risk_level: link.risk.current_risk_level,
-        current_risk_score: link.risk.current_risk_score,
+        current_risk_level: link.risk.currentRiskLevel,
+        current_risk_score: link.risk.currentRiskScore,
       };
     }
 
@@ -200,6 +209,3 @@ export class RiskFindingLinkService {
     return dto;
   }
 }
-
-
-

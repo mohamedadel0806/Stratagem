@@ -34,7 +34,11 @@ import { FileUploadController } from './controllers/file-upload.controller';
 import { ComplianceAssessmentController } from './controllers/compliance-assessment.controller';
 import { BusinessUnitController } from './controllers/business-unit.controller';
 import { BusinessUnitService } from './services/business-unit.service';
+import { EncryptionService } from './services/encryption.service';
 import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
+import { TenantInterceptor } from './interceptors/tenant.interceptor';
+import { TenantContextService } from './context/tenant-context.service';
+import { TenantSubscriber } from './database/tenant.subscriber';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { AssetModule } from '../asset/asset.module';
 
@@ -83,9 +87,16 @@ import { AssetModule } from '../asset/asset.module';
     BusinessUnitService,
     {
       provide: APP_INTERCEPTOR,
+      useClass: TenantInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
       useClass: AuditLogInterceptor,
     },
+    TenantContextService,
+    TenantSubscriber,
+    EncryptionService,
   ],
-  exports: [TasksService, ComplianceService, NotificationService, AuditLogService, AIService, FileService, ComplianceAssessmentService, BusinessUnitService],
+  exports: [TasksService, ComplianceService, NotificationService, AuditLogService, AIService, FileService, ComplianceAssessmentService, BusinessUnitService, TenantContextService, EncryptionService],
 })
-export class CommonModule {}
+export class CommonModule { }

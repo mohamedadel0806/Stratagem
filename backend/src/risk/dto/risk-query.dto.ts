@@ -1,6 +1,6 @@
 import { IsString, IsEnum, IsOptional, IsInt, IsUUID, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
-import { RiskStatus, RiskCategory_OLD as RiskCategory, RiskLevel } from '../entities/risk.entity';
+import { RiskStatus, RiskCategoryLegacy, RiskLevel } from '../entities/risk.entity';
 
 export class RiskQueryDto {
   @IsOptional()
@@ -12,8 +12,8 @@ export class RiskQueryDto {
   status?: RiskStatus;
 
   @IsOptional()
-  @IsEnum(RiskCategory)
-  category?: RiskCategory;
+  @IsEnum(RiskCategoryLegacy)
+  category?: RiskCategoryLegacy;
 
   @IsOptional()
   @IsUUID()

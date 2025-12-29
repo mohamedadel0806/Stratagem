@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { TenantContextService } from '../context/tenant-context.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Notification, NotificationType, NotificationPriority } from '../entities/notification.entity';
@@ -9,7 +10,8 @@ export class NotificationService {
   constructor(
     @InjectRepository(Notification)
     private notificationRepository: Repository<Notification>,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   /**
    * Create a new notification
@@ -18,6 +20,7 @@ export class NotificationService {
     const notification = this.notificationRepository.create({
       ...dto,
       priority: dto.priority || NotificationPriority.MEDIUM,
+      tenantId: this.tenantContextService.getTenantId(),
     });
     const saved = await this.notificationRepository.save(notification);
     return this.toResponseDto(saved);
@@ -27,11 +30,12 @@ export class NotificationService {
    * Create notifications for multiple users
    */
   async createBulk(userIds: string[], dto: Omit<CreateNotificationDto, 'userId'>): Promise<void> {
-    const notifications = userIds.map(userId => 
+    const notifications = userIds.map(userId =>
       this.notificationRepository.create({
         ...dto,
         userId,
         priority: dto.priority || NotificationPriority.MEDIUM,
+        tenantId: this.tenantContextService.getTenantId(),
       })
     );
     await this.notificationRepository.save(notifications);

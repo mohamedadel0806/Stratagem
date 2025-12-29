@@ -8,6 +8,7 @@ import { UpdatePolicyDto } from '../dto/update-policy.dto';
 import { WorkflowService } from '../../workflow/services/workflow.service';
 import { EntityType, WorkflowTrigger } from '../../workflow/entities/workflow.entity';
 import { PolicyQueryDto } from '../dto/policy-query.dto';
+import { TenantContextService } from '../../common/context/tenant-context.service';
 
 @Injectable()
 export class PolicyService {
@@ -16,7 +17,8 @@ export class PolicyService {
     private policyRepository: Repository<Policy>,
     @Inject(forwardRef(() => WorkflowService))
     private workflowService: WorkflowService,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   async findAll(query?: PolicyQueryDto): Promise<{ data: PolicyResponseDto[]; total: number; page: number; limit: number }> {
     const page = query?.page || 1;
@@ -78,6 +80,8 @@ export class PolicyService {
       effectiveDate: createPolicyDto.effectiveDate ? new Date(createPolicyDto.effectiveDate) : null,
       reviewDate: createPolicyDto.reviewDate ? new Date(createPolicyDto.reviewDate) : null,
       ownerId: userId,
+      tenantId: this.tenantContextService.getTenantId(),
+      organizationId: this.tenantContextService.getTenantId(), // Keeping for backward compatibility
     };
 
     const policy = this.policyRepository.create(policyData);

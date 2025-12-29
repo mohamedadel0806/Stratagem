@@ -1,9 +1,14 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { useQuery } from "@tanstack/react-query"
+import { tenantsApi } from "@/lib/api/tenants"
 import { cn } from "@/lib/utils/helpers"
+import { UpgradeDialog } from "../settings/upgrade-dialog"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
@@ -32,7 +37,17 @@ import {
   Target,
   Mail,
   ShieldCheck,
+  Clock,
+  Sparkles,
+  Rocket
 } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Progress } from "@/components/ui/progress"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,12 +55,39 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> { }
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
   const params = useParams()
+  const { data: session } = useSession()
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false)
   const locale = params.locale as string || 'en'
+  const tenantId = (session?.user as any)?.tenantId
+
+  const { data: tenant } = useQuery({
+    queryKey: ['sidebar-tenant', tenantId],
+    queryFn: () => tenantsApi.getById(tenantId),
+    enabled: !!tenantId,
+  })
+
+  const daysRemaining = React.useMemo(() => {
+    if (!tenant?.trialEndsAt) return null
+    const end = new Date(tenant.trialEndsAt)
+    const now = new Date()
+    const diff = end.getTime() - now.getTime()
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+  }, [tenant?.trialEndsAt])
+
+  const trialProgress = React.useMemo(() => {
+    if (!tenant?.trialStartedAt || !tenant?.trialEndsAt) return 0
+    const start = new Date(tenant.trialStartedAt).getTime()
+    const end = new Date(tenant.trialEndsAt).getTime()
+    const now = new Date().getTime()
+    const total = end - start
+    const elapsed = now - start
+    return Math.min(100, Math.max(0, (elapsed / total) * 100))
+  }, [tenant?.trialStartedAt, tenant?.trialEndsAt])
 
   return (
     <div className={cn("pb-12", className)}>
@@ -148,7 +190,7 @@ export function Sidebar({ className }: SidebarProps) {
                 </Link>
               </DropdownMenuContent>
             </DropdownMenu>
-             <Link href={`/${locale}/dashboard/ai-insights`}>
+            <Link href={`/${locale}/dashboard/ai-insights`}>
               <Button variant={pathname?.includes("/dashboard/ai-insights") ? "secondary" : "ghost"} className="w-full justify-start">
                 <Bot className="mr-2 h-4 w-4" />
                 AI Insights
@@ -239,12 +281,12 @@ export function Sidebar({ className }: SidebarProps) {
                     Compliance
                   </DropdownMenuItem>
                 </Link>
-            <Link href={`/${locale}/dashboard/assets/field-config`}>
-              <DropdownMenuItem className={pathname?.includes("/assets/field-config") ? "bg-accent" : ""}>
-                <ListChecks className="mr-2 h-4 w-4" />
-                Field Configuration
-              </DropdownMenuItem>
-            </Link>
+                <Link href={`/${locale}/dashboard/assets/field-config`}>
+                  <DropdownMenuItem className={pathname?.includes("/assets/field-config") ? "bg-accent" : ""}>
+                    <ListChecks className="mr-2 h-4 w-4" />
+                    Field Configuration
+                  </DropdownMenuItem>
+                </Link>
                 <Link href={`/${locale}/dashboard/assets/reports`}>
                   <DropdownMenuItem className={pathname?.includes("/assets/reports") ? "bg-accent" : ""}>
                     <BarChart3 className="mr-2 h-4 w-4" />
@@ -290,18 +332,18 @@ export function Sidebar({ className }: SidebarProps) {
                   </DropdownMenuItem>
                 </Link>
                 <Link href={`/${locale}/dashboard/governance/policies`}>
-                   <DropdownMenuItem className={pathname?.includes("/governance/policies") ? "bg-accent" : ""}>
-                     <FileText className="mr-2 h-4 w-4" />
-                     Policies
-                   </DropdownMenuItem>
-                 </Link>
-                 <Link href={`/${locale}/dashboard/governance/sops`}>
-                   <DropdownMenuItem className={pathname?.includes("/governance/sops") ? "bg-accent" : ""}>
-                     <FileCheck className="mr-2 h-4 w-4" />
-                     SOPs
-                   </DropdownMenuItem>
-                 </Link>
-                 <Link href={`/${locale}/dashboard/governance/controls`}>
+                  <DropdownMenuItem className={pathname?.includes("/governance/policies") ? "bg-accent" : ""}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Policies
+                  </DropdownMenuItem>
+                </Link>
+                <Link href={`/${locale}/dashboard/governance/sops`}>
+                  <DropdownMenuItem className={pathname?.includes("/governance/sops") ? "bg-accent" : ""}>
+                    <FileCheck className="mr-2 h-4 w-4" />
+                    SOPs
+                  </DropdownMenuItem>
+                </Link>
+                <Link href={`/${locale}/dashboard/governance/controls`}>
                   <DropdownMenuItem className={pathname?.includes("/governance/controls") ? "bg-accent" : ""}>
                     <Shield className="mr-2 h-4 w-4" />
                     Controls
@@ -342,14 +384,90 @@ export function Sidebar({ className }: SidebarProps) {
           </h2>
           <div className="space-y-1">
             <Link href={`/${locale}/settings`}>
-              <Button variant={pathname?.includes("/settings") ? "secondary" : "ghost"} className="w-full justify-start">
+              <Button variant={pathname === `/${locale}/settings` ? "secondary" : "ghost"} className="w-full justify-start">
                 <Settings className="mr-2 h-4 w-4" />
-                Settings
+                Profile
+              </Button>
+            </Link>
+            <Link href={`/${locale}/settings/tenant`}>
+              <Button variant={pathname?.includes("/settings/tenant") ? "secondary" : "ghost"} className="w-full justify-start">
+                <Building2 className="mr-2 h-4 w-4" />
+                Organization
+              </Button>
+            </Link>
+            <Link href={`/${locale}/settings/users`}>
+              <Button variant={pathname?.includes("/settings/users") ? "secondary" : "ghost"} className="w-full justify-start">
+                <Users className="mr-2 h-4 w-4" />
+                Team
+              </Button>
+            </Link>
+            <Link href={`/${locale}/settings/lookups`}>
+              <Button variant={pathname?.includes("/settings/lookups") ? "secondary" : "ghost"} className="w-full justify-start">
+                <Database className="mr-2 h-4 w-4" />
+                Categories & Taxonomy
+              </Button>
+            </Link>
+            <Link href={`/${locale}/admin/audit-logs`}>
+              <Button variant={pathname?.includes("/admin/audit-logs") ? "secondary" : "ghost"} className="w-full justify-start">
+                <History className="mr-2 h-4 w-4" />
+                Audit Logs
               </Button>
             </Link>
           </div>
         </div>
       </div>
+
+      {tenant?.status === 'trial' && (
+        <div className="mx-4 mt-6 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border border-primary/20 p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                <Clock className="h-4 w-4" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">Trial Mode</span>
+            </div>
+            <span className="text-[10px] font-medium text-muted-foreground">{daysRemaining} days left</span>
+          </div>
+
+          <div className="space-y-3">
+            <Progress value={trialProgress} className="h-1.5" />
+            <Button
+              size="sm"
+              className="w-full h-8 gap-1.5 font-bold shadow-md hover:shadow-lg transition-all"
+              onClick={() => setUpgradeOpen(true)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Upgrade Plan
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {tenant?.status === 'active' && tenant?.subscriptionTier === 'starter' && (
+        <div className="mx-4 mt-6 rounded-xl bg-muted/50 border border-border p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Rocket className="h-4 w-4 text-blue-500" />
+            <span className="text-xs font-bold uppercase tracking-wider">Free Starter</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">
+            Upgrade to Professional for integrations and advanced analytics.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-[11px] font-bold"
+            onClick={() => setUpgradeOpen(true)}
+          >
+            Explore Plans
+          </Button>
+        </div>
+      )}
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        currentTier={tenant?.subscriptionTier}
+      />
     </div>
   )
 }

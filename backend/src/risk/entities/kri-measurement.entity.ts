@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { KRI, KRIStatus } from './kri.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 @Entity('kri_measurements')
 @Index(['kri_id'])
@@ -17,6 +18,14 @@ import { User } from '../../users/entities/user.entity';
 export class KRIMeasurement {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'uuid', name: 'kri_id' })
   kri_id: string;
@@ -55,4 +64,3 @@ export class KRIMeasurement {
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 }
-

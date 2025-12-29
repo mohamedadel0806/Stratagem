@@ -4,7 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
 } from 'typeorm';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum PolicyStatus {
   DRAFT = 'draft',
@@ -23,9 +27,19 @@ export enum PolicyType {
 }
 
 @Entity('policies')
+@Index(['policyType'])
+@Index(['status'])
 export class Policy {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 255 })
   title: string;
@@ -37,7 +51,7 @@ export class Policy {
     type: 'enum',
     enum: PolicyType,
     default: PolicyType.COMPLIANCE,
-    name: 'policyType',
+    name: 'policy_type',
   })
   policyType: PolicyType;
 
@@ -52,31 +66,31 @@ export class Policy {
   @Column({ type: 'varchar', length: 50, nullable: true })
   version: string;
 
-  @Column({ type: 'uuid', nullable: true, name: 'organizationId' })
-  organizationId: string;
-
-  @Column({ type: 'uuid', nullable: true, name: 'ownerId' })
+  @Column({ type: 'uuid', nullable: true, name: 'owner_id' })
   ownerId: string;
 
-  @Column({ type: 'timestamp', nullable: true, name: 'effectiveDate' })
+  @Column({ type: 'timestamp', nullable: true, name: 'effective_date' })
   effectiveDate: Date;
 
-  @Column({ type: 'timestamp', nullable: true, name: 'reviewDate' })
+  @Column({ type: 'timestamp', nullable: true, name: 'review_date' })
   reviewDate: Date;
 
-  @Column({ type: 'varchar', length: 500, nullable: true, name: 'documentUrl' })
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'document_url' })
   documentUrl: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'documentName' })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'document_name' })
   documentName: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'documentMimeType' })
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'document_mime_type' })
   documentMimeType: string;
 
-  @CreateDateColumn({ name: 'createdAt' })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updatedAt' })
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-}
 
+  // Legacy field
+  @Column({ type: 'uuid', nullable: true, name: 'organization_id' })
+  organizationId: string;
+}

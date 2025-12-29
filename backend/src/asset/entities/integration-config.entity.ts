@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum IntegrationType {
   CMDB = 'cmdb',
@@ -40,28 +42,38 @@ export class IntegrationConfig {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
   @Column({
     type: 'enum',
     enum: IntegrationType,
+    name: 'integration_type',
   })
   integrationType: IntegrationType;
 
-  @Column({ type: 'varchar', length: 500 })
+  @Column({ type: 'varchar', length: 500, name: 'endpoint_url' })
   endpointUrl: string;
 
   @Column({
     type: 'enum',
     enum: AuthenticationType,
+    name: 'authentication_type',
   })
   authenticationType: AuthenticationType;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'api_key' })
   apiKey: string; // Encrypted in production
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'bearer_token' })
   bearerToken: string; // Encrypted in production
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -70,10 +82,10 @@ export class IntegrationConfig {
   @Column({ type: 'text', nullable: true })
   password: string; // Encrypted in production
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'jsonb', nullable: true, name: 'field_mapping' })
   fieldMapping: Record<string, string>; // External field -> Internal field mapping
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'sync_interval' })
   syncInterval: string; // e.g., '1h', '24h', '1d'
 
   @Column({
@@ -83,16 +95,16 @@ export class IntegrationConfig {
   })
   status: IntegrationStatus;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'last_sync_error' })
   lastSyncError: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'last_sync_at' })
   lastSyncAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'next_sync_at' })
   nextSyncAt: Date;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', name: 'created_by_id' })
   createdById: string;
 
   @ManyToOne(() => User)
@@ -104,26 +116,16 @@ export class IntegrationConfig {
     enum: ConflictResolutionStrategy,
     default: ConflictResolutionStrategy.SKIP,
     nullable: true,
+    name: 'conflict_resolution_strategy',
   })
   conflictResolutionStrategy: ConflictResolutionStrategy;
 
   @Column({ type: 'text', nullable: true })
   notes: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-
-
-
-
-
-
-
-
-
-
-

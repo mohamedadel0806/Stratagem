@@ -6,6 +6,7 @@ import { Risk, RiskLevel } from '../entities/risk.entity';
 import { CreateRiskAssessmentDto } from '../dto/assessment/create-risk-assessment.dto';
 import { RiskAssessmentResponseDto } from '../dto/assessment/risk-assessment-response.dto';
 import { RiskSettingsService } from './risk-settings.service';
+import { TenantContextService } from '../../common/context/tenant-context.service';
 
 @Injectable()
 export class RiskAssessmentService {
@@ -15,7 +16,8 @@ export class RiskAssessmentService {
     @InjectRepository(Risk)
     private riskRepository: Repository<Risk>,
     private riskSettingsService: RiskSettingsService,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   async findByRiskId(riskId: string, assessmentType?: AssessmentType): Promise<RiskAssessmentResponseDto[]> {
     const where: any = { risk_id: riskId };
@@ -61,6 +63,8 @@ export class RiskAssessmentService {
   }
 
   async create(createDto: CreateRiskAssessmentDto, userId?: string, organizationId?: string): Promise<RiskAssessmentResponseDto> {
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+
     // Verify risk exists
     const risk = await this.riskRepository.findOne({ where: { id: createDto.risk_id } });
     if (!risk) {
@@ -69,24 +73,25 @@ export class RiskAssessmentService {
 
     // Validate assessment method if provided
     if (createDto.assessment_method) {
-      const isValidMethod = await this.validateAssessmentMethod(createDto.assessment_method, organizationId);
+      const isValidMethod = await this.validateAssessmentMethod(createDto.assessment_method, tenantId);
       if (!isValidMethod) {
         throw new BadRequestException(`Assessment method '${createDto.assessment_method}' is not active or does not exist`);
       }
     }
 
     // Validate likelihood and impact scales based on assessment method
-    await this.validateScaleValues(createDto.likelihood, createDto.impact, createDto.assessment_method, organizationId);
+    await this.validateScaleValues(createDto.likelihood, createDto.impact, createDto.assessment_method, tenantId);
 
     // Calculate risk score and level using settings
     const riskScore = createDto.likelihood * createDto.impact;
-    const riskLevel = await this.calculateRiskLevelFromSettings(riskScore, organizationId);
+    const riskLevel = await this.calculateRiskLevelFromSettings(riskScore, tenantId);
 
     // Check if risk exceeds appetite
-    const exceedsAppetite = await this.riskSettingsService.exceedsRiskAppetite(riskScore, organizationId);
+    const exceedsAppetite = await this.riskSettingsService.exceedsRiskAppetite(riskScore, tenantId);
 
     const assessment = this.assessmentRepository.create({
       ...createDto,
+      tenantId: tenantId,
       assessment_date: createDto.assessment_date ? new Date(createDto.assessment_date) : new Date(),
       risk_score: riskScore,
       risk_level: riskLevel,
@@ -96,7 +101,7 @@ export class RiskAssessmentService {
     });
 
     const savedAssessment = await this.assessmentRepository.save(assessment);
-    
+
     // Reload with relations
     const fullAssessment = await this.assessmentRepository.findOne({
       where: { id: savedAssessment.id },
@@ -104,7 +109,7 @@ export class RiskAssessmentService {
     });
 
     const response = this.toResponseDto(fullAssessment);
-    
+
     // Add appetite warning to response
     if (exceedsAppetite) {
       (response as any).exceeds_risk_appetite = true;
@@ -133,11 +138,11 @@ export class RiskAssessmentService {
     gap_to_target?: number;
   }> {
     const latest = await this.findLatestByRiskId(riskId);
-    
+
     const result: any = { ...latest };
 
     if (latest.inherent && latest.current) {
-      result.risk_reduction_from_inherent = 
+      result.risk_reduction_from_inherent =
         ((latest.inherent.risk_score - latest.current.risk_score) / latest.inherent.risk_score) * 100;
     }
 
@@ -199,11 +204,11 @@ export class RiskAssessmentService {
   private async validateScaleValues(likelihood: number, impact: number, methodId?: string, organizationId?: string): Promise<void> {
     try {
       const settings = await this.riskSettingsService.getSettings(organizationId);
-      
+
       // Find the assessment method to get scale limits
       let maxLikelihood = 5;
       let maxImpact = 5;
-      
+
       if (methodId) {
         const method = settings.assessment_methods.find(m => m.id === methodId);
         if (method) {
@@ -245,7 +250,8 @@ export class RiskAssessmentService {
     label: string;
     description: string;
   }[]> {
-    return this.riskSettingsService.getLikelihoodScale(organizationId);
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+    return this.riskSettingsService.getLikelihoodScale(tenantId);
   }
 
   /**
@@ -256,7 +262,8 @@ export class RiskAssessmentService {
     label: string;
     description: string;
   }[]> {
-    return this.riskSettingsService.getImpactScale(organizationId);
+    const tenantId = organizationId || this.tenantContextService.getTenantId();
+    return this.riskSettingsService.getImpactScale(tenantId);
   }
 
   private toResponseDto(assessment: RiskAssessment): RiskAssessmentResponseDto {
@@ -276,8 +283,8 @@ export class RiskAssessmentService {
       safety_impact: assessment.safety_impact,
       assessment_date: assessment.assessment_date?.toISOString?.() || assessment.assessment_date?.toString(),
       assessor_id: assessment.assessor_id,
-      assessor_name: assessment.assessor 
-        ? `${assessment.assessor.firstName || ''} ${assessment.assessor.lastName || ''}`.trim() 
+      assessor_name: assessment.assessor
+        ? `${assessment.assessor.firstName || ''} ${assessment.assessor.lastName || ''}`.trim()
         : undefined,
       assessment_method: assessment.assessment_method,
       assessment_notes: assessment.assessment_notes,

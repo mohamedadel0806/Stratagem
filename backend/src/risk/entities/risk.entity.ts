@@ -17,8 +17,8 @@ import { RiskAssetLink } from './risk-asset-link.entity';
 import { RiskControlLink } from './risk-control-link.entity';
 import { RiskTreatment } from './risk-treatment.entity';
 import { KRIRiskLink } from './kri-risk-link.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
-// Keep original enums for backward compatibility
 export enum RiskStatus {
   IDENTIFIED = 'identified',
   ASSESSED = 'assessed',
@@ -27,7 +27,6 @@ export enum RiskStatus {
   CLOSED = 'closed',
 }
 
-// New status enum (will be used going forward)
 export enum RiskStatusNew {
   ACTIVE = 'active',
   MONITORING = 'monitoring',
@@ -35,7 +34,7 @@ export enum RiskStatusNew {
   ACCEPTED = 'accepted',
 }
 
-export enum RiskCategory_OLD {
+export enum RiskCategoryLegacy {
   CYBERSECURITY = 'cybersecurity',
   DATA_PRIVACY = 'data_privacy',
   COMPLIANCE = 'compliance',
@@ -82,17 +81,23 @@ export enum RiskLevel {
 }
 
 @Entity('risks')
-@Index(['risk_id'])
-@Index(['category_id'])
-@Index(['current_risk_level'])
-@Index(['next_review_date'])
+@Index(['riskId'])
+@Index(['categoryId'])
+@Index(['currentRiskLevel'])
+@Index(['nextReviewDate'])
 export class Risk {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Auto-generated risk identifier (RISK-0001, RISK-0002, etc.)
+  @Column({ name: 'tenant_id', nullable: true })
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'varchar', length: 20, unique: true, nullable: true, name: 'risk_id' })
-  risk_id: string;
+  riskId: string;
 
   @Column({ type: 'varchar', length: 255 })
   title: string;
@@ -100,34 +105,22 @@ export class Risk {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  // Risk statement in If/Then/Resulting format
   @Column({ type: 'text', nullable: true, name: 'risk_statement' })
-  risk_statement: string;
+  riskStatement: string;
 
-  // Legacy category field (keeping for backward compatibility)
-  @Column({
-    type: 'enum',
-    enum: RiskCategory_OLD,
-    default: RiskCategory_OLD.COMPLIANCE,
-    name: 'category',
-  })
-  category: RiskCategory_OLD;
-
-  // New category reference
   @Column({ type: 'uuid', nullable: true, name: 'category_id' })
-  category_id: string;
+  categoryId: string;
 
   @ManyToOne(() => RiskCategory, { nullable: true })
   @JoinColumn({ name: 'category_id' })
-  risk_category: RiskCategory;
+  riskCategory: RiskCategory;
 
-  // Sub-category reference
   @Column({ type: 'uuid', nullable: true, name: 'sub_category_id' })
-  sub_category_id: string;
+  subCategoryId: string;
 
   @ManyToOne(() => RiskCategory, { nullable: true })
   @JoinColumn({ name: 'sub_category_id' })
-  risk_sub_category: RiskCategory;
+  riskSubCategory: RiskCategory;
 
   @Column({
     type: 'enum',
@@ -136,7 +129,6 @@ export class Risk {
   })
   status: RiskStatus;
 
-  // Legacy likelihood/impact (keeping for backward compatibility)
   @Column({
     type: 'enum',
     enum: RiskLikelihood,
@@ -151,43 +143,39 @@ export class Risk {
   })
   impact: RiskImpact;
 
-  // Organization and ownership
-  @Column({ type: 'uuid', nullable: true, name: 'organizationId' })
+  // organizationId is no longer used as a column to avoid conflicts.
   organizationId: string;
 
-  @Column({ type: 'uuid', nullable: true, name: 'ownerId' })
+  @Column({ name: 'ownerId', nullable: true, insert: false, update: false })
   ownerId: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'ownerId' })
   owner: User;
 
-  // Risk analyst
   @Column({ type: 'uuid', nullable: true, name: 'risk_analyst_id' })
-  risk_analyst_id: string;
+  riskAnalystId: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'risk_analyst_id' })
-  risk_analyst: User;
+  riskAnalyst: User;
 
-  // Dates
   @Column({ type: 'date', nullable: true, name: 'date_identified' })
-  date_identified: Date;
+  dateIdentified: Date;
 
   @Column({ type: 'date', nullable: true, name: 'next_review_date' })
-  next_review_date: Date;
+  nextReviewDate: Date;
 
   @Column({ type: 'date', nullable: true, name: 'last_review_date' })
-  last_review_date: Date;
+  lastReviewDate: Date;
 
-  // Risk characteristics
   @Column({
     type: 'enum',
     enum: ThreatSource,
     nullable: true,
     name: 'threat_source',
   })
-  threat_source: ThreatSource;
+  threatSource: ThreatSource;
 
   @Column({
     type: 'enum',
@@ -195,36 +183,34 @@ export class Risk {
     nullable: true,
     name: 'risk_velocity',
   })
-  risk_velocity: RiskVelocity;
+  riskVelocity: RiskVelocity;
 
   @Column({ type: 'text', nullable: true, name: 'early_warning_signs' })
-  early_warning_signs: string;
+  earlyWarningSigns: string;
 
   @Column({ type: 'text', nullable: true, name: 'status_notes' })
-  status_notes: string;
+  statusNotes: string;
 
   @Column({ type: 'text', nullable: true, name: 'business_process' })
-  business_process: string;
+  businessProcess: string;
 
   @Column({ type: 'varchar', array: true, nullable: true })
   tags: string[];
 
   @Column({ type: 'uuid', array: true, nullable: true, name: 'business_unit_ids' })
-  business_unit_ids: string[];
+  businessUnitIds: string[];
 
-  // Version tracking
   @Column({ type: 'integer', default: 1, name: 'version_number' })
-  version_number: number;
+  versionNumber: number;
 
-  // Inherent risk assessment (before controls)
   @Column({ type: 'integer', nullable: true, name: 'inherent_likelihood' })
-  inherent_likelihood: number;
+  inherentLikelihood: number;
 
   @Column({ type: 'integer', nullable: true, name: 'inherent_impact' })
-  inherent_impact: number;
+  inherentImpact: number;
 
   @Column({ type: 'integer', nullable: true, name: 'inherent_risk_score' })
-  inherent_risk_score: number;
+  inherentRiskScore: number;
 
   @Column({
     type: 'enum',
@@ -232,17 +218,16 @@ export class Risk {
     nullable: true,
     name: 'inherent_risk_level',
   })
-  inherent_risk_level: RiskLevel;
+  inherentRiskLevel: RiskLevel;
 
-  // Current risk assessment (with existing controls)
   @Column({ type: 'integer', nullable: true, name: 'current_likelihood' })
-  current_likelihood: number;
+  currentLikelihood: number;
 
   @Column({ type: 'integer', nullable: true, name: 'current_impact' })
-  current_impact: number;
+  currentImpact: number;
 
   @Column({ type: 'integer', nullable: true, name: 'current_risk_score' })
-  current_risk_score: number;
+  currentRiskScore: number;
 
   @Column({
     type: 'enum',
@@ -250,17 +235,16 @@ export class Risk {
     nullable: true,
     name: 'current_risk_level',
   })
-  current_risk_level: RiskLevel;
+  currentRiskLevel: RiskLevel;
 
-  // Target risk assessment (desired state)
   @Column({ type: 'integer', nullable: true, name: 'target_likelihood' })
-  target_likelihood: number;
+  targetLikelihood: number;
 
   @Column({ type: 'integer', nullable: true, name: 'target_impact' })
-  target_impact: number;
+  targetImpact: number;
 
   @Column({ type: 'integer', nullable: true, name: 'target_risk_score' })
-  target_risk_score: number;
+  targetRiskScore: number;
 
   @Column({
     type: 'enum',
@@ -268,31 +252,28 @@ export class Risk {
     nullable: true,
     name: 'target_risk_level',
   })
-  target_risk_level: RiskLevel;
+  targetRiskLevel: RiskLevel;
 
-  // Control effectiveness (calculated from linked controls)
   @Column({ type: 'integer', nullable: true, name: 'control_effectiveness' })
-  control_effectiveness: number;
+  controlEffectiveness: number;
 
-  // Relationships
   @OneToMany(() => RiskAssessment, (assessment) => assessment.risk)
   assessments: RiskAssessment[];
 
   @OneToMany(() => RiskAssetLink, (link) => link.risk)
-  asset_links: RiskAssetLink[];
+  assetLinks: RiskAssetLink[];
 
   @OneToMany(() => RiskControlLink, (link) => link.risk)
-  control_links: RiskControlLink[];
+  controlLinks: RiskControlLink[];
 
   @OneToMany(() => RiskTreatment, (treatment) => treatment.risk)
   treatments: RiskTreatment[];
 
   @OneToMany(() => KRIRiskLink, (link) => link.risk)
-  kri_links: KRIRiskLink[];
+  kriLinks: KRIRiskLink[];
 
-  // Audit fields
-  @Column({ type: 'uuid', nullable: true, name: 'created_by' })
-  created_by: string;
+  @Column({ name: 'created_by', nullable: true, insert: false, update: false })
+  createdBy: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'created_by' })
@@ -302,7 +283,7 @@ export class Risk {
   createdAt: Date;
 
   @Column({ type: 'uuid', nullable: true, name: 'updated_by' })
-  updated_by: string;
+  updatedBy: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'updated_by' })
@@ -312,5 +293,13 @@ export class Risk {
   updatedAt: Date;
 
   @DeleteDateColumn({ name: 'deleted_at' })
-  deleted_at: Date;
+  deletedAt: Date;
+
+  @Column({
+    type: 'enum',
+    enum: RiskCategoryLegacy,
+    nullable: true,
+    name: 'category',
+  })
+  category: RiskCategoryLegacy;
 }

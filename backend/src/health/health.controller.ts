@@ -1,30 +1,42 @@
 import { Controller, Get } from '@nestjs/common';
+import {
+  HealthCheckService,
+  HealthCheck,
+  TypeOrmHealthIndicator,
+  MemoryHealthIndicator,
+} from '@nestjs/terminus';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('health')
 @Controller('health')
 export class HealthController {
+  constructor(
+    private health: HealthCheckService,
+    private db: TypeOrmHealthIndicator,
+    private memory: MemoryHealthIndicator,
+  ) { }
+
   @Public()
   @Get()
-  @ApiOperation({ summary: 'Health check endpoint' })
+  @HealthCheck()
+  @ApiOperation({ summary: 'Comprehensive health check' })
   check() {
-    return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      service: 'backend',
-    };
+    return this.health.check([
+      () => this.db.pingCheck('database'),
+      () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024), // 300MB
+      () => this.memory.checkRSS('memory_rss', 300 * 1024 * 1024), // 300MB
+    ]);
   }
 
   @Public()
   @Get('ready')
-  @ApiOperation({ summary: 'Readiness check endpoint' })
+  @HealthCheck()
+  @ApiOperation({ summary: 'Readiness check for LB' })
   ready() {
-    return {
-      status: 'ready',
-      timestamp: new Date().toISOString(),
-      service: 'backend',
-    };
+    return this.health.check([
+      () => this.db.pingCheck('database'),
+    ]);
   }
 }
 

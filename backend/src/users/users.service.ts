@@ -8,7 +8,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { User, UserRole } from './entities/user.entity';
+import { User, UserRole, UserStatus } from './entities/user.entity';
+import { Tenant } from '../common/entities/tenant.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -19,7 +20,9 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+    @InjectRepository(Tenant)
+    private readonly tenantsRepository: Repository<Tenant>,
+  ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const existingUser = await this.usersRepository.findOne({
@@ -32,15 +35,60 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
+    // Domain auto-assignment logic
+    let tenantId = (createUserDto as any).tenantId;
+    if (!tenantId) {
+      const emailDomain = createUserDto.email.split('@')[1];
+      if (emailDomain) {
+        const tenant = await this.tenantsRepository
+          .createQueryBuilder('tenant')
+          .where(':domain = ANY(tenant.allowed_domains)', { domain: emailDomain })
+          .getOne();
+
+        if (tenant) {
+          tenantId = tenant.id;
+        }
+      }
+    }
+
     const user = this.usersRepository.create({
       ...createUserDto,
       password: hashedPassword,
+      tenantId,
     });
 
     // Remove password from response
     const savedUser = await this.usersRepository.save(user);
     delete (savedUser as any).password;
     return savedUser;
+  }
+
+  async createFromInvitation(
+    email: string,
+    role: UserRole,
+    tenantId: string,
+    password: string,
+    firstName: string,
+    lastName: string
+  ): Promise<User> {
+    const existingUser = await this.findByEmail(email);
+    if (existingUser) {
+      throw new ConflictException('User already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = this.usersRepository.create({
+      email,
+      role,
+      tenantId,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      status: UserStatus.ACTIVE,
+      emailVerified: true,
+    });
+
+    return this.usersRepository.save(user);
   }
 
   async findAll(): Promise<User[]> {
@@ -134,7 +182,7 @@ export class UsersService {
     // In a real implementation, you would verify the current password
     // For now, we'll assume it's validated by the controller/auth layer
     const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
-    
+
     user.password = hashedPassword;
     user.passwordChangedAt = new Date();
 

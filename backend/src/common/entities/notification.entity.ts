@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from './tenant.entity';
 
 export enum NotificationType {
   WORKFLOW_APPROVAL_REQUIRED = 'workflow_approval_required',
@@ -34,6 +36,14 @@ export enum NotificationPriority {
 export class Notification {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'uuid', name: 'userId' })
   userId: string;

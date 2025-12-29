@@ -14,6 +14,7 @@ import { AssetType } from './entities/asset-type.entity';
 import { BusinessUnit } from '../common/entities/business-unit.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersModule } from '../users/users.module';
+import { TenantsModule } from '../tenants/tenants.module';
 import { PhysicalAssetService } from './services/physical-asset.service';
 import { InformationAssetService } from './services/information-asset.service';
 import { BusinessApplicationService } from './services/business-application.service';
@@ -98,6 +99,7 @@ import { ValidationRuleController } from './controllers/validation-rule.controll
     forwardRef(() => RiskModule),
     forwardRef(() => CommonModule),
     UsersModule,
+    forwardRef(() => TenantsModule),
   ],
   controllers: [
     PhysicalAssetController,
@@ -165,5 +167,5 @@ import { ValidationRuleController } from './controllers/validation-rule.controll
     ValidationRuleService,
   ],
 })
-export class AssetModule {}
+export class AssetModule { }
 

@@ -23,6 +23,9 @@ export function LoginForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [mfaRequired, setMfaRequired] = React.useState<boolean>(false)
+  const [mfaUserId, setMfaUserId] = React.useState<string | null>(null)
+  const [mfaCode, setMfaCode] = React.useState<string>("")
   const emailInputRef = React.useRef<HTMLInputElement>(null)
   const passwordInputRef = React.useRef<HTMLInputElement>(null)
   const formRef = React.useRef<HTMLFormElement>(null)
@@ -40,7 +43,7 @@ export function LoginForm() {
         Default: "Authentication failed. Please try again.",
       }
       setError(errorMessages[errorParam] || errorMessages.Default)
-      
+
       // Clear error from URL after displaying, but keep callbackUrl
       const newSearchParams = new URLSearchParams(searchParams.toString())
       newSearchParams.delete("error")
@@ -79,12 +82,12 @@ export function LoginForm() {
     const syncAutofillValues = () => {
       const emailEl = emailInputRef.current
       const passwordEl = passwordInputRef.current
-      
+
       if (emailEl && emailEl.value && emailEl.value !== form.getValues("email")) {
         const domValue = emailEl.value
         form.setValue("email", domValue, { shouldValidate: false, shouldDirty: true })
       }
-      
+
       if (passwordEl && passwordEl.value && passwordEl.value !== form.getValues("password")) {
         const domValue = passwordEl.value
         form.setValue("password", domValue, { shouldValidate: false, shouldDirty: true })
@@ -93,7 +96,7 @@ export function LoginForm() {
 
     // Check periodically for autofill
     const interval = setInterval(syncAutofillValues, 200)
-    
+
     // Also check on various events that might indicate autofill
     const emailEl = emailInputRef.current
     const passwordEl = passwordInputRef.current
@@ -109,12 +112,12 @@ export function LoginForm() {
         }
       }
       emailEl.addEventListener('animationstart', handleEmailAnimationStart as any)
-      
+
       // Listen for input changes (might be autofill)
       const handleEmailInput = () => syncAutofillValues()
       emailEl.addEventListener('input', handleEmailInput)
       emailEl.addEventListener('change', handleEmailInput)
-      
+
       cleanup.push(() => {
         emailEl.removeEventListener('animationstart', handleEmailAnimationStart as any)
         emailEl.removeEventListener('input', handleEmailInput)
@@ -129,11 +132,11 @@ export function LoginForm() {
         }
       }
       passwordEl.addEventListener('animationstart', handlePasswordAnimationStart as any)
-      
+
       const handlePasswordInput = () => syncAutofillValues()
       passwordEl.addEventListener('input', handlePasswordInput)
       passwordEl.addEventListener('change', handlePasswordInput)
-      
+
       cleanup.push(() => {
         passwordEl.removeEventListener('animationstart', handlePasswordAnimationStart as any)
         passwordEl.removeEventListener('input', handlePasswordInput)
@@ -152,6 +155,53 @@ export function LoginForm() {
   }, [form])
   // #endregion
 
+  async function handleMfaSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/auth/mfa/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: mfaUserId, code: mfaCode }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.message || "Invalid MFA code")
+      }
+
+      // Once verified on backend, we can trigger signin again
+      // We'll pass a special flag or just use the same credentials but the backend 
+      // will now bypass MFA because the user is already verified? 
+      // Actually, my backend verifyMfa returns the full LoginResponseDto (token).
+      // But next-auth needs to handle it.
+
+      // Better: Since verifyMfa already returned the token and user, we can try to
+      // simulate a successful login in authorize if we pass the code.
+
+      const result = await signIn("credentials", {
+        email: form.getValues("email"),
+        password: form.getValues("password"),
+        mfaCode: mfaCode, // Use this in authorize
+        redirect: false,
+      })
+
+      if (result?.error) {
+        setError("Session establishment failed")
+      } else {
+        const callbackUrl = searchParams.get("from") || searchParams.get("callbackUrl") || "/en/dashboard"
+        router.push(callbackUrl)
+        router.refresh()
+      }
+    } catch (err: any) {
+      setError(err.message || "MFA Verification failed")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
     setError(null)
@@ -164,18 +214,78 @@ export function LoginForm() {
       })
 
       if (result?.error) {
+        try {
+          const errorData = JSON.parse(result.error)
+          if (errorData.mfaRequired) {
+            setMfaRequired(true)
+            setMfaUserId(errorData.userId)
+            setIsLoading(false)
+            return
+          }
+        } catch (e) {
+          // Not an MFA error
+        }
         setError("Invalid email or password")
       } else if (result?.ok) {
-        // Redirect to dashboard or callback URL
         const callbackUrl = searchParams.get("from") || searchParams.get("callbackUrl") || "/en/dashboard"
         router.push(callbackUrl)
         router.refresh()
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || "An error occurred. Please try again.")
+      setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (mfaRequired) {
+    return (
+      <div className="grid gap-6">
+        <form onSubmit={handleMfaSubmit}>
+          <div className="grid gap-4">
+            <div className="grid gap-2 text-center mb-2">
+              <h2 className="text-xl font-bold">Two-Factor Authentication</h2>
+              <p className="text-sm text-muted-foreground">
+                Enter the 6-digit code from your authenticator app
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Input
+                id="mfaCode"
+                placeholder="000000"
+                type="text"
+                maxLength={6}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                disabled={isLoading}
+                required
+                className="text-center text-2xl tracking-[0.3em]"
+                autoFocus
+              />
+            </div>
+            {error && (
+              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                {error}
+              </div>
+            )}
+            <Button disabled={isLoading}>
+              {isLoading && (
+                <span className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Verify & Sign In
+            </Button>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setMfaRequired(false)}
+              disabled={isLoading}
+            >
+              Back to Login
+            </Button>
+          </div>
+        </form>
+      </div>
+    )
   }
 
   return (
@@ -213,7 +323,7 @@ export function LoginForm() {
               {...passwordRegister}
               ref={mergeRefs(passwordInputRef, passwordRegister.ref)}
             />
-             {form.formState.errors.password && (
+            {form.formState.errors.password && (
               <p className="text-sm text-red-500">
                 {form.formState.errors.password.message}
               </p>
@@ -242,10 +352,10 @@ export function LoginForm() {
           </span>
         </div>
       </div>
-      <Button 
-        variant="outline" 
-        type="button" 
-        disabled={isLoading} 
+      <Button
+        variant="outline"
+        type="button"
+        disabled={isLoading}
         onClick={() => {
           setIsLoading(true)
           // Use window.location for direct redirect to avoid NextAuth issues

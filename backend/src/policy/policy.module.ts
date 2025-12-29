@@ -5,6 +5,7 @@ import { PolicyService } from './services/policy.service';
 import { PolicyController } from './controllers/policy.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { WorkflowModule } from '../workflow/workflow.module';
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
@@ -12,10 +13,11 @@ import { WorkflowModule } from '../workflow/workflow.module';
     MulterModule.register({
       dest: './uploads/policies',
     }),
+    CommonModule,
     forwardRef(() => WorkflowModule),
   ],
   controllers: [PolicyController],
   providers: [PolicyService],
   exports: [PolicyService],
 })
-export class PolicyModule {}
+export class PolicyModule { }

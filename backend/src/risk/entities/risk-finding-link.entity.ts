@@ -11,6 +11,7 @@ import {
 import { Risk } from './risk.entity';
 import { Finding } from '../../governance/findings/entities/finding.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum RiskFindingRelationshipType {
   IDENTIFIED = 'identified',
@@ -21,22 +22,30 @@ export enum RiskFindingRelationshipType {
 }
 
 @Entity('risk_finding_links')
-@Index(['risk_id'])
-@Index(['finding_id'])
-@Index(['relationship_type'])
+@Index(['riskId'])
+@Index(['findingId'])
+@Index(['relationshipType'])
 export class RiskFindingLink {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'uuid', name: 'risk_id' })
-  risk_id: string;
+  riskId: string;
 
   @ManyToOne(() => Risk, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'risk_id' })
   risk: Risk;
 
   @Column({ type: 'uuid', name: 'finding_id' })
-  finding_id: string;
+  findingId: string;
 
   @ManyToOne(() => Finding, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'finding_id' })
@@ -48,24 +57,21 @@ export class RiskFindingLink {
     nullable: true,
     name: 'relationship_type',
   })
-  relationship_type: RiskFindingRelationshipType;
+  relationshipType: RiskFindingRelationshipType;
 
   @Column({ type: 'text', nullable: true, name: 'notes' })
   notes: string;
 
   @Column({ type: 'uuid', nullable: true, name: 'linked_by' })
-  linked_by: string;
+  linkedBy: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'linked_by' })
   linker: User;
 
   @CreateDateColumn({ name: 'linked_at' })
-  linked_at: Date;
+  linkedAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updated_at: Date;
+  updatedAt: Date;
 }
-
-
-

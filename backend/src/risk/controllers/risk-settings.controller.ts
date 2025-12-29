@@ -15,19 +15,15 @@ import { UpdateRiskSettingsDto, RiskSettingsResponseDto } from '../dto/settings/
 @Controller('risk-settings')
 @UseGuards(JwtAuthGuard)
 export class RiskSettingsController {
-  constructor(private readonly settingsService: RiskSettingsService) {}
+  constructor(private readonly settingsService: RiskSettingsService) { }
 
   /**
    * GET /risk-settings
    * Get current risk settings
    */
   @Get()
-  async getSettings(
-    @Request() req: any,
-    @Query('organization_id') organizationId?: string,
-  ): Promise<RiskSettingsResponseDto> {
-    const orgId = organizationId || req.user?.organizationId;
-    return this.settingsService.getSettings(orgId);
+  async getSettings(@Request() req: any): Promise<RiskSettingsResponseDto> {
+    return this.settingsService.getSettings();
   }
 
   /**
@@ -38,11 +34,9 @@ export class RiskSettingsController {
   async updateSettings(
     @Body() updateDto: UpdateRiskSettingsDto,
     @Request() req: any,
-    @Query('organization_id') organizationId?: string,
   ): Promise<RiskSettingsResponseDto> {
-    const orgId = organizationId || req.user?.organizationId;
-    const userId = req.user?.userId;
-    return this.settingsService.updateSettings(updateDto, userId, orgId);
+    const userId = req.user?.userId || req.user?.id;
+    return this.settingsService.updateSettings(updateDto, userId);
   }
 
   /**
@@ -50,13 +44,9 @@ export class RiskSettingsController {
    * Reset settings to defaults
    */
   @Post('reset')
-  async resetToDefaults(
-    @Request() req: any,
-    @Query('organization_id') organizationId?: string,
-  ): Promise<RiskSettingsResponseDto> {
-    const orgId = organizationId || req.user?.organizationId;
-    const userId = req.user?.userId;
-    return this.settingsService.resetToDefaults(userId, orgId);
+  async resetToDefaults(@Request() req: any): Promise<RiskSettingsResponseDto> {
+    const userId = req.user?.userId || req.user?.id;
+    return this.settingsService.resetToDefaults(userId);
   }
 
   /**
@@ -66,8 +56,6 @@ export class RiskSettingsController {
   @Get('risk-level')
   async getRiskLevel(
     @Query('score') score: number,
-    @Request() req: any,
-    @Query('organization_id') organizationId?: string,
   ): Promise<{
     level: string;
     color: string;
@@ -75,13 +63,12 @@ export class RiskSettingsController {
     responseTime: string;
     escalation: boolean;
   } | { message: string }> {
-    const orgId = organizationId || req.user?.organizationId;
-    const result = await this.settingsService.getRiskLevelForScore(Number(score), orgId);
-    
+    const result = await this.settingsService.getRiskLevelForScore(Number(score));
+
     if (!result) {
       return { message: 'No risk level found for the given score' };
     }
-    
+
     return result;
   }
 
@@ -92,17 +79,14 @@ export class RiskSettingsController {
   @Get('check-appetite')
   async checkRiskAppetite(
     @Query('score') score: number,
-    @Request() req: any,
-    @Query('organization_id') organizationId?: string,
   ): Promise<{
     score: number;
     exceedsAppetite: boolean;
     maxAcceptable: number;
   }> {
-    const orgId = organizationId || req.user?.organizationId;
-    const settings = await this.settingsService.getSettings(orgId);
-    const exceedsAppetite = await this.settingsService.exceedsRiskAppetite(Number(score), orgId);
-    
+    const settings = await this.settingsService.getSettings();
+    const exceedsAppetite = await this.settingsService.exceedsRiskAppetite(Number(score));
+
     return {
       score: Number(score),
       exceedsAppetite,
@@ -115,10 +99,7 @@ export class RiskSettingsController {
    * Get active assessment methods
    */
   @Get('assessment-methods')
-  async getAssessmentMethods(
-    @Request() req: any,
-    @Query('organization_id') organizationId?: string,
-  ): Promise<{
+  async getAssessmentMethods(): Promise<{
     id: string;
     name: string;
     description: string;
@@ -126,8 +107,7 @@ export class RiskSettingsController {
     impactScale: number;
     isDefault: boolean;
   }[]> {
-    const orgId = organizationId || req.user?.organizationId;
-    return this.settingsService.getActiveAssessmentMethods(orgId);
+    return this.settingsService.getActiveAssessmentMethods();
   }
 
   /**
@@ -135,16 +115,12 @@ export class RiskSettingsController {
    * Get likelihood scale descriptions
    */
   @Get('likelihood-scale')
-  async getLikelihoodScale(
-    @Request() req: any,
-    @Query('organization_id') organizationId?: string,
-  ): Promise<{
+  async getLikelihoodScale(): Promise<{
     value: number;
     label: string;
     description: string;
   }[]> {
-    const orgId = organizationId || req.user?.organizationId;
-    return this.settingsService.getLikelihoodScale(orgId);
+    return this.settingsService.getLikelihoodScale();
   }
 
   /**
@@ -152,16 +128,12 @@ export class RiskSettingsController {
    * Get impact scale descriptions
    */
   @Get('impact-scale')
-  async getImpactScale(
-    @Request() req: any,
-    @Query('organization_id') organizationId?: string,
-  ): Promise<{
+  async getImpactScale(): Promise<{
     value: number;
     label: string;
     description: string;
   }[]> {
-    const orgId = organizationId || req.user?.organizationId;
-    return this.settingsService.getImpactScale(orgId);
+    return this.settingsService.getImpactScale();
   }
 }
 

@@ -7,6 +7,7 @@ import { Risk } from '../entities/risk.entity';
 import { CreateRiskTreatmentDto } from '../dto/treatment/create-risk-treatment.dto';
 import { UpdateRiskTreatmentDto } from '../dto/treatment/update-risk-treatment.dto';
 import { RiskTreatmentResponseDto, TreatmentTaskResponseDto } from '../dto/treatment/risk-treatment-response.dto';
+import { TenantContextService } from '../../common/context/tenant-context.service';
 
 @Injectable()
 export class RiskTreatmentService {
@@ -17,7 +18,8 @@ export class RiskTreatmentService {
     private taskRepository: Repository<TreatmentTask>,
     @InjectRepository(Risk)
     private riskRepository: Repository<Risk>,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
   async findAll(filters?: {
     status?: TreatmentStatus;
@@ -29,13 +31,13 @@ export class RiskTreatmentService {
 
     if (filters?.status) where.status = filters.status;
     if (filters?.priority) where.priority = filters.priority;
-    if (filters?.ownerId) where.treatment_owner_id = filters.ownerId;
-    if (filters?.riskId) where.risk_id = filters.riskId;
+    if (filters?.ownerId) where.treatmentOwnerId = filters.ownerId;
+    if (filters?.riskId) where.riskId = filters.riskId;
 
     const treatments = await this.treatmentRepository.find({
       where,
-      relations: ['treatment_owner', 'risk', 'tasks'],
-      order: { target_completion_date: 'ASC', priority: 'ASC' },
+      relations: ['treatmentOwner', 'risk', 'tasks'],
+      order: { targetCompletionDate: 'ASC', priority: 'ASC' },
     });
 
     return treatments.map(t => this.toResponseDto(t));
@@ -43,9 +45,9 @@ export class RiskTreatmentService {
 
   async findByRiskId(riskId: string): Promise<RiskTreatmentResponseDto[]> {
     const treatments = await this.treatmentRepository.find({
-      where: { risk_id: riskId },
-      relations: ['treatment_owner', 'tasks'],
-      order: { created_at: 'DESC' },
+      where: { riskId: riskId },
+      relations: ['treatmentOwner', 'tasks'],
+      order: { createdAt: 'DESC' },
     });
 
     return treatments.map(t => this.toResponseDto(t));
@@ -54,7 +56,7 @@ export class RiskTreatmentService {
   async findOne(id: string): Promise<RiskTreatmentResponseDto> {
     const treatment = await this.treatmentRepository.findOne({
       where: { id },
-      relations: ['treatment_owner', 'risk', 'tasks', 'tasks.assignee'],
+      relations: ['treatmentOwner', 'risk', 'tasks', 'tasks.assignee'],
     });
 
     if (!treatment) {
@@ -71,19 +73,24 @@ export class RiskTreatmentService {
       throw new NotFoundException(`Risk with ID ${createDto.risk_id} not found`);
     }
 
+    const { risk_id, start_date, target_completion_date, treatment_owner_id, ...rest } = createDto;
+
     const treatment = this.treatmentRepository.create({
-      ...createDto,
-      start_date: createDto.start_date ? new Date(createDto.start_date) : undefined,
-      target_completion_date: createDto.target_completion_date ? new Date(createDto.target_completion_date) : undefined,
-      created_by: userId,
+      ...rest,
+      tenantId: this.tenantContextService.getTenantId(),
+      riskId: risk_id,
+      startDate: start_date ? new Date(start_date) : undefined,
+      targetCompletionDate: target_completion_date ? new Date(target_completion_date) : undefined,
+      treatmentOwnerId: treatment_owner_id,
+      createdBy: userId,
     });
 
     const savedTreatment = await this.treatmentRepository.save(treatment);
-    
+
     // Reload with relations
     const fullTreatment = await this.treatmentRepository.findOne({
       where: { id: savedTreatment.id },
-      relations: ['treatment_owner', 'risk', 'tasks'],
+      relations: ['treatmentOwner', 'risk', 'tasks'],
     });
 
     return this.toResponseDto(fullTreatment);
@@ -99,11 +106,15 @@ export class RiskTreatmentService {
       throw new NotFoundException(`Risk treatment with ID ${id} not found`);
     }
 
-    // Handle date conversions
-    const updateData: any = { ...updateDto, updated_by: userId };
-    if (updateDto.start_date) updateData.start_date = new Date(updateDto.start_date);
-    if (updateDto.target_completion_date) updateData.target_completion_date = new Date(updateDto.target_completion_date);
-    if (updateDto.actual_completion_date) updateData.actual_completion_date = new Date(updateDto.actual_completion_date);
+    // Handle date conversions and mapping
+    const { start_date, target_completion_date, actual_completion_date, treatment_owner_id, risk_id, ...rest } = updateDto as any;
+
+    const updateData: any = { ...rest, updatedBy: userId };
+    if (start_date) updateData.startDate = new Date(start_date);
+    if (target_completion_date) updateData.targetCompletionDate = new Date(target_completion_date);
+    if (actual_completion_date) updateData.actualCompletionDate = new Date(actual_completion_date);
+    if (treatment_owner_id) updateData.treatmentOwnerId = treatment_owner_id;
+    if (risk_id) updateData.riskId = risk_id;
 
     Object.assign(treatment, updateData);
     const updatedTreatment = await this.treatmentRepository.save(treatment);
@@ -111,7 +122,7 @@ export class RiskTreatmentService {
     // Reload with relations
     const fullTreatment = await this.treatmentRepository.findOne({
       where: { id: updatedTreatment.id },
-      relations: ['treatment_owner', 'risk', 'tasks'],
+      relations: ['treatmentOwner', 'risk', 'tasks'],
     });
 
     return this.toResponseDto(fullTreatment);
@@ -124,21 +135,21 @@ export class RiskTreatmentService {
       throw new NotFoundException(`Risk treatment with ID ${id} not found`);
     }
 
-    treatment.progress_percentage = progress;
-    if (notes) treatment.progress_notes = notes;
-    treatment.updated_by = userId;
+    treatment.progressPercentage = progress;
+    if (notes) treatment.progressNotes = notes;
+    treatment.updatedBy = userId;
 
     // Auto-complete if 100%
     if (progress === 100 && treatment.status !== TreatmentStatus.COMPLETED) {
       treatment.status = TreatmentStatus.COMPLETED;
-      treatment.actual_completion_date = new Date();
+      treatment.actualCompletionDate = new Date();
     }
 
     const updatedTreatment = await this.treatmentRepository.save(treatment);
 
     const fullTreatment = await this.treatmentRepository.findOne({
       where: { id: updatedTreatment.id },
-      relations: ['treatment_owner', 'risk', 'tasks'],
+      relations: ['treatmentOwner', 'risk', 'tasks'],
     });
 
     return this.toResponseDto(fullTreatment);
@@ -164,17 +175,18 @@ export class RiskTreatmentService {
 
     const maxOrder = await this.taskRepository
       .createQueryBuilder('task')
-      .where('task.treatment_id = :treatmentId', { treatmentId })
-      .select('MAX(task.display_order)', 'max')
+      .where('task.treatmentId = :treatmentId', { treatmentId })
+      .select('MAX(task.displayOrder)', 'max')
       .getRawOne();
 
     const task = this.taskRepository.create({
-      treatment_id: treatmentId,
+      treatmentId,
+      tenantId: this.tenantContextService.getTenantId(),
       title: taskData.title,
       description: taskData.description,
-      assignee_id: taskData.assignee_id,
-      due_date: taskData.due_date ? new Date(taskData.due_date) : undefined,
-      display_order: (maxOrder?.max || 0) + 1,
+      assigneeId: taskData.assignee_id,
+      dueDate: taskData.due_date ? new Date(taskData.due_date) : undefined,
+      displayOrder: (maxOrder?.max || 0) + 1,
     });
 
     const savedTask = await this.taskRepository.save(task);
@@ -188,10 +200,13 @@ export class RiskTreatmentService {
       throw new NotFoundException(`Treatment task with ID ${taskId} not found`);
     }
 
-    Object.assign(task, taskData);
-    if (taskData.due_date) task.due_date = new Date(taskData.due_date);
-    if (taskData.status === 'completed') task.completed_date = new Date();
+    const { assignee_id, due_date, ...rest } = taskData as any;
+    const updateData: any = { ...rest };
+    if (assignee_id) updateData.assigneeId = assignee_id;
+    if (due_date) updateData.dueDate = new Date(due_date);
+    if (taskData.status === 'completed') updateData.completedDate = new Date();
 
+    Object.assign(task, updateData);
     const updatedTask = await this.taskRepository.save(task);
     return this.toTaskResponseDto(updatedTask);
   }
@@ -211,10 +226,10 @@ export class RiskTreatmentService {
     const treatments = await this.treatmentRepository.find({
       where: {
         status: In([TreatmentStatus.PLANNED, TreatmentStatus.IN_PROGRESS]),
-        target_completion_date: LessThan(new Date()),
+        targetCompletionDate: LessThan(new Date()),
       },
-      relations: ['treatment_owner', 'risk'],
-      order: { target_completion_date: 'ASC' },
+      relations: ['treatmentOwner', 'risk'],
+      order: { targetCompletionDate: 'ASC' },
     });
 
     return treatments.map(t => this.toResponseDto(t));
@@ -228,10 +243,10 @@ export class RiskTreatmentService {
     const treatments = await this.treatmentRepository.find({
       where: {
         status: In([TreatmentStatus.PLANNED, TreatmentStatus.IN_PROGRESS]),
-        target_completion_date: Between(today, futureDate),
+        targetCompletionDate: Between(today, futureDate),
       },
-      relations: ['treatment_owner', 'risk'],
-      order: { target_completion_date: 'ASC' },
+      relations: ['treatmentOwner', 'risk'],
+      order: { targetCompletionDate: 'ASC' },
     });
 
     return treatments.map(t => this.toResponseDto(t));
@@ -260,13 +275,13 @@ export class RiskTreatmentService {
     for (const t of treatments) {
       // By status
       summary.by_status[t.status] = (summary.by_status[t.status] || 0) + 1;
-      
+
       // By priority
       summary.by_priority[t.priority] = (summary.by_priority[t.priority] || 0) + 1;
 
       // Overdue check
-      if (t.target_completion_date && t.target_completion_date < today && 
-          t.status !== TreatmentStatus.COMPLETED && t.status !== TreatmentStatus.CANCELLED) {
+      if (t.targetCompletionDate && t.targetCompletionDate < today &&
+        t.status !== TreatmentStatus.COMPLETED && t.status !== TreatmentStatus.CANCELLED) {
         summary.overdue++;
       }
 
@@ -275,8 +290,8 @@ export class RiskTreatmentService {
       }
     }
 
-    summary.completion_rate = treatments.length > 0 
-      ? Math.round((completed / treatments.length) * 100) 
+    summary.completion_rate = treatments.length > 0
+      ? Math.round((completed / treatments.length) * 100)
       : 0;
 
     return summary;
@@ -288,10 +303,10 @@ export class RiskTreatmentService {
 
     if (treatment.status === TreatmentStatus.COMPLETED) {
       dueStatus = 'completed';
-    } else if (treatment.target_completion_date) {
-      const dueDate = new Date(treatment.target_completion_date);
+    } else if (treatment.targetCompletionDate) {
+      const dueDate = new Date(treatment.targetCompletionDate);
       const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (daysUntilDue < 0) {
         dueStatus = 'overdue';
       } else if (daysUntilDue <= 7) {
@@ -313,37 +328,37 @@ export class RiskTreatmentService {
 
     return {
       id: treatment.id,
-      treatment_id: treatment.treatment_id,
-      risk_id: treatment.risk_id,
+      treatment_id: treatment.treatmentCode,
+      risk_id: treatment.riskId,
       risk_title: treatment.risk?.title,
       strategy: treatment.strategy,
       title: treatment.title,
       description: treatment.description,
-      treatment_owner_id: treatment.treatment_owner_id,
-      treatment_owner_name: treatment.treatment_owner
-        ? `${treatment.treatment_owner.firstName || ''} ${treatment.treatment_owner.lastName || ''}`.trim()
+      treatment_owner_id: treatment.treatmentOwnerId,
+      treatment_owner_name: treatment.treatmentOwner
+        ? `${treatment.treatmentOwner.firstName || ''} ${treatment.treatmentOwner.lastName || ''}`.trim()
         : undefined,
       status: treatment.status,
       priority: treatment.priority,
-      start_date: toISOString(treatment.start_date),
-      target_completion_date: toISOString(treatment.target_completion_date),
-      actual_completion_date: toISOString(treatment.actual_completion_date),
-      estimated_cost: treatment.estimated_cost,
-      actual_cost: treatment.actual_cost,
-      expected_risk_reduction: treatment.expected_risk_reduction,
-      residual_likelihood: treatment.residual_likelihood,
-      residual_impact: treatment.residual_impact,
-      residual_risk_score: treatment.residual_risk_score,
-      progress_percentage: treatment.progress_percentage,
-      progress_notes: treatment.progress_notes,
+      start_date: toISOString(treatment.startDate),
+      target_completion_date: toISOString(treatment.targetCompletionDate),
+      actual_completion_date: toISOString(treatment.actualCompletionDate),
+      estimated_cost: treatment.estimatedCost,
+      actual_cost: treatment.actualCost,
+      expected_risk_reduction: treatment.expectedRiskReduction,
+      residual_likelihood: treatment.residualLikelihood,
+      residual_impact: treatment.residualImpact,
+      residual_risk_score: treatment.residualRiskScore,
+      progress_percentage: treatment.progressPercentage,
+      progress_notes: treatment.progressNotes,
       implementation_notes: treatment.implementation_notes,
-      linked_control_ids: treatment.linked_control_ids,
+      linked_control_ids: treatment.linkedControlIds,
       tasks: tasks.map(t => this.toTaskResponseDto(t)),
       total_tasks: tasks.length,
       completed_tasks: completedTasks,
       due_status: dueStatus,
-      created_at: toISOString(treatment.created_at),
-      updated_at: toISOString(treatment.updated_at),
+      created_at: toISOString(treatment.createdAt),
+      updated_at: toISOString(treatment.updatedAt),
     };
   }
 
@@ -361,15 +376,14 @@ export class RiskTreatmentService {
       id: task.id,
       title: task.title,
       description: task.description,
-      assignee_id: task.assignee_id,
+      assignee_id: task.assigneeId,
       assignee_name: task.assignee
         ? `${task.assignee.firstName || ''} ${task.assignee.lastName || ''}`.trim()
         : undefined,
       status: task.status,
-      due_date: toISOString(task.due_date),
-      completed_date: toISOString(task.completed_date),
-      display_order: task.display_order,
+      due_date: toISOString(task.dueDate),
+      completed_date: toISOString(task.completedDate),
+      display_order: task.displayOrder,
     };
   }
 }
-

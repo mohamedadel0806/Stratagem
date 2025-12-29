@@ -5,8 +5,10 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum ImportStatus {
   PENDING = 'pending',
@@ -26,17 +28,25 @@ export class ImportLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'fileName' })
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
+  @Column({ type: 'varchar', length: 255, name: 'file_name' })
   fileName: string;
 
   @Column({
     type: 'enum',
     enum: ImportFileType,
-    name: 'fileType',
+    name: 'file_type',
   })
   fileType: ImportFileType;
 
-  @Column({ type: 'varchar', length: 50, name: 'assetType' })
+  @Column({ type: 'varchar', length: 50, name: 'asset_type' })
   assetType: string; // 'physical', 'information', etc.
 
   @Column({
@@ -47,35 +57,34 @@ export class ImportLog {
   })
   status: ImportStatus;
 
-  @Column({ type: 'int', default: 0, name: 'totalRecords' })
+  @Column({ type: 'int', default: 0, name: 'total_records' })
   totalRecords: number;
 
-  @Column({ type: 'int', default: 0, name: 'successfulImports' })
+  @Column({ type: 'int', default: 0, name: 'successful_imports' })
   successfulImports: number;
 
-  @Column({ type: 'int', default: 0, name: 'failedImports' })
+  @Column({ type: 'int', default: 0, name: 'failed_imports' })
   failedImports: number;
 
-  @Column({ type: 'text', nullable: true, name: 'errorReport' })
+  @Column({ type: 'text', nullable: true, name: 'error_report' })
   errorReport: string; // JSON array of errors
 
-  @Column({ type: 'jsonb', nullable: true, name: 'fieldMapping' })
+  @Column({ type: 'jsonb', nullable: true, name: 'field_mapping' })
   fieldMapping: Record<string, string>; // CSV column -> Asset field mapping
 
-  @Column({ type: 'uuid', name: 'importedById', nullable: false })
+  @Column({ type: 'uuid', name: 'imported_by_id', nullable: false })
   importedById: string;
 
   @ManyToOne(() => User, { nullable: false })
-  @JoinColumn({ name: 'importedById' })
+  @JoinColumn({ name: 'imported_by_id' })
   importedBy: User;
 
   @Column({ type: 'text', nullable: true })
   notes: string;
 
-  @CreateDateColumn({ name: 'createdAt' })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true, name: 'completedAt' })
+  @Column({ type: 'timestamp', nullable: true, name: 'completed_at' })
   completedAt: Date;
 }
-

@@ -24,7 +24,7 @@ import { RequestStatus } from '../entities/risk-assessment-request.entity';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class RiskAssessmentRequestController {
-  constructor(private readonly requestService: RiskAssessmentRequestService) {}
+  constructor(private readonly requestService: RiskAssessmentRequestService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all assessment requests with optional filters' })
@@ -72,7 +72,7 @@ export class RiskAssessmentRequestController {
   @ApiResponse({ status: 201, description: 'Assessment request created successfully' })
   @ApiResponse({ status: 404, description: 'Risk not found' })
   async create(@Body() createDto: CreateRiskAssessmentRequestDto, @Request() req: any) {
-    return this.requestService.create(createDto, req.user?.userId || req.user?.id, req.user?.organizationId);
+    return this.requestService.create(createDto, req.user?.userId || req.user?.id);
   }
 
   @Put(':id')

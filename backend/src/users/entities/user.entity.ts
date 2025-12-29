@@ -5,7 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum UserRole {
   SUPER_ADMIN = 'super_admin',
@@ -75,6 +78,15 @@ export class User {
   @Column({ nullable: true, name: 'password_changed_at' })
   passwordChangedAt: Date;
 
+  @Column({ default: false, name: 'mfa_enabled' })
+  mfaEnabled: boolean;
+
+  @Column({ select: false, nullable: true, name: 'mfa_secret' })
+  mfaSecret: string;
+
+  @Column({ type: 'jsonb', nullable: true, name: 'mfa_recovery_codes' })
+  mfaRecoveryCodes: string[];
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -90,4 +102,12 @@ export class User {
    */
   @Column({ type: 'uuid', nullable: true, name: 'business_unit_id' })
   businessUnitId: string | null;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 }

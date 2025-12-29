@@ -12,6 +12,7 @@ import { WorkflowResponseDto } from '../dto/workflow-response.dto';
 import { Policy } from '../../policy/entities/policy.entity';
 import { Risk } from '../../risk/entities/risk.entity';
 import { ComplianceRequirement } from '../../common/entities/compliance-requirement.entity';
+import { TenantContextService } from '../../common/context/tenant-context.service';
 import { Task } from '../../common/entities/task.entity';
 import { User } from '../../users/entities/user.entity';
 import { NotificationService } from '../../common/services/notification.service';
@@ -41,12 +42,16 @@ export class WorkflowService {
     private userRepository: Repository<User>,
     private workflowRulesService: WorkflowTriggerRulesService,
     private notificationService: NotificationService,
+    private tenantContextService: TenantContextService,
     @Optional() @InjectQueue('governance:policy') private workflowQueue?: Queue<WorkflowExecutionJob>,
-  ) {}
+  ) { }
 
   async create(createDto: CreateWorkflowDto, userId: string): Promise<WorkflowResponseDto> {
+    const tenantId = this.tenantContextService.getTenantId();
     const workflow = this.workflowRepository.create({
       ...createDto,
+      tenantId: tenantId,
+      organizationId: tenantId, // Keeping for backward compatibility
       createdById: userId,
     });
 
@@ -207,6 +212,7 @@ export class WorkflowService {
         const job = await this.workflowQueue.add(
           'EXECUTE_WORKFLOW',
           {
+            tenantId: this.tenantContextService.getTenantId(),
             workflowId,
             entityType,
             entityId,
@@ -522,7 +528,7 @@ export class WorkflowService {
     assignToId?: string,
   ): Promise<void> {
     const taskAssigneeId = taskConfig.assigneeId || assignToId;
-    
+
     const task = this.taskRepository.create({
       title: taskConfig.title,
       description: taskConfig.description || null,
@@ -600,7 +606,7 @@ export class WorkflowService {
         try {
           const execution = a.workflowExecution;
           const workflow = execution?.workflow;
-          
+
           return {
             id: a.id || '',
             workflowExecutionId: a.workflowExecutionId || '',

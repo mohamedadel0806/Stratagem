@@ -11,6 +11,7 @@ import {
   Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum RiskTolerance {
   LOW = 'low',
@@ -26,6 +27,14 @@ export enum RiskTolerance {
 export class RiskCategory {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'varchar', length: 200 })
   name: string;
@@ -89,10 +98,3 @@ export class RiskCategory {
   @DeleteDateColumn({ name: 'deleted_at' })
   deleted_at: Date;
 }
-
-
-
-
-
-
-

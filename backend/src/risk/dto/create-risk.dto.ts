@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsEnum, IsOptional, IsNumber, IsUUID, IsArray, IsDateString, Min, Max, MaxLength } from 'class-validator';
-import { 
-  RiskCategory_OLD as RiskCategory, 
-  RiskStatus, 
-  RiskLikelihood, 
+import {
+  RiskCategoryLegacy,
+  RiskStatus,
+  RiskLikelihood,
   RiskImpact,
   ThreatSource,
   RiskVelocity,
@@ -25,9 +25,9 @@ export class CreateRiskDto {
   @IsString()
   risk_statement?: string;
 
-  @ApiProperty({ enum: RiskCategory })
-  @IsEnum(RiskCategory)
-  category: RiskCategory;
+  @ApiProperty({ enum: RiskCategoryLegacy })
+  @IsEnum(RiskCategoryLegacy)
+  category: RiskCategoryLegacy;
 
   @ApiProperty({ required: false, description: 'Reference to risk_categories table' })
   @IsOptional()

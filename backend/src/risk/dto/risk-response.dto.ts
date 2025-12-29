@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { 
-  RiskStatus, 
-  RiskCategory_OLD as RiskCategory, 
-  RiskLikelihood, 
+import {
+  RiskStatus,
+  RiskCategoryLegacy,
+  RiskLikelihood,
   RiskImpact,
   ThreatSource,
   RiskVelocity,
@@ -25,8 +25,8 @@ export class RiskResponseDto {
   @ApiProperty({ required: false, description: 'Risk statement in If/Then/Resulting format' })
   risk_statement?: string;
 
-  @ApiProperty({ enum: RiskCategory })
-  category: RiskCategory;
+  @ApiProperty({ enum: RiskCategoryLegacy })
+  category: RiskCategoryLegacy;
 
   @ApiProperty({ required: false })
   category_id?: string;
@@ -173,6 +173,9 @@ export class RiskResponseDto {
 
   @ApiProperty({ required: false })
   updatedAt?: string;
+
+  @ApiProperty({ required: false })
+  tenant_id?: string;
 }
 
 export class RiskListResponseDto {

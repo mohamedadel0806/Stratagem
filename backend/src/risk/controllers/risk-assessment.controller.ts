@@ -19,20 +19,20 @@ import { AssessmentType } from '../entities/risk-assessment.entity';
 @Controller('risk-assessments')
 @UseGuards(JwtAuthGuard)
 export class RiskAssessmentController {
-  constructor(private readonly assessmentService: RiskAssessmentService) {}
+  constructor(private readonly assessmentService: RiskAssessmentService) { }
 
   @Get('scales/likelihood')
   @ApiOperation({ summary: 'Get likelihood scale descriptions from settings' })
   @ApiResponse({ status: 200, description: 'Likelihood scale with labels and descriptions' })
   async getLikelihoodScale(@Request() req: any) {
-    return this.assessmentService.getLikelihoodScaleDescriptions(req.user?.organizationId);
+    return this.assessmentService.getLikelihoodScaleDescriptions();
   }
 
   @Get('scales/impact')
   @ApiOperation({ summary: 'Get impact scale descriptions from settings' })
   @ApiResponse({ status: 200, description: 'Impact scale with labels and descriptions' })
   async getImpactScale(@Request() req: any) {
-    return this.assessmentService.getImpactScaleDescriptions(req.user?.organizationId);
+    return this.assessmentService.getImpactScaleDescriptions();
   }
 
   @Get('risk/:riskId')
@@ -75,7 +75,7 @@ export class RiskAssessmentController {
   @ApiOperation({ summary: 'Create a new risk assessment with settings validation' })
   @ApiResponse({ status: 201, description: 'Assessment created with appetite warnings if applicable' })
   async create(@Body() createDto: CreateRiskAssessmentDto, @Request() req: any) {
-    return this.assessmentService.create(createDto, req.user?.id, req.user?.organizationId);
+    return this.assessmentService.create(createDto, req.user?.id);
   }
 }
 

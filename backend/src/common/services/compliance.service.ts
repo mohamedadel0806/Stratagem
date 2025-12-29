@@ -13,6 +13,7 @@ import { RequirementResponseDto } from '../dto/requirement-response.dto';
 import { RequirementQueryDto } from '../dto/requirement-query.dto';
 import { WorkflowService } from '../../workflow/services/workflow.service';
 import { EntityType, WorkflowTrigger } from '../../workflow/entities/workflow.entity';
+import { TenantContextService } from '../context/tenant-context.service';
 
 @Injectable()
 export class ComplianceService {
@@ -23,9 +24,10 @@ export class ComplianceService {
     private requirementsRepository: Repository<ComplianceRequirement>,
     @Inject(forwardRef(() => WorkflowService))
     private workflowService: WorkflowService,
-  ) {}
+    private tenantContextService: TenantContextService,
+  ) { }
 
-  async getStatus(organizationId?: string): Promise<ComplianceStatusResponseDto> {
+  async getStatus(): Promise<ComplianceStatusResponseDto> {
     const query = this.frameworksRepository
       .createQueryBuilder('framework')
       .leftJoinAndSelect('framework.requirements', 'requirement')
@@ -33,15 +35,17 @@ export class ComplianceService {
       .select([
         'framework.id',
         'framework.name',
-        'framework.framework_code',
+        'framework.frameworkCode',
         'framework.version',
         'framework.status',
         'requirement.id',
         'requirement.status',
       ]);
 
-    if (organizationId) {
-      query.where('framework.organizationId = :organizationId', { organizationId });
+    const tenantId = this.tenantContextService.getTenantId();
+
+    if (tenantId) {
+      query.where('framework.tenantId = :tenantId', { tenantId });
     }
 
     const frameworks = await query.getMany();
@@ -76,9 +80,9 @@ export class ComplianceService {
     const overallCompliance =
       frameworkStatuses.length > 0
         ? Math.round(
-            frameworkStatuses.reduce((sum, fw) => sum + fw.compliancePercentage, 0) /
-              frameworkStatuses.length,
-          )
+          frameworkStatuses.reduce((sum, fw) => sum + fw.compliancePercentage, 0) /
+          frameworkStatuses.length,
+        )
         : 0;
 
     return {
@@ -104,7 +108,12 @@ export class ComplianceService {
   }
 
   async createFramework(createDto: CreateFrameworkDto): Promise<FrameworkResponseDto> {
-    const framework = this.frameworksRepository.create(createDto);
+    const tenantId = this.tenantContextService.getTenantId();
+    const framework = this.frameworksRepository.create({
+      ...createDto,
+      tenantId: tenantId,
+      organizationId: tenantId, // Keeping for backward compatibility
+    });
     const saved = await this.frameworksRepository.save(framework);
     return this.toFrameworkDto(saved);
   }
@@ -190,8 +199,11 @@ export class ComplianceService {
       throw new NotFoundException(`Framework with ID ${createDto.frameworkId} not found`);
     }
 
+    const tenantId = this.tenantContextService.getTenantId();
     const requirement = this.requirementsRepository.create({
       ...createDto,
+      tenantId: tenantId,
+      organizationId: tenantId, // Keeping for backward compatibility
       status: createDto.status || RequirementStatus.NOT_STARTED,
     });
     const saved = await this.requirementsRepository.save(requirement);
@@ -293,8 +305,8 @@ export class ComplianceService {
       code: framework.code,
       description: framework.description,
       region: framework.region,
-      createdAt: framework.created_at.toISOString(),
-      updatedAt: framework.updated_at.toISOString(),
+      createdAt: framework.createdAt.toISOString(),
+      updatedAt: framework.updatedAt.toISOString(),
     };
   }
 
@@ -335,6 +347,7 @@ export class ComplianceService {
 
     for (const reqData of requirements) {
       try {
+        const tenantId = this.tenantContextService.getTenantId();
         const requirement = this.requirementsRepository.create({
           title: reqData.title,
           description: reqData.description,
@@ -343,6 +356,8 @@ export class ComplianceService {
           complianceDeadline: reqData.complianceDeadline,
           applicability: reqData.applicability,
           frameworkId,
+          tenantId: tenantId,
+          organizationId: tenantId, // Keeping for backward compatibility
           status: reqData.status || RequirementStatus.NOT_STARTED,
         });
         await this.requirementsRepository.save(requirement);

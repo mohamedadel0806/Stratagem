@@ -19,10 +19,12 @@ import { Task } from '../common/entities/task.entity';
 import { Notification } from '../common/entities/notification.entity';
 import { NotificationService } from '../common/services/notification.service';
 import { User } from '../users/entities/user.entity';
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    forwardRef(() => CommonModule),
     TypeOrmModule.forFeature([
       Workflow,
       WorkflowExecution,
@@ -43,4 +45,4 @@ import { User } from '../users/entities/user.entity';
   providers: [WorkflowService, WorkflowTemplatesService, WorkflowTriggerRulesService, DeadlineWorkflowScheduler, NotificationService],
   exports: [WorkflowService, WorkflowTemplatesService, WorkflowTriggerRulesService],
 })
-export class WorkflowModule {}
+export class WorkflowModule { }

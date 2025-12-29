@@ -18,6 +18,7 @@ import { AssetsConnectivityChart } from "@/components/dashboard/widgets/assets-c
 import { Button } from "@/components/ui/button"
 import { dashboardApi } from "@/lib/api/dashboard"
 import { AlertTriangle, FileText, Shield, Package } from "lucide-react"
+import { SetupChecklist } from "@/components/dashboard/setup-checklist"
 
 // Force dynamic rendering to avoid build-time API calls
 export const dynamic = 'force-dynamic';
@@ -156,11 +157,10 @@ export default function DashboardPage() {
               <button
                 key={key}
                 type="button"
-                className={`px-2 py-1 rounded border text-[10px] ${
-                  enabledWidgets.includes(key)
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-muted-foreground border-muted"
-                }`}
+                className={`px-2 py-1 rounded border text-[10px] ${enabledWidgets.includes(key)
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-muted"
+                  }`}
                 onClick={() => {
                   setEnabledWidgets(
                     enabledWidgets.includes(key)
@@ -183,7 +183,7 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
-
+      <SetupChecklist />
       {/* Top Stats Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
@@ -207,21 +207,21 @@ export default function DashboardPage() {
       {/* Asset Analytics Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {enabledWidgets.includes("assetType") && (
-          <AssetTypeChart 
-            data={overview?.assetStats?.countByType} 
-            isLoading={isLoading} 
+          <AssetTypeChart
+            data={overview?.assetStats?.countByType}
+            isLoading={isLoading}
           />
         )}
         {enabledWidgets.includes("criticality") && (
-          <AssetCriticalityChart 
-            data={overview?.assetStats?.countByCriticality} 
-            isLoading={isLoading} 
+          <AssetCriticalityChart
+            data={overview?.assetStats?.countByCriticality}
+            isLoading={isLoading}
           />
         )}
         {enabledWidgets.includes("withoutOwner") && (
-          <AssetsWithoutOwner 
-            data={overview?.assetStats?.assetsWithoutOwner} 
-            isLoading={isLoading} 
+          <AssetsWithoutOwner
+            data={overview?.assetStats?.assetsWithoutOwner}
+            isLoading={isLoading}
           />
         )}
         {enabledWidgets.includes("complianceScope") && (
@@ -254,7 +254,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         {enabledWidgets.includes("riskHeatmap") && (
           <div className="col-span-4">
-            <RiskHeatmap organizationId="org-123" />
+            <RiskHeatmap />
           </div>
         )}
         <div className="col-span-3 rounded-xl border bg-card text-card-foreground shadow p-6">
@@ -287,9 +287,9 @@ export default function DashboardPage() {
 
       {/* Recent Activity Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <RecentAssetChanges 
-          data={overview?.assetStats?.recentChanges} 
-          isLoading={isLoading} 
+        <RecentAssetChanges
+          data={overview?.assetStats?.recentChanges}
+          isLoading={isLoading}
         />
         <TaskList />
         <PendingApprovalsWidget />

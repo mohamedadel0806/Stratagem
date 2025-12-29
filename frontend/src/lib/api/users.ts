@@ -1,5 +1,12 @@
 import { apiClient } from './client';
 
+export enum UserRole {
+  SUPER_ADMIN = 'super_admin',
+  ADMIN = 'admin',
+  USER = 'user',
+  VIEWER = 'viewer',
+}
+
 export interface User {
   id: string;
   email: string;
@@ -9,10 +16,10 @@ export interface User {
   avatarUrl?: string;
   role: string;
   status: string;
-   /**
-    * Optional primary business unit ID for this user.
-    * Used to auto-populate asset business unit when the user is selected as owner.
-    */
+  /**
+   * Optional primary business unit ID for this user.
+   * Used to auto-populate asset business unit when the user is selected as owner.
+   */
   businessUnitId?: string;
   emailVerified: boolean;
   phoneVerified: boolean;
@@ -54,6 +61,11 @@ export const usersApi = {
 
   getById: async (id: string): Promise<User> => {
     const response = await apiClient.get<User>(`/users/${id}`);
+    return response.data;
+  },
+
+  exportData: async (): Promise<any> => {
+    const response = await apiClient.post<any>('/users/profile/export');
     return response.data;
   },
 };

@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Workflow } from './workflow.entity';
 import { User } from '../../users/entities/user.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum WorkflowExecutionStatus {
   PENDING = 'pending',
@@ -22,6 +24,14 @@ export enum WorkflowExecutionStatus {
 export class WorkflowExecution {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   @Column({ type: 'uuid', name: 'workflow_id' })
   workflowId: string;
@@ -71,4 +81,3 @@ export class WorkflowExecution {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

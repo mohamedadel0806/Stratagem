@@ -6,18 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { risksApi } from "@/lib/api/risks"
 import { AlertCircle } from "lucide-react"
 
-interface RiskHeatmapProps {
-  organizationId?: string
-}
+interface RiskHeatmapProps { }
 
 const likelihoodLabels = ['Very Low', 'Low', 'Medium', 'High', 'Very High']
 const impactLabels = ['Very Low', 'Low', 'Medium', 'High', 'Very High']
 
 function getRiskScoreColor(riskScore: number, maxScore: number): string {
   if (riskScore === 0) return 'bg-gray-100 dark:bg-gray-800'
-  
+
   const intensity = riskScore / maxScore
-  
+
   if (intensity >= 0.8) return 'bg-red-600 dark:bg-red-800'
   if (intensity >= 0.6) return 'bg-orange-500 dark:bg-orange-700'
   if (intensity >= 0.4) return 'bg-yellow-400 dark:bg-yellow-600'
@@ -25,9 +23,9 @@ function getRiskScoreColor(riskScore: number, maxScore: number): string {
   return 'bg-green-200 dark:bg-green-800'
 }
 
-export function RiskHeatmap({ organizationId }: RiskHeatmapProps) {
+export function RiskHeatmap({ }: RiskHeatmapProps) {
   const { data: heatmapData, isLoading, error } = useQuery({
-    queryKey: ['risk-heatmap', organizationId],
+    queryKey: ['risk-heatmap'],
     queryFn: () => risksApi.getHeatmap(),
   })
 

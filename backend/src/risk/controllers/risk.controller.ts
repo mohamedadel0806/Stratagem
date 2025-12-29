@@ -24,7 +24,7 @@ import { BulkUpdateRiskDto } from '../dto/bulk-update-risk.dto';
 @Controller('risks')
 @UseGuards(JwtAuthGuard)
 export class RiskController {
-  constructor(private readonly riskService: RiskService) {}
+  constructor(private readonly riskService: RiskService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all risks with filtering and pagination' })
@@ -41,7 +41,7 @@ export class RiskController {
   @Get('dashboard/summary')
   @ApiOperation({ summary: 'Get risk dashboard summary including appetite analysis' })
   async getDashboardSummary(@Request() req: any) {
-    return this.riskService.getDashboardSummary(req.user?.organizationId);
+    return this.riskService.getDashboardSummary();
   }
 
   @Get('dashboard/top')
@@ -60,7 +60,7 @@ export class RiskController {
   @ApiOperation({ summary: 'Get risks exceeding the organization risk appetite threshold' })
   @ApiResponse({ status: 200, description: 'List of risks exceeding risk appetite' })
   async getRisksExceedingAppetite(@Request() req: any) {
-    return this.riskService.getRisksExceedingAppetite(req.user?.organizationId);
+    return this.riskService.getRisksExceedingAppetite();
   }
 
   @Get('check-appetite/:score')
@@ -68,20 +68,19 @@ export class RiskController {
   @ApiResponse({ status: 200, description: 'Risk appetite check result' })
   async checkRiskAppetite(
     @Param('score') score: number,
-    @Request() req: any,
   ) {
-    return this.riskService.checkRiskAppetite(Number(score), req.user?.organizationId);
+    return this.riskService.checkRiskAppetite(Number(score));
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a single risk by ID with appetite warnings' })
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
-    return this.riskService.findOne(id, req.user?.organizationId);
+    return this.riskService.findOne(id);
   }
 
   @Post()
   async create(@Body() createRiskDto: CreateRiskDto, @Request() req: any) {
-    return this.riskService.create(createRiskDto, req.user?.userId || req.user?.id, req.user?.organizationId);
+    return this.riskService.create(createRiskDto, req.user?.userId || req.user?.id);
   }
 
   @Put(':id')

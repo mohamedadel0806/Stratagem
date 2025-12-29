@@ -13,6 +13,7 @@ import {
 import { Risk } from './risk.entity';
 import { User } from '../../users/entities/user.entity';
 import { TreatmentTask } from './treatment-task.entity';
+import { Tenant } from '../../common/entities/tenant.entity';
 
 export enum TreatmentStrategy {
   MITIGATE = 'mitigate',
@@ -37,21 +38,29 @@ export enum TreatmentPriority {
 }
 
 @Entity('risk_treatments')
-@Index(['risk_id'])
-@Index(['treatment_id'])
+@Index(['riskId'])
+@Index(['treatmentCode'])
 @Index(['status'])
-@Index(['treatment_owner_id'])
-@Index(['target_completion_date'])
+@Index(['treatmentOwnerId'])
+@Index(['targetCompletionDate'])
 @Index(['priority'])
 export class RiskTreatment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @ManyToOne(() => Tenant)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
   @Column({ type: 'varchar', length: 20, unique: true, nullable: true, name: 'treatment_id' })
-  treatment_id: string;
+  treatmentCode: string;
 
   @Column({ type: 'uuid', name: 'risk_id' })
-  risk_id: string;
+  riskId: string;
 
   @ManyToOne(() => Risk, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'risk_id' })
@@ -70,11 +79,11 @@ export class RiskTreatment {
   description: string;
 
   @Column({ type: 'uuid', nullable: true, name: 'treatment_owner_id' })
-  treatment_owner_id: string;
+  treatmentOwnerId: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'treatment_owner_id' })
-  treatment_owner: User;
+  treatmentOwner: User;
 
   @Column({
     type: 'enum',
@@ -91,43 +100,43 @@ export class RiskTreatment {
   priority: TreatmentPriority;
 
   @Column({ type: 'date', nullable: true, name: 'start_date' })
-  start_date: Date;
+  startDate: Date;
 
   @Column({ type: 'date', nullable: true, name: 'target_completion_date' })
-  target_completion_date: Date;
+  targetCompletionDate: Date;
 
   @Column({ type: 'date', nullable: true, name: 'actual_completion_date' })
-  actual_completion_date: Date;
+  actualCompletionDate: Date;
 
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true, name: 'estimated_cost' })
-  estimated_cost: number;
+  estimatedCost: number;
 
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true, name: 'actual_cost' })
-  actual_cost: number;
+  actualCost: number;
 
   @Column({ type: 'text', nullable: true, name: 'expected_risk_reduction' })
-  expected_risk_reduction: string;
+  expectedRiskReduction: string;
 
   @Column({ type: 'integer', nullable: true, name: 'residual_likelihood' })
-  residual_likelihood: number;
+  residualLikelihood: number;
 
   @Column({ type: 'integer', nullable: true, name: 'residual_impact' })
-  residual_impact: number;
+  residualImpact: number;
 
   @Column({ type: 'integer', nullable: true, name: 'residual_risk_score' })
-  residual_risk_score: number;
+  residualRiskScore: number;
 
   @Column({ type: 'integer', default: 0, name: 'progress_percentage' })
-  progress_percentage: number;
+  progressPercentage: number;
 
   @Column({ type: 'text', nullable: true, name: 'progress_notes' })
-  progress_notes: string;
+  progressNotes: string;
 
   @Column({ type: 'text', nullable: true, name: 'implementation_notes' })
   implementation_notes: string;
 
   @Column({ type: 'uuid', array: true, nullable: true, name: 'linked_control_ids' })
-  linked_control_ids: string[];
+  linkedControlIds: string[];
 
   @Column({ type: 'jsonb', nullable: true })
   attachments: Record<string, any>[];
@@ -136,32 +145,25 @@ export class RiskTreatment {
   tasks: TreatmentTask[];
 
   @Column({ type: 'uuid', nullable: true, name: 'created_by' })
-  created_by: string;
+  createdBy: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'created_by' })
   creator: User;
 
   @CreateDateColumn({ name: 'created_at' })
-  created_at: Date;
+  createdAt: Date;
 
   @Column({ type: 'uuid', nullable: true, name: 'updated_by' })
-  updated_by: string;
+  updatedBy: string;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'updated_by' })
   updater: User;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updated_at: Date;
+  updatedAt: Date;
 
   @DeleteDateColumn({ name: 'deleted_at' })
-  deleted_at: Date;
+  deletedAt: Date;
 }
-
-
-
-
-
-
-
