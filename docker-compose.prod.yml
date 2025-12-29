@@ -35,15 +35,33 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - POSTGRES_USER=postgres
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/grc_platform
       - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
     env_file:
       - .env
     depends_on:
       - postgres
+      - redis
     networks:
       - grc-network
     restart: unless-stopped
+
+  # Redis - Cache and Session Store
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_prod:/data
+    networks:
+      - grc-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # API Gateway - Kong
   kong:
@@ -106,3 +124,4 @@ networks:
 
 volumes:
   postgres_data_prod:
+  redis_data_prod:
