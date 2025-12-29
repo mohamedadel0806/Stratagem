@@ -7,7 +7,7 @@ on:
         description: 'Restore database from export?'
         required: true
         type: boolean
-        default: false
+        default: true
       export_path:
         description: 'Database export folder (e.g., export_20251218_215218 or "latest")'
         required: false
