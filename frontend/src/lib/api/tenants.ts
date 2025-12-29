@@ -33,6 +33,9 @@ export interface Tenant {
     updatedAt: string;
 }
 
+export type SubscriptionTier = 'starter' | 'professional' | 'enterprise';
+
+
 export interface UpdateTenantData {
     name?: string;
     industry?: string;
